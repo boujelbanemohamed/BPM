@@ -34,6 +34,8 @@ const parser = new XMLParser({
   trimValues: true,
   parseAttributeValue: false,
   parseTagValue: false,
+  processEntities: true,
+  htmlEntities: true,
 });
 
 function asArray<T>(value: T | T[] | undefined | null): T[] {
