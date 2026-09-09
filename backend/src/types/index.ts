@@ -48,8 +48,20 @@ export interface AuthenticatedUser extends PublicUser {
 export interface FormField {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'boolean' | 'date' | 'textarea';
+  type: 'text' | 'number' | 'boolean' | 'date' | 'textarea' | 'client';
   required: boolean;
+}
+
+export interface ClientRow {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProcessRow {
@@ -68,6 +80,7 @@ export interface ProcessRow {
 export interface ProcessInstanceRow {
   id: string;
   process_id: string;
+  client_id: string | null;
   status: InstanceStatus;
   current_step_name: string | null;
   current_element_id: string | null;

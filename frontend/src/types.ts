@@ -38,8 +38,21 @@ export interface MinimalUser {
 export interface FormField {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'boolean' | 'date' | 'textarea';
+  type: 'text' | 'number' | 'boolean' | 'date' | 'textarea' | 'client';
   required: boolean;
+}
+
+export interface ClientItem {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  instance_count?: string;
 }
 
 export interface ProcessDefinition {
@@ -59,6 +72,7 @@ export interface ProcessDefinition {
 export interface ProcessInstance {
   id: string;
   process_id: string;
+  client_id: string | null;
   process_name?: string;
   started_by_name?: string;
   status: InstanceStatus;

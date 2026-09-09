@@ -346,6 +346,7 @@ function FormFieldsEditor({
               <option value="boolean">oui/non</option>
               <option value="date">date</option>
               <option value="textarea">zone texte</option>
+              <option value="client">client</option>
             </select>
             <input
               type="checkbox"

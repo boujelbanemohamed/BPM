@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FormField } from '../types';
+import { ClientPicker } from './ClientPicker';
 
 export function FieldInput({
   field,
@@ -10,6 +11,9 @@ export function FieldInput({
   value: unknown;
   onChange: (v: unknown) => void;
 }) {
+  if (field.type === 'client') {
+    return <ClientPicker value={value} onChange={onChange} />;
+  }
   if (field.type === 'boolean') {
     return (
       <select

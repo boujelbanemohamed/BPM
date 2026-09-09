@@ -15,6 +15,7 @@ import { tasksRouter } from './routes/tasks.routes';
 import { documentsRouter } from './routes/documents.routes';
 import { notificationsRouter } from './routes/notifications.routes';
 import { auditRouter } from './routes/audit.routes';
+import { clientsRouter } from './routes/clients.routes';
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/tasks', tasksRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/audit', auditRouter);
+app.use('/api/clients', clientsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -103,11 +103,33 @@ CREATE INDEX idx_processes_key ON processes(process_key);
 CREATE INDEX idx_processes_status ON processes(status);
 
 -- ---------------------------------------------------------------------
+-- clients — tiers externes (donneurs d'ordre) liés aux instances
+-- ---------------------------------------------------------------------
+CREATE TABLE clients (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        VARCHAR(255) NOT NULL,
+  email       VARCHAR(255),
+  phone       VARCHAR(50),
+  address     TEXT,
+  notes       TEXT,
+  created_by  UUID REFERENCES users(id),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER trg_clients_updated_at
+  BEFORE UPDATE ON clients
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX idx_clients_name ON clients(name);
+
+-- ---------------------------------------------------------------------
 -- process_instances
 -- ---------------------------------------------------------------------
 CREATE TABLE process_instances (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   process_id         UUID NOT NULL REFERENCES processes(id),
+  client_id          UUID REFERENCES clients(id),
   status             instance_status NOT NULL DEFAULT 'RUNNING',
   current_step_name  VARCHAR(255),
   current_element_id VARCHAR(255),
@@ -120,6 +142,7 @@ CREATE TABLE process_instances (
 CREATE INDEX idx_instances_process ON process_instances(process_id);
 CREATE INDEX idx_instances_status ON process_instances(status);
 CREATE INDEX idx_instances_started_by ON process_instances(started_by);
+CREATE INDEX idx_instances_client ON process_instances(client_id);
 
 -- ---------------------------------------------------------------------
 -- tasks — attribution directe / rôle / suppléance

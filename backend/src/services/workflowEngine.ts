@@ -189,10 +189,24 @@ export async function startProcessInstance(
   const startNode = graph.nodes.find((n) => n.type === 'startEvent');
   if (!startNode) throw new HttpError(400, "Le processus ne contient pas d'événement de début");
 
+  const resolvedFormData = { ...(initialFormData ?? {}) };
+  let clientId: string | null = null;
+  const clientField = startNode.formFields.find((f) => f.type === 'client');
+  if (clientField && resolvedFormData[clientField.key]) {
+    const { rows: clientRows } = await client.query<{ id: string; name: string }>(
+      'SELECT id, name FROM clients WHERE id = $1',
+      [resolvedFormData[clientField.key]]
+    );
+    const foundClient = clientRows[0];
+    if (!foundClient) throw new HttpError(400, 'Client sélectionné introuvable');
+    clientId = foundClient.id;
+    resolvedFormData[clientField.key] = foundClient.name;
+  }
+
   const { rows } = await client.query<ProcessInstanceRow>(
-    `INSERT INTO process_instances (process_id, current_step_name, current_element_id, form_data, started_by)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [process.id, startNode.name, startNode.id, JSON.stringify(initialFormData ?? {}), startedById]
+    `INSERT INTO process_instances (process_id, client_id, current_step_name, current_element_id, form_data, started_by)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [process.id, clientId, startNode.name, startNode.id, JSON.stringify(resolvedFormData), startedById]
   );
   const instance = rows[0];
 

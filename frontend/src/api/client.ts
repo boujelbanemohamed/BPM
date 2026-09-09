@@ -1,5 +1,6 @@
 import {
   AuditLogEntry,
+  ClientItem,
   DocumentItem,
   MinimalUser,
   NotificationItem,
@@ -165,4 +166,13 @@ export const api = {
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return request<{ logs: AuditLogEntry[]; total: number }>(`/audit${suffix}`);
   },
+
+  listClients: (q = '') => request<{ clients: ClientItem[] }>(`/clients${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  getClient: (id: string) => request<{ client: ClientItem; instances: ProcessInstance[] }>(`/clients/${id}`),
+  createClient: (payload: { name: string; email?: string; phone?: string; address?: string; notes?: string }) =>
+    request<{ client: ClientItem }>('/clients', { method: 'POST', body: payload }),
+  updateClient: (
+    id: string,
+    payload: Partial<{ name: string; email: string; phone: string; address: string; notes: string }>
+  ) => request<{ client: ClientItem }>(`/clients/${id}`, { method: 'PUT', body: payload }),
 };

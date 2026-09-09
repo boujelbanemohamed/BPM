@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Bell, ClipboardList, LayoutGrid, LogOut, PlayCircle, ScrollText, UserCog, Workflow } from 'lucide-react';
+import { Bell, ClipboardList, LayoutGrid, LogOut, PlayCircle, ScrollText, UserCog, Users, Workflow } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 
@@ -47,6 +47,9 @@ export function Layout() {
             </NavLink>
             <NavLink to="/instances" className={navLinkClass}>
               <PlayCircle size={16} /> Instances
+            </NavLink>
+            <NavLink to="/clients" className={navLinkClass}>
+              <Users size={16} /> Clients
             </NavLink>
             {isAdmin && (
               <>

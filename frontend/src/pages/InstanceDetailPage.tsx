@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, FileText, Paperclip, UploadCloud } from 'lucide-react';
+import { ArrowLeft, Download, FileText, Paperclip, UploadCloud, Users } from 'lucide-react';
 import { api } from '../api/client';
 import { AuditLogEntry, DocumentItem, ProcessInstance, TaskItem } from '../types';
 
@@ -75,6 +75,11 @@ export function InstanceDetailPage() {
       <div className="mb-6 flex items-center gap-2">
         <h1 className="text-xl font-bold text-slate-800">{instance.process_name}</h1>
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[instance.status]}`}>{instance.status}</span>
+        {instance.client_id && (
+          <Link to={`/clients/${instance.client_id}`} className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
+            <Users size={12} /> Fiche client
+          </Link>
+        )}
       </div>
 
       <div className="mb-4 card">
