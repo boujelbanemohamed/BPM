@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+*.tsbuildinfo
+.env
+!.env.example
+
+# Données runtime (bind mounts docker-compose) — jamais versionnées
+pgdata/*
+!pgdata/.gitkeep
+logs/*
+!logs/.gitkeep
+uploads/*
+!uploads/.gitkeep

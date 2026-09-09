@@ -1,0 +1,18 @@
+{
+  "name": "BPMPlatform",
+  "uri": "http://bpm-platform.local/schema/1.0",
+  "prefix": "bpm",
+  "xml": { "tagAlias": "lowerCase" },
+  "types": [
+    {
+      "name": "UserTaskProps",
+      "isAbstract": true,
+      "extends": ["bpmn:UserTask"],
+      "properties": [
+        { "name": "assigneeRole", "isAttr": true, "type": "String" },
+        { "name": "assigneeUserId", "isAttr": true, "type": "String" },
+        { "name": "formFields", "isAttr": true, "type": "String" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+# Déploiement Docker / Podman (podman-compose) sur RHEL avec SELinux actif.
+# Tous les volumes montés en bind mount portent le flag ":z" afin que
+# SELinux relabelle le contenu pour un partage entre le conteneur et
+# l'hôte (contexte "container_file_t"), condition nécessaire pour que
+# Postgres, le backend et Nginx puissent lire/écrire ces répertoires
+# lorsque enforcing=1.
+
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data:z
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:z,ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - bpm-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs:/var/log/bpm:z
+      - ./uploads:/app/uploads:z
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4000/api/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - bpm-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - bpm-net
+
+networks:
+  bpm-net:
+    driver: bridge
