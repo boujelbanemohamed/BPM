@@ -193,11 +193,15 @@ function ElementPanel({
     );
   }
 
-  if (type === 'bpmn:StartEvent' || type === 'bpmn:EndEvent' || type === 'bpmn:ExclusiveGateway') {
+  if (type === 'bpmn:StartEvent') {
+    return <StartEventPanel bo={bo} onChange={updateProps} />;
+  }
+
+  if (type === 'bpmn:EndEvent' || type === 'bpmn:ExclusiveGateway') {
     return (
       <div>
         <p className="mb-2 text-xs font-semibold uppercase text-slate-400">
-          {type === 'bpmn:StartEvent' ? 'Événement de début' : type === 'bpmn:EndEvent' ? 'Événement de fin' : 'Passerelle exclusive'}
+          {type === 'bpmn:EndEvent' ? 'Événement de fin' : 'Passerelle exclusive'}
         </p>
         <Field label="Libellé">
           <input
@@ -266,60 +270,95 @@ function UserTaskPanel({
         </select>
       </Field>
 
-      <div>
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-xs font-medium text-slate-500">Formulaire de la tâche</span>
-          <button
-            type="button"
-            onClick={() => commitFields([...fields, { key: '', label: '', type: 'text', required: false }])}
-            className="text-xs font-semibold text-brand-600 hover:underline"
-          >
-            + Champ
-          </button>
-        </div>
-        <div className="space-y-2">
-          {fields.map((f, i) => (
-            <div key={i} className="flex items-center gap-1 rounded-lg border border-slate-200 p-1.5">
-              <input
-                className="input min-w-0 flex-1 text-xs"
-                placeholder="clé"
-                value={f.key}
-                onChange={(e) => commitFields(fields.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))}
-              />
-              <input
-                className="input min-w-0 flex-1 text-xs"
-                placeholder="libellé"
-                value={f.label}
-                onChange={(e) => commitFields(fields.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
-              />
-              <select
-                className="input w-20 text-xs"
-                value={f.type}
-                onChange={(e) =>
-                  commitFields(fields.map((x, j) => (j === i ? { ...x, type: e.target.value as FormField['type'] } : x)))
-                }
-              >
-                <option value="text">texte</option>
-                <option value="number">nombre</option>
-                <option value="boolean">oui/non</option>
-                <option value="date">date</option>
-                <option value="textarea">zone texte</option>
-              </select>
-              <input
-                type="checkbox"
-                title="obligatoire"
-                checked={f.required}
-                onChange={(e) =>
-                  commitFields(fields.map((x, j) => (j === i ? { ...x, required: e.target.checked } : x)))
-                }
-              />
-              <button type="button" onClick={() => commitFields(fields.filter((_, j) => j !== i))}>
-                <Trash2 size={14} className="text-rose-500" />
-              </button>
-            </div>
-          ))}
-          {fields.length === 0 && <p className="text-xs text-slate-400">Aucun champ défini.</p>}
-        </div>
+      <FormFieldsEditor fields={fields} onChange={commitFields} label="Formulaire de la tâche" />
+    </div>
+  );
+}
+
+function StartEventPanel({ bo, onChange }: { bo: any; onChange: (props: Record<string, unknown>) => void }) {
+  const [fields, setFields] = useState<FormField[]>(parseFormFields(bo.formFields));
+
+  function commitFields(next: FormField[]) {
+    setFields(next);
+    onChange({ formFields: JSON.stringify(next) });
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs font-semibold uppercase text-slate-400">Événement de début</p>
+      <Field label="Libellé">
+        <input className="input" defaultValue={bo.name ?? ''} onBlur={(e) => onChange({ name: e.target.value })} />
+      </Field>
+      <p className="text-xs text-slate-500">
+        Ces champs sont demandés à la personne qui démarre une instance (ex : nom du client, référence dossier). Ils
+        apparaîtront ensuite dans "Mes tâches" et la liste des instances pour identifier le dossier.
+      </p>
+      <FormFieldsEditor fields={fields} onChange={commitFields} label="Formulaire de démarrage" />
+    </div>
+  );
+}
+
+function FormFieldsEditor({
+  fields,
+  onChange,
+  label,
+}: {
+  fields: FormField[];
+  onChange: (next: FormField[]) => void;
+  label: string;
+}) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <button
+          type="button"
+          onClick={() => onChange([...fields, { key: '', label: '', type: 'text', required: false }])}
+          className="text-xs font-semibold text-brand-600 hover:underline"
+        >
+          + Champ
+        </button>
+      </div>
+      <div className="space-y-2">
+        {fields.map((f, i) => (
+          <div key={i} className="flex items-center gap-1 rounded-lg border border-slate-200 p-1.5">
+            <input
+              className="input min-w-0 flex-1 text-xs"
+              placeholder="clé"
+              value={f.key}
+              onChange={(e) => onChange(fields.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))}
+            />
+            <input
+              className="input min-w-0 flex-1 text-xs"
+              placeholder="libellé"
+              value={f.label}
+              onChange={(e) => onChange(fields.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
+            />
+            <select
+              className="input w-20 text-xs"
+              value={f.type}
+              onChange={(e) =>
+                onChange(fields.map((x, j) => (j === i ? { ...x, type: e.target.value as FormField['type'] } : x)))
+              }
+            >
+              <option value="text">texte</option>
+              <option value="number">nombre</option>
+              <option value="boolean">oui/non</option>
+              <option value="date">date</option>
+              <option value="textarea">zone texte</option>
+            </select>
+            <input
+              type="checkbox"
+              title="obligatoire"
+              checked={f.required}
+              onChange={(e) => onChange(fields.map((x, j) => (j === i ? { ...x, required: e.target.checked } : x)))}
+            />
+            <button type="button" onClick={() => onChange(fields.filter((_, j) => j !== i))}>
+              <Trash2 size={14} className="text-rose-500" />
+            </button>
+          </div>
+        ))}
+        {fields.length === 0 && <p className="text-xs text-slate-400">Aucun champ défini.</p>}
       </div>
     </div>
   );

@@ -83,7 +83,7 @@ export function parseBpmnXml(xml: string): BpmnGraph {
       id: el['@_id'],
       type: 'startEvent',
       name: el['@_name'] ?? 'Début',
-      formFields: [],
+      formFields: parseFormFields(el['@_formFields']),
     });
   }
 

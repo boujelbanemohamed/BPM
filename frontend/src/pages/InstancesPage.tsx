@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessInstance } from '../types';
+import { ContextLine } from '../components/DynamicForm';
 
 const statusBadge: Record<string, string> = {
   RUNNING: 'bg-brand-100 text-brand-700',
@@ -36,7 +37,10 @@ export function InstancesPage() {
           <tbody className="divide-y divide-slate-100">
             {instances.map((i) => (
               <tr key={i.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-800">{i.process_name}</td>
+                <td className="px-4 py-3">
+                  <div className="font-medium text-slate-800">{i.process_name}</div>
+                  <ContextLine data={i.form_data} />
+                </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[i.status]}`}>{i.status}</span>
                 </td>

@@ -1,103 +1,13 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { api } from '../api/client';
-import { FormField, TaskItem } from '../types';
-
-function FieldInput({ field, value, onChange }: { field: FormField; value: unknown; onChange: (v: unknown) => void }) {
-  if (field.type === 'boolean') {
-    return (
-      <select
-        className="input"
-        value={value === true ? 'true' : value === false ? 'false' : ''}
-        onChange={(e) => onChange(e.target.value === 'true')}
-      >
-        <option value="" disabled>
-          Choisir…
-        </option>
-        <option value="true">Oui</option>
-        <option value="false">Non</option>
-      </select>
-    );
-  }
-  if (field.type === 'number') {
-    return (
-      <input
-        type="number"
-        className="input"
-        value={(value as number | undefined) ?? ''}
-        onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-      />
-    );
-  }
-  if (field.type === 'date') {
-    return (
-      <input type="date" className="input" value={(value as string | undefined) ?? ''} onChange={(e) => onChange(e.target.value)} />
-    );
-  }
-  if (field.type === 'textarea') {
-    return (
-      <textarea
-        className="input"
-        rows={3}
-        value={(value as string | undefined) ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    );
-  }
-  return <input type="text" className="input" value={(value as string | undefined) ?? ''} onChange={(e) => onChange(e.target.value)} />;
-}
-
-function TaskForm({ task, onDone }: { task: TaskItem; onDone: () => void }) {
-  const [formData, setFormData] = useState<Record<string, unknown>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit() {
-    setError(null);
-    for (const field of task.form_schema) {
-      const value = formData[field.key];
-      if (field.required && (value === undefined || value === '')) {
-        setError(`Le champ "${field.label}" est obligatoire`);
-        return;
-      }
-    }
-    setBusy(true);
-    try {
-      await api.completeTask(task.id, formData);
-      onDone();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-      {task.form_schema.map((field) => (
-        <label key={field.key} className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
-            {field.label}
-            {field.required ? ' *' : ''}
-          </span>
-          <FieldInput
-            field={field}
-            value={formData[field.key]}
-            onChange={(v) => setFormData((prev) => ({ ...prev, [field.key]: v }))}
-          />
-        </label>
-      ))}
-      {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
-      <button onClick={submit} disabled={busy} className="btn-primary">
-        <CheckCircle2 size={16} /> {busy ? 'Validation…' : 'Valider la tâche'}
-      </button>
-    </div>
-  );
-}
+import { TaskItem } from '../types';
+import { ContextLine, DynamicForm } from '../components/DynamicForm';
 
 export function TasksPage() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function refresh() {
     const { tasks } = await api.myTasks();
@@ -107,6 +17,17 @@ export function TasksPage() {
   useEffect(() => {
     refresh();
   }, []);
+
+  async function complete(taskId: string, formData: Record<string, unknown>) {
+    setBusy(true);
+    try {
+      await api.completeTask(taskId, formData);
+      setOpenTaskId(null);
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl p-6">
@@ -129,7 +50,8 @@ export function TasksPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-slate-400">Processus : {task.process_name}</p>
+                <p className="text-xs text-slate-400">Processus : {task.process_name}</p>
+                <ContextLine data={task.instance_form_data} />
               </div>
               <button
                 onClick={() => setOpenTaskId(openTaskId === task.id ? null : task.id)}
@@ -140,13 +62,14 @@ export function TasksPage() {
               </button>
             </div>
             {openTaskId === task.id && (
-              <TaskForm
-                task={task}
-                onDone={() => {
-                  setOpenTaskId(null);
-                  refresh();
-                }}
-              />
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <DynamicForm
+                  fields={task.form_schema}
+                  submitLabel="Valider la tâche"
+                  busy={busy}
+                  onSubmit={(formData) => complete(task.id, formData)}
+                />
+              </div>
             )}
           </div>
         ))}

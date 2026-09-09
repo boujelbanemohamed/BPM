@@ -3,7 +3,7 @@ import { pool, withTransaction } from '../db/pool';
 import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
-import { startProcessInstance } from '../services/workflowEngine';
+import { parseGraph, startProcessInstance } from '../services/workflowEngine';
 import { filterFormDataForUser, getPermissionRows } from '../services/permissionService';
 import { AuditLogRow, ProcessInstanceRow, ProcessRow, TaskRow } from '../types';
 
@@ -20,11 +20,20 @@ instancesRouter.post(
     if (!process) throw new HttpError(404, 'Processus introuvable');
     if (process.status !== 'PUBLISHED') throw new HttpError(409, 'Seul un processus publié peut être démarré');
 
+    const formData = req.body?.formData ?? {};
+    const graph = parseGraph(process.bpmn_xml);
+    const startNode = graph.nodes.find((n) => n.type === 'startEvent');
+    for (const field of startNode?.formFields ?? []) {
+      if (field.required && (formData[field.key] === undefined || formData[field.key] === '')) {
+        throw new HttpError(400, `Le champ "${field.label}" est obligatoire`);
+      }
+    }
+
     const instance = await withTransaction((client) =>
       startProcessInstance(client, {
         process,
         startedById: req.user!.id,
-        initialFormData: req.body?.formData ?? {},
+        initialFormData: formData,
       })
     );
 
@@ -55,7 +64,16 @@ instancesRouter.get(
        ORDER BY pi.started_at DESC`,
       params
     );
-    res.json({ instances: rows });
+
+    const instances = await Promise.all(
+      rows.map(async (row) => {
+        if (isAdmin || !row.current_step_name) return row;
+        const matrixRows = await getPermissionRows(row.process_id, row.current_step_name, req.user!.roleIds);
+        return { ...row, form_data: filterFormDataForUser(row.form_data, matrixRows, isAdmin) };
+      })
+    );
+
+    res.json({ instances });
   })
 );
 

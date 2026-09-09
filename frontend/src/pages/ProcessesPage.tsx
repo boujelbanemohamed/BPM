@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Settings, Play, PencilLine, ShieldCheck } from 'lucide-react';
+import { Plus, Settings, Play, PencilLine, ShieldCheck, X } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { DynamicForm, extractFormFields } from '../components/DynamicForm';
 
 const statusBadge: Record<string, string> = {
   DRAFT: 'bg-amber-100 text-amber-700',
@@ -15,6 +16,8 @@ export function ProcessesPage() {
   const { isAdmin } = useAuth();
   const [processes, setProcesses] = useState<ProcessDefinition[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [startModalProcess, setStartModalProcess] = useState<ProcessDefinition | null>(null);
+  const [startBusy, setStartBusy] = useState(false);
   const navigate = useNavigate();
 
   async function refresh() {
@@ -51,12 +54,25 @@ export function ProcessesPage() {
     }
   }
 
-  async function start(id: string) {
+  function start(process: ProcessDefinition) {
+    const startFields = extractFormFields(process.bpmn_xml, 'startEvent');
+    if (startFields.length === 0) {
+      startInstance(process.id, {});
+      return;
+    }
+    setStartModalProcess(process);
+  }
+
+  async function startInstance(processId: string, formData: Record<string, unknown>) {
+    setStartBusy(true);
     try {
-      const { instance } = await api.startInstance(id);
+      const { instance } = await api.startInstance(processId, formData);
+      setStartModalProcess(null);
       navigate(`/instances/${instance.id}`);
     } catch (err) {
       window.alert((err as Error).message);
+    } finally {
+      setStartBusy(false);
     }
   }
 
@@ -125,7 +141,7 @@ export function ProcessesPage() {
                     )}
                     {p.status === 'PUBLISHED' && (
                       <button
-                        onClick={() => start(p.id)}
+                        onClick={() => start(p)}
                         className="flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
                       >
                         <Play size={14} /> Démarrer
@@ -145,6 +161,25 @@ export function ProcessesPage() {
           </tbody>
         </table>
       </div>
+
+      {startModalProcess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-semibold text-slate-800">Démarrer : {startModalProcess.name}</h2>
+              <button onClick={() => setStartModalProcess(null)} disabled={startBusy}>
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+            <DynamicForm
+              fields={extractFormFields(startModalProcess.bpmn_xml, 'startEvent')}
+              submitLabel="Démarrer l'instance"
+              busy={startBusy}
+              onSubmit={(formData) => startInstance(startModalProcess.id, formData)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

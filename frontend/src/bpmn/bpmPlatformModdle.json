@@ -13,6 +13,14 @@
         { "name": "assigneeUserId", "isAttr": true, "type": "String" },
         { "name": "formFields", "isAttr": true, "type": "String" }
       ]
+    },
+    {
+      "name": "StartEventProps",
+      "isAbstract": true,
+      "extends": ["bpmn:StartEvent"],
+      "properties": [
+        { "name": "formFields", "isAttr": true, "type": "String" }
+      ]
     }
   ]
 }

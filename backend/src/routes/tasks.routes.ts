@@ -5,7 +5,7 @@ import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { completeTaskAndAdvance } from '../services/workflowEngine';
-import { writableFieldKeys, getPermissionRows } from '../services/permissionService';
+import { filterFormDataForUser, writableFieldKeys, getPermissionRows } from '../services/permissionService';
 import { ProcessInstanceRow, ProcessRow, TaskRow } from '../types';
 
 export const tasksRouter = Router();
@@ -20,10 +20,18 @@ function canHandle(task: TaskRow, user: { id: string; roleIds: number[] }): bool
 tasksRouter.get(
   '/my-tasks',
   asyncHandler(async (req, res) => {
+    const isAdmin = req.user!.roles.includes('ADMIN');
     const { rows } = await pool.query<
-      TaskRow & { process_name: string; instance_status: string; is_pool_task: boolean }
+      TaskRow & {
+        process_name: string;
+        process_id: string;
+        instance_status: string;
+        is_pool_task: boolean;
+        instance_form_data: Record<string, unknown>;
+      }
     >(
-      `SELECT t.*, p.name AS process_name, pi.status AS instance_status,
+      `SELECT t.*, p.name AS process_name, p.id AS process_id, pi.status AS instance_status,
+              pi.form_data AS instance_form_data,
               (t.effective_assignee_id IS NULL) AS is_pool_task
        FROM tasks t
        JOIN process_instances pi ON pi.id = t.instance_id
@@ -33,7 +41,16 @@ tasksRouter.get(
        ORDER BY t.created_at ASC`,
       [req.user!.id, req.user!.roleIds]
     );
-    res.json({ tasks: rows });
+
+    const tasks = await Promise.all(
+      rows.map(async (row) => {
+        if (isAdmin) return row;
+        const matrixRows = await getPermissionRows(row.process_id, row.step_name, req.user!.roleIds);
+        return { ...row, instance_form_data: filterFormDataForUser(row.instance_form_data, matrixRows, isAdmin) };
+      })
+    );
+
+    res.json({ tasks });
   })
 );
 

@@ -90,6 +90,7 @@ export interface TaskItem {
   completed_by_name?: string | null;
   process_name?: string;
   is_pool_task?: boolean;
+  instance_form_data?: Record<string, unknown>;
 }
 
 export interface DocumentItem {
