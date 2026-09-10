@@ -135,6 +135,42 @@ export const api = {
     request<{ user: PublicUser; reassignedTasks: number }>(`/admin/users/${id}/deactivate`, { method: 'POST' }),
   adminActivateUser: (id: string) =>
     request<{ user: PublicUser }>(`/admin/users/${id}/activate`, { method: 'POST' }),
+  importUsersCsv: async (
+    file: File
+  ): Promise<{
+    created: number;
+    updated: number;
+    results: Array<{ row: number; email: string; action: 'created' | 'updated' }>;
+    errors: Array<{ row: number; email?: string; message: string }>;
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = getToken();
+    const res = await fetch('/api/admin/users/import', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
+    return data;
+  },
+  downloadUsersCsvTemplate: async (): Promise<void> => {
+    const token = getToken();
+    const res = await fetch('/api/admin/users/import-template', {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!res.ok) throw new Error(`Échec du téléchargement (${res.status})`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'modele_import_utilisateurs.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
 
   listProcesses: () => request<{ processes: ProcessDefinition[] }>('/processes'),
   getProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}`),
@@ -200,7 +236,6 @@ export const api = {
     link.remove();
     URL.revokeObjectURL(url);
   },
-
   viewDocument: async (id: string): Promise<void> => {
     // Ouvre l'onglet immédiatement (dans le geste utilisateur du clic) pour
     // éviter le blocage popup, puis y charge le fichier une fois récupéré.

@@ -1,8 +1,15 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { PlusCircle, PowerOff, Power, PencilLine, X } from 'lucide-react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { Download, FileUp, PlusCircle, PowerOff, Power, PencilLine, X } from 'lucide-react';
 import { api } from '../api/client';
 import { PublicUser, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
+
+interface ImportResult {
+  created: number;
+  updated: number;
+  results: Array<{ row: number; email: string; action: 'created' | 'updated' }>;
+  errors: Array<{ row: number; email?: string; message: string }>;
+}
 
 interface FormState {
   id: string | null;
@@ -40,6 +47,9 @@ export function AdminUsersPage() {
   const [form, setForm] = useState<FormState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   async function refresh() {
     const [usersRes, rolesRes] = await Promise.all([api.adminListUsers(), api.listRoles()]);
@@ -138,6 +148,31 @@ export function AdminUsersPage() {
     }
   }
 
+  async function downloadTemplate() {
+    try {
+      await api.downloadUsersCsvTemplate();
+    } catch (err) {
+      window.alert((err as Error).message);
+    }
+  }
+
+  async function onCsvSelected(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const result = await api.importUsersCsv(file);
+      setImportResult(result);
+      refresh();
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setImporting(false);
+      if (csvInputRef.current) csvInputRef.current.value = '';
+    }
+  }
+
   const otherUsers = users.filter((u) => u.id !== form?.id);
 
   return (
@@ -145,13 +180,53 @@ export function AdminUsersPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Administration des utilisateurs</h1>
         {canEdit && (
-          <button onClick={openCreate} className="btn-primary">
-            <PlusCircle size={16} /> Nouvel utilisateur
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={downloadTemplate} className="btn-secondary">
+              <Download size={14} /> Modèle CSV
+            </button>
+            <button onClick={() => csvInputRef.current?.click()} disabled={importing} className="btn-secondary">
+              <FileUp size={14} /> {importing ? 'Import en cours…' : 'Importer CSV'}
+            </button>
+            <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onCsvSelected} />
+            <button onClick={openCreate} className="btn-primary">
+              <PlusCircle size={16} /> Nouvel utilisateur
+            </button>
+          </div>
         )}
       </div>
 
       {info && <p className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{info}</p>}
+
+      {importResult && (
+        <div className="card mb-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-semibold text-slate-700">Résultat de l'import CSV</h2>
+            <button onClick={() => setImportResult(null)}>
+              <X size={16} className="text-slate-400" />
+            </button>
+          </div>
+          <p className="mb-2 text-sm text-slate-600">
+            <span className="font-semibold text-emerald-700">{importResult.created} créé(s)</span> ·{' '}
+            <span className="font-semibold text-brand-700">{importResult.updated} mis à jour</span>
+            {importResult.errors.length > 0 && (
+              <>
+                {' '}
+                · <span className="font-semibold text-rose-700">{importResult.errors.length} erreur(s)</span>
+              </>
+            )}
+          </p>
+          {importResult.errors.length > 0 && (
+            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg bg-rose-50 p-3 text-xs text-rose-700">
+              {importResult.errors.map((e, idx) => (
+                <li key={idx}>
+                  Ligne {e.row}
+                  {e.email ? ` (${e.email})` : ''} : {e.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {form && (
         <form onSubmit={submit} className="card mb-6 space-y-4">
