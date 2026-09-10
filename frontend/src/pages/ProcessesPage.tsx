@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Settings, Play, PencilLine, ShieldCheck, X } from 'lucide-react';
+import { Download, FileUp, Plus, Settings, Play, PencilLine, ShieldCheck, X } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { DynamicForm, extractFormFields } from '../components/DynamicForm';
+
+interface ImportResult {
+  created: number;
+  results: Array<{ file: string; processId: string; name: string }>;
+  errors: Array<{ file: string; message: string }>;
+}
 
 const statusBadge: Record<string, string> = {
   DRAFT: 'bg-amber-100 text-amber-700',
@@ -20,6 +26,9 @@ export function ProcessesPage() {
   const [error, setError] = useState<string | null>(null);
   const [startModalProcess, setStartModalProcess] = useState<ProcessDefinition | null>(null);
   const [startBusy, setStartBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const xmlInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   async function refresh() {
@@ -43,6 +52,31 @@ export function ProcessesPage() {
       navigate(`/processes/${process.id}`);
     } catch (err) {
       window.alert((err as Error).message);
+    }
+  }
+
+  async function downloadTemplate() {
+    try {
+      await api.downloadProcessImportTemplate();
+    } catch (err) {
+      window.alert((err as Error).message);
+    }
+  }
+
+  async function onXmlSelected(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const result = await api.importProcessesXml(files);
+      setImportResult(result);
+      refresh();
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setImporting(false);
+      if (xmlInputRef.current) xmlInputRef.current.value = '';
     }
   }
 
@@ -83,16 +117,68 @@ export function ProcessesPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Processus</h1>
         {canDesign && (
-          <button
-            onClick={createProcess}
-            className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-          >
-            <Plus size={16} /> Nouveau processus
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={downloadTemplate}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              <Download size={14} /> Modèle XML
+            </button>
+            <button
+              onClick={() => xmlInputRef.current?.click()}
+              disabled={importing}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              <FileUp size={14} /> {importing ? 'Import en cours…' : 'Importer XML'}
+            </button>
+            <input
+              ref={xmlInputRef}
+              type="file"
+              accept=".xml,.bpmn,application/xml,text/xml"
+              multiple
+              className="hidden"
+              onChange={onXmlSelected}
+            />
+            <button
+              onClick={createProcess}
+              className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              <Plus size={16} /> Nouveau processus
+            </button>
+          </div>
         )}
       </div>
 
       {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+
+      {importResult && (
+        <div className="card mb-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-semibold text-slate-700">Résultat de l'import XML</h2>
+            <button onClick={() => setImportResult(null)}>
+              <X size={16} className="text-slate-400" />
+            </button>
+          </div>
+          <p className="mb-2 text-sm text-slate-600">
+            <span className="font-semibold text-emerald-700">{importResult.created} processus créé(s)</span>
+            {importResult.errors.length > 0 && (
+              <>
+                {' '}
+                · <span className="font-semibold text-rose-700">{importResult.errors.length} erreur(s)</span>
+              </>
+            )}
+          </p>
+          {importResult.errors.length > 0 && (
+            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg bg-rose-50 p-3 text-xs text-rose-700">
+              {importResult.errors.map((e, idx) => (
+                <li key={idx}>
+                  {e.file} : {e.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">

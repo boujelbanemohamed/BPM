@@ -192,6 +192,42 @@ export const api = {
     }>
   ) => request<{ permissions: PermissionMatrixRow[] }>(`/processes/${processId}/permissions`, { method: 'PUT', body: { rows } }),
 
+  importProcessesXml: async (
+    files: File[]
+  ): Promise<{
+    created: number;
+    results: Array<{ file: string; processId: string; name: string }>;
+    errors: Array<{ file: string; message: string }>;
+  }> => {
+    const formData = new FormData();
+    files.forEach((f) => formData.append('files', f));
+    const token = getToken();
+    const res = await fetch('/api/processes/import', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
+    return data;
+  },
+  downloadProcessImportTemplate: async (): Promise<void> => {
+    const token = getToken();
+    const res = await fetch('/api/processes/import-template', {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!res.ok) throw new Error(`Échec du téléchargement (${res.status})`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'modele_import_processus.xml';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
+
   startInstance: (processId: string, formData: Record<string, unknown> = {}) =>
     request<{ instance: ProcessInstance }>(`/instances/processes/${processId}/start`, {
       method: 'POST',
