@@ -88,12 +88,22 @@ export const api = {
   }) => request<{ delegation: PublicUser }>('/users/me/delegation', { method: 'PUT', body: payload }),
 
   adminListUsers: () => request<{ users: PublicUser[] }>('/admin/users'),
-  adminCreateUser: (payload: { email: string; password: string; fullName: string; roleNames: string[] }) =>
-    request<{ user: PublicUser }>('/admin/users', { method: 'POST', body: payload }),
+  adminCreateUser: (payload: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string | null;
+    roleNames: string[];
+  }) => request<{ user: PublicUser }>('/admin/users', { method: 'POST', body: payload }),
   adminUpdateUser: (
     id: string,
     payload: Partial<{
-      fullName: string;
+      firstName: string;
+      lastName: string;
+      phone: string | null;
+      email: string;
+      password: string;
       roleNames: string[];
       delegateUser1Id: string | null;
       delegateUser2Id: string | null;

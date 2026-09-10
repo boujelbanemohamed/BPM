@@ -26,7 +26,9 @@ adminUsersRouter.get(
 const createUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
-  fullName: z.string().min(2),
+  firstName: z.string().trim().min(1, 'Le prénom est requis').max(255),
+  lastName: z.string().trim().min(1, 'Le nom est requis').max(255),
+  phone: z.string().trim().max(50).nullable().optional(),
   roleNames: z.array(z.string()).min(1, 'Au moins un rôle est requis'),
 });
 
@@ -35,14 +37,16 @@ adminUsersRouter.post(
   asyncHandler(async (req, res) => {
     const body = createUserSchema.parse(req.body);
     const passwordHash = await bcrypt.hash(body.password, env.BCRYPT_ROUNDS);
+    const fullName = `${body.firstName} ${body.lastName}`.trim();
 
     const created = await withTransaction(async (client) => {
       const { rows: existing } = await client.query('SELECT id FROM users WHERE email = $1', [body.email]);
       if (existing.length > 0) throw new HttpError(409, 'Un utilisateur avec cet email existe déjà');
 
       const { rows: userRows } = await client.query<{ id: string }>(
-        `INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id`,
-        [body.email, passwordHash, body.fullName]
+        `INSERT INTO users (email, password_hash, full_name, first_name, last_name, phone)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [body.email, passwordHash, fullName, body.firstName, body.lastName, body.phone || null]
       );
       const userId = userRows[0].id;
 
@@ -76,7 +80,11 @@ adminUsersRouter.post(
 
 const updateUserSchema = z
   .object({
-    fullName: z.string().min(2).optional(),
+    firstName: z.string().trim().min(1, 'Le prénom est requis').max(255).optional(),
+    lastName: z.string().trim().min(1, 'Le nom est requis').max(255).optional(),
+    phone: z.string().trim().max(50).nullable().optional(),
+    email: z.string().email().optional(),
+    password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères').optional(),
     roleNames: z.array(z.string()).min(1).optional(),
     delegateUser1Id: z.string().uuid().nullable().optional(),
     delegateUser2Id: z.string().uuid().nullable().optional(),
@@ -99,12 +107,39 @@ adminUsersRouter.put(
     }
 
     await withTransaction(async (client) => {
-      const { rows: existing } = await client.query('SELECT id FROM users WHERE id = $1', [targetId]);
-      if (existing.length === 0) throw new HttpError(404, 'Utilisateur introuvable');
+      const target = await findUserById(client, targetId);
+      if (!target) throw new HttpError(404, 'Utilisateur introuvable');
 
-      if (body.fullName !== undefined) {
-        await client.query('UPDATE users SET full_name = $1 WHERE id = $2', [body.fullName, targetId]);
+      if (body.email !== undefined) {
+        const { rows: emailClash } = await client.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [
+          body.email,
+          targetId,
+        ]);
+        if (emailClash.length > 0) throw new HttpError(409, 'Cette adresse email est déjà utilisée par un autre compte');
+        await client.query('UPDATE users SET email = $1 WHERE id = $2', [body.email, targetId]);
       }
+
+      if (body.firstName !== undefined || body.lastName !== undefined) {
+        const firstName = body.firstName ?? target.firstName ?? '';
+        const lastName = body.lastName ?? target.lastName ?? '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        await client.query('UPDATE users SET first_name = $1, last_name = $2, full_name = $3 WHERE id = $4', [
+          firstName,
+          lastName,
+          fullName,
+          targetId,
+        ]);
+      }
+
+      if (body.phone !== undefined) {
+        await client.query('UPDATE users SET phone = $1 WHERE id = $2', [body.phone || null, targetId]);
+      }
+
+      if (body.password !== undefined) {
+        const passwordHash = await bcrypt.hash(body.password, env.BCRYPT_ROUNDS);
+        await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, targetId]);
+      }
+
       if (body.delegateUser1Id !== undefined) {
         await client.query('UPDATE users SET delegate_user_1_id = $1 WHERE id = $2', [
           body.delegateUser1Id,
@@ -143,9 +178,19 @@ adminUsersRouter.put(
         action: 'USER_UPDATED',
         entityType: 'user',
         entityId: targetId,
-        details: body,
+        details: { ...body, password: body.password !== undefined ? '[REDACTED]' : undefined },
         ipAddress: req.ip,
       });
+
+      if (body.password !== undefined) {
+        await writeAuditLogTx(client, {
+          userId: req.user!.id,
+          action: 'PASSWORD_RESET_BY_ADMIN',
+          entityType: 'user',
+          entityId: targetId,
+          ipAddress: req.ip,
+        });
+      }
     });
 
     const updated = await findUserById(pool, targetId);

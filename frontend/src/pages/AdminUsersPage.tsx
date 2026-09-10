@@ -7,7 +7,9 @@ interface FormState {
   id: string | null;
   email: string;
   password: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
   roleNames: string[];
   delegateUser1Id: string;
   delegateUser2Id: string;
@@ -19,7 +21,9 @@ const EMPTY_FORM: FormState = {
   id: null,
   email: '',
   password: '',
-  fullName: '',
+  firstName: '',
+  lastName: '',
+  phone: '',
   roleNames: [],
   delegateUser1Id: '',
   delegateUser2Id: '',
@@ -54,7 +58,9 @@ export function AdminUsersPage() {
       id: u.id,
       email: u.email,
       password: '',
-      fullName: u.fullName,
+      firstName: u.firstName ?? '',
+      lastName: u.lastName ?? '',
+      phone: u.phone ?? '',
       roleNames: u.roles,
       delegateUser1Id: u.delegateUser1Id ?? '',
       delegateUser2Id: u.delegateUser2Id ?? '',
@@ -79,7 +85,11 @@ export function AdminUsersPage() {
     try {
       if (form.id) {
         await api.adminUpdateUser(form.id, {
-          fullName: form.fullName,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          phone: form.phone || null,
+          email: form.email,
+          password: form.password || undefined,
           roleNames: form.roleNames,
           delegateUser1Id: form.delegateUser1Id || null,
           delegateUser2Id: form.delegateUser2Id || null,
@@ -90,7 +100,9 @@ export function AdminUsersPage() {
         await api.adminCreateUser({
           email: form.email,
           password: form.password,
-          fullName: form.fullName,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          phone: form.phone || null,
           roleNames: form.roleNames,
         });
       }
@@ -147,40 +159,61 @@ export function AdminUsersPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Prénom</span>
+              <input
+                required
+                className="input"
+                value={form.firstName}
+                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Nom</span>
+              <input
+                required
+                className="input"
+                value={form.lastName}
+                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Téléphone</span>
+              <input
+                type="tel"
+                className="input"
+                placeholder="+33 6 12 34 56 78"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </label>
+            <label className="block">
               <span className="mb-1 block text-xs font-medium text-slate-500">Email</span>
               <input
                 type="email"
                 required
-                disabled={Boolean(form.id)}
                 className="input"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Nom complet</span>
-              <input
-                required
-                className="input"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              />
-            </label>
           </div>
 
-          {!form.id && (
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Mot de passe initial (8 caractères min.)</span>
-              <input
-                type="password"
-                required
-                minLength={8}
-                className="input"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-              />
-            </label>
-          )}
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">
+              {form.id ? 'Mot de passe (8 caractères min., laisser vide pour ne pas le modifier)' : 'Mot de passe initial (8 caractères min.)'}
+            </span>
+            <input
+              type="password"
+              required={!form.id}
+              minLength={8}
+              className="input"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
+          </label>
 
           <div>
             <span className="mb-1 block text-xs font-medium text-slate-500">Rôles</span>
