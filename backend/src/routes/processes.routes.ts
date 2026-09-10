@@ -377,6 +377,36 @@ processesRouter.post(
   })
 );
 
+processesRouter.post(
+  '/:id/archive',
+  requirePageAccess('PROCESSES_DESIGN', 'FULL'),
+  asyncHandler(async (req, res) => {
+    const { rows: existingRows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
+      req.params.id,
+    ]);
+    const existing = existingRows[0];
+    if (!existing) throw new HttpError(404, 'Processus introuvable');
+    if (existing.status !== 'PUBLISHED') {
+      throw new HttpError(409, 'Seul un processus publié peut être archivé');
+    }
+
+    const { rows } = await pool.query<ProcessRow>(
+      `UPDATE processes SET status = 'ARCHIVED' WHERE id = $1 RETURNING *`,
+      [existing.id]
+    );
+
+    await writeAuditLog({
+      userId: req.user!.id,
+      action: 'PROCESS_ARCHIVED',
+      entityType: 'process',
+      entityId: existing.id,
+      ipAddress: req.ip,
+    });
+
+    res.json({ process: rows[0] });
+  })
+);
+
 // ---------------------------------------------------------------------
 // Matrice de visibilité / droits par processus + étape + rôle
 // ---------------------------------------------------------------------

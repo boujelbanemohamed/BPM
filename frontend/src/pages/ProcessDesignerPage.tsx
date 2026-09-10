@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Save, ShieldCheck, UploadCloud } from 'lucide-react';
+import { Archive, ArrowLeft, Printer, Save, ShieldCheck, UploadCloud } from 'lucide-react';
 import { api } from '../api/client';
 import { MinimalUser, ProcessDefinition, Role } from '../types';
 import { BpmnDesigner, BpmnDesignerHandle } from '../components/BpmnDesigner';
@@ -120,6 +120,22 @@ export function ProcessDesignerPage() {
     }
   }
 
+  async function archive() {
+    if (!process) return;
+    if (
+      !window.confirm(
+        "Archiver ce processus ? Il ne pourra plus être démarré, mais les instances déjà en cours continueront normalement."
+      )
+    )
+      return;
+    try {
+      const { process: updated } = await api.archiveProcess(process.id);
+      setProcess(updated);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   if (!process) return <div className="p-6 text-slate-400">Chargement…</div>;
 
   const readOnly = process.status !== 'DRAFT' || !canDesign;
@@ -157,6 +173,11 @@ export function ProcessDesignerPage() {
                 <UploadCloud size={16} /> Publier
               </button>
             </>
+          )}
+          {canDesign && process.status === 'PUBLISHED' && (
+            <button onClick={archive} className="btn-secondary">
+              <Archive size={16} /> Archiver
+            </button>
           )}
         </div>
       </div>

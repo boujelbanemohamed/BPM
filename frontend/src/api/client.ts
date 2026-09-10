@@ -179,6 +179,7 @@ export const api = {
   updateProcess: (id: string, payload: { name?: string; description?: string; bpmnXml?: string }) =>
     request<{ process: ProcessDefinition }>(`/processes/${id}`, { method: 'PUT', body: payload }),
   publishProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/publish`, { method: 'POST' }),
+  archiveProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/archive`, { method: 'POST' }),
   getPermissions: (processId: string) =>
     request<{ permissions: PermissionMatrixRow[] }>(`/processes/${processId}/permissions`),
   putPermissions: (

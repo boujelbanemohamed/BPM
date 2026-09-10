@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, FileUp, Plus, Settings, Play, PencilLine, ShieldCheck, X } from 'lucide-react';
+import { Archive, Download, FileUp, Plus, Settings, Play, PencilLine, ShieldCheck, X } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -85,6 +85,21 @@ export function ProcessesPage() {
     if (!window.confirm('Publier ce processus ? Il ne pourra plus être modifié ensuite.')) return;
     try {
       await api.publishProcess(id);
+      refresh();
+    } catch (err) {
+      window.alert((err as Error).message);
+    }
+  }
+
+  async function archive(id: string) {
+    if (
+      !window.confirm(
+        "Archiver ce processus ? Il ne pourra plus être démarré, mais les instances déjà en cours continueront normalement."
+      )
+    )
+      return;
+    try {
+      await api.archiveProcess(id);
       refresh();
     } catch (err) {
       window.alert((err as Error).message);
@@ -234,6 +249,14 @@ export function ProcessesPage() {
                         className="flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
                       >
                         <Play size={14} /> Démarrer
+                      </button>
+                    )}
+                    {canDesign && p.status === 'PUBLISHED' && (
+                      <button
+                        onClick={() => archive(p.id)}
+                        className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                      >
+                        <Archive size={14} /> Archiver
                       </button>
                     )}
                   </div>
