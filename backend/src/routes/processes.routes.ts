@@ -182,6 +182,7 @@ processesRouter.get(
 
 const createProcessSchema = z.object({
   name: z.string().min(2),
+  version: z.number().int().min(1).max(9999).optional(),
   description: z.string().optional(),
   bpmnXml: z.string().optional(),
 });
@@ -192,13 +193,14 @@ processesRouter.post(
   asyncHandler(async (req, res) => {
     const body = createProcessSchema.parse(req.body);
     const bpmnXml = body.bpmnXml ?? DEFAULT_BPMN;
+    const version = body.version ?? 1;
     parseGraph(bpmnXml); // valide la structure avant sauvegarde
 
     try {
       const { rows } = await pool.query<ProcessRow>(
-        `INSERT INTO processes (process_key, name, description, bpmn_xml, created_by)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [slugify(body.name), body.name, body.description ?? null, bpmnXml, req.user!.id]
+        `INSERT INTO processes (process_key, name, description, bpmn_xml, version, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [slugify(body.name), body.name, body.description ?? null, bpmnXml, version, req.user!.id]
       );
 
       await writeAuditLog({
@@ -206,13 +208,13 @@ processesRouter.post(
         action: 'PROCESS_CREATED',
         entityType: 'process',
         entityId: rows[0].id,
-        details: { name: body.name },
+        details: { name: body.name, version },
         ipAddress: req.ip,
       });
 
       res.status(201).json({ process: rows[0] });
     } catch (err: any) {
-      if (err.code === '23505') throw new HttpError(409, 'Un processus avec ce nom existe déjà');
+      if (err.code === '23505') throw new HttpError(409, 'Un processus avec ce nom et cette version existe déjà');
       throw err;
     }
   })

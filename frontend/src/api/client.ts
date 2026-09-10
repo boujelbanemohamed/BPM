@@ -174,7 +174,7 @@ export const api = {
 
   listProcesses: () => request<{ processes: ProcessDefinition[] }>('/processes'),
   getProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}`),
-  createProcess: (payload: { name: string; description?: string; bpmnXml?: string }) =>
+  createProcess: (payload: { name: string; version?: number; description?: string; bpmnXml?: string }) =>
     request<{ process: ProcessDefinition }>('/processes', { method: 'POST', body: payload }),
   updateProcess: (id: string, payload: { name?: string; description?: string; bpmnXml?: string }) =>
     request<{ process: ProcessDefinition }>(`/processes/${id}`, { method: 'PUT', body: payload }),
