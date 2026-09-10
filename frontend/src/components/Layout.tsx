@@ -1,7 +1,8 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import {
   Bell,
+  ChevronDown,
   ClipboardList,
   Database,
   LayoutGrid,
@@ -10,6 +11,7 @@ import {
   Mail,
   PlayCircle,
   ScrollText,
+  Settings,
   UserCog,
   Users,
   Workflow,
@@ -21,6 +23,62 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
     isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
   }`;
+
+const dropdownLinkClass = ({ isActive }: { isActive: boolean }) =>
+  `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+    isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+  }`;
+
+const CONFIG_PATHS = ['/admin/notifications', '/admin/database', '/admin/audit', '/admin/users'];
+
+function ConfigMenu() {
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isActive = CONFIG_PATHS.some((p) => location.pathname.startsWith(p));
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+          isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+        }`}
+      >
+        <Settings size={16} /> Configuration
+        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-10 mt-1 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+          <NavLink to="/admin/notifications" className={dropdownLinkClass}>
+            <Mail size={16} /> Notifications
+          </NavLink>
+          <NavLink to="/admin/database" className={dropdownLinkClass}>
+            <Database size={16} /> Base de données
+          </NavLink>
+          <NavLink to="/admin/audit" className={dropdownLinkClass}>
+            <ScrollText size={16} /> Audit
+          </NavLink>
+          <NavLink to="/admin/users" className={dropdownLinkClass}>
+            <UserCog size={16} /> Utilisateurs
+          </NavLink>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Layout() {
   const { user, logout, isAdmin } = useAuth();
@@ -66,21 +124,10 @@ export function Layout() {
             </NavLink>
             {isAdmin && (
               <>
-                <NavLink to="/admin/users" className={navLinkClass}>
-                  <UserCog size={16} /> Utilisateurs
-                </NavLink>
-                <NavLink to="/admin/audit" className={navLinkClass}>
-                  <ScrollText size={16} /> Audit
-                </NavLink>
                 <NavLink to="/admin/fields" className={navLinkClass}>
                   <ListTree size={16} /> Champs
                 </NavLink>
-                <NavLink to="/admin/database" className={navLinkClass}>
-                  <Database size={16} /> Base de données
-                </NavLink>
-                <NavLink to="/admin/notifications" className={navLinkClass}>
-                  <Mail size={16} /> Notifications
-                </NavLink>
+                <ConfigMenu />
               </>
             )}
           </nav>
