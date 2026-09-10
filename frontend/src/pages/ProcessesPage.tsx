@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Archive, Download, FileUp, Plus, Settings, Play, PencilLine, ShieldCheck, X } from 'lucide-react';
+import { Archive, Copy, Download, FileUp, Plus, Settings, Play, PencilLine, ShieldCheck, X } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -132,6 +132,20 @@ export function ProcessesPage() {
     }
   }
 
+  const [duplicating, setDuplicating] = useState<string | null>(null);
+
+  async function duplicate(process: ProcessDefinition) {
+    setDuplicating(process.id);
+    try {
+      const { process: created } = await api.duplicateProcess(process.id);
+      navigate(`/processes/${created.id}`);
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setDuplicating(null);
+    }
+  }
+
   function start(process: ProcessDefinition) {
     const startFields = extractFormFields(process.bpmn_xml, 'startEvent');
     if (startFields.length === 0) {
@@ -226,6 +240,7 @@ export function ProcessesPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
             <tr>
+              <th className="px-4 py-3">Référence</th>
               <th className="px-4 py-3">Nom</th>
               <th className="px-4 py-3">Version</th>
               <th className="px-4 py-3">Statut</th>
@@ -236,6 +251,7 @@ export function ProcessesPage() {
           <tbody className="divide-y divide-slate-100">
             {processes.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3 font-mono text-xs text-slate-400">{p.reference}</td>
                 <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
                 <td className="px-4 py-3 text-slate-500">v{p.version}</td>
                 <td className="px-4 py-3">
@@ -285,13 +301,22 @@ export function ProcessesPage() {
                         <Archive size={14} /> Archiver
                       </button>
                     )}
+                    {canDesign && (
+                      <button
+                        onClick={() => duplicate(p)}
+                        disabled={duplicating === p.id}
+                        className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                      >
+                        <Copy size={14} /> {duplicating === p.id ? 'Duplication…' : 'Dupliquer'}
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
             ))}
             {processes.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                   Aucun processus pour l'instant.
                 </td>
               </tr>

@@ -97,7 +97,7 @@ export function ProcessDesignerPage() {
   <div class="print-bar"><button onclick="window.print()">Imprimer / Enregistrer en PDF</button></div>
   <header>
     <h1>${escapeHtml(process.name)} <span class="badge badge-${statusClass}">${escapeHtml(processStatusLabel(process.status))}</span></h1>
-    <div class="meta">Version ${process.version} · Exporté le ${exportDate}</div>
+    <div class="meta">${escapeHtml(process.reference)} · Version ${process.version} · Exporté le ${exportDate}</div>
   </header>
   <div class="diagram">${svg}</div>
 </body>
@@ -153,6 +153,9 @@ export function ProcessDesignerPage() {
               {processStatusLabel(process.status)}
             </span>
           </h1>
+          <p className="mt-0.5 font-mono text-xs text-slate-400">
+            {process.reference} · v{process.version}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {status && <span className="text-sm text-slate-400">{status}</span>}

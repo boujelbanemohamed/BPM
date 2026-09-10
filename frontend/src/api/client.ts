@@ -180,6 +180,7 @@ export const api = {
     request<{ process: ProcessDefinition }>(`/processes/${id}`, { method: 'PUT', body: payload }),
   publishProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/publish`, { method: 'POST' }),
   archiveProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/archive`, { method: 'POST' }),
+  duplicateProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/duplicate`, { method: 'POST' }),
   getPermissions: (processId: string) =>
     request<{ permissions: PermissionMatrixRow[] }>(`/processes/${processId}/permissions`),
   putPermissions: (

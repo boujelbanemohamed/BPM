@@ -122,6 +122,7 @@ export interface ClientRow {
 export interface ProcessRow {
   id: string;
   process_key: string;
+  reference: string;
   name: string;
   description: string | null;
   bpmn_xml: string;

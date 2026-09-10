@@ -106,9 +106,12 @@ CREATE TRIGGER trg_role_page_permissions_updated_at
 -- ---------------------------------------------------------------------
 -- processes — définitions BPMN 2.0
 -- ---------------------------------------------------------------------
+CREATE SEQUENCE process_reference_seq;
+
 CREATE TABLE processes (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   process_key VARCHAR(100) NOT NULL,
+  reference   VARCHAR(20) NOT NULL UNIQUE DEFAULT ('PRC-' || lpad(nextval('process_reference_seq')::text, 5, '0')),
   name        VARCHAR(255) NOT NULL,
   description TEXT,
   bpmn_xml    TEXT NOT NULL,

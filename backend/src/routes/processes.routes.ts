@@ -409,6 +409,54 @@ processesRouter.post(
   })
 );
 
+processesRouter.post(
+  '/:id/duplicate',
+  requirePageAccess('PROCESSES_DESIGN', 'FULL'),
+  asyncHandler(async (req, res) => {
+    const { rows: existingRows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
+      req.params.id,
+    ]);
+    const existing = existingRows[0];
+    if (!existing) throw new HttpError(404, 'Processus introuvable');
+
+    try {
+      const process = await withTransaction(async (client) => {
+        // Verrou consultatif pour éviter que deux duplications concurrentes du
+        // même process_key ne calculent la même "prochaine version".
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [existing.process_key]);
+
+        const { rows: versionRows } = await client.query<{ max_version: number }>(
+          'SELECT COALESCE(MAX(version), 0) AS max_version FROM processes WHERE process_key = $1',
+          [existing.process_key]
+        );
+        const nextVersion = versionRows[0].max_version + 1;
+
+        const { rows } = await client.query<ProcessRow>(
+          `INSERT INTO processes (process_key, name, description, bpmn_xml, version, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [existing.process_key, existing.name, existing.description, existing.bpmn_xml, nextVersion, req.user!.id]
+        );
+
+        await writeAuditLogTx(client, {
+          userId: req.user!.id,
+          action: 'PROCESS_DUPLICATED',
+          entityType: 'process',
+          entityId: rows[0].id,
+          details: { sourceProcessId: existing.id, name: existing.name, version: nextVersion },
+          ipAddress: req.ip,
+        });
+
+        return rows[0];
+      });
+
+      res.status(201).json({ process });
+    } catch (err: any) {
+      if (err.code === '23505') throw new HttpError(409, 'Un processus avec ce nom et cette version existe déjà');
+      throw err;
+    }
+  })
+);
+
 // ---------------------------------------------------------------------
 // Matrice de visibilité / droits par processus + étape + rôle
 // ---------------------------------------------------------------------

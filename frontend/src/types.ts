@@ -108,6 +108,7 @@ export interface ClientItem {
 export interface ProcessDefinition {
   id: string;
   process_key: string;
+  reference: string;
   name: string;
   description: string | null;
   bpmn_xml: string;
