@@ -49,6 +49,7 @@ CREATE TABLE users (
   last_name           VARCHAR(255),
   phone               VARCHAR(50),
   avatar_url          VARCHAR(500),
+  email_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   is_active           BOOLEAN NOT NULL DEFAULT TRUE,
   absence_start       DATE,
   absence_end         DATE,

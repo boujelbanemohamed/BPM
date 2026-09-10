@@ -89,6 +89,48 @@ export async function sendAccountDeactivatedEmail(params: {
   await send(to, '[BPM] Votre compte a été désactivé', html);
 }
 
+export async function sendWelcomeEmail(params: {
+  to: string;
+  recipientName: string;
+  email: string;
+  temporaryPassword: string;
+}): Promise<void> {
+  const { to, recipientName, email, temporaryPassword } = params;
+  const html = layout(
+    'Bienvenue sur BPM Platform',
+    `<p>Bonjour ${recipientName},</p>
+     <p>Un compte vient d'être créé pour vous sur BPM Platform par un administrateur.</p>
+     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f4f6f9;border-radius:6px;margin:12px 0;">
+       <tr><td style="padding:10px 12px;"><strong>Email :</strong> ${email}</td></tr>
+       <tr><td style="padding:0 12px 10px;"><strong>Mot de passe temporaire :</strong> ${temporaryPassword}</td></tr>
+     </table>
+     <p>Nous vous recommandons de changer ce mot de passe dès votre première connexion, depuis la page "Mon profil".</p>
+     <p><a href="${env.APP_BASE_URL}/login" style="color:#2f5ce0;">Me connecter</a></p>`
+  );
+  await send(to, '[BPM] Bienvenue — votre compte a été créé', html);
+}
+
+export async function sendPasswordChangedEmail(params: {
+  to: string;
+  recipientName: string;
+  changedByAdmin: boolean;
+}): Promise<void> {
+  const { to, recipientName, changedByAdmin } = params;
+  const html = layout(
+    'Mot de passe modifié',
+    `<p>Bonjour ${recipientName},</p>
+     <p>${
+       changedByAdmin
+         ? 'Le mot de passe de votre compte BPM Platform vient d\'être réinitialisé par un administrateur.'
+         : 'Le mot de passe de votre compte BPM Platform vient d\'être modifié.'
+     }</p>
+     <p style="background:#fff8e8;border:1px solid #f0d999;border-radius:6px;padding:10px 12px;">
+       Si vous n'êtes pas à l'origine de cette action, contactez immédiatement un administrateur.
+     </p>`
+  );
+  await send(to, '[BPM] Votre mot de passe a été modifié', html);
+}
+
 export async function sendProcessCompletedEmail(params: {
   to: string;
   recipientName: string;

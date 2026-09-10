@@ -33,6 +33,7 @@ function toAuthenticatedUser(row: UserWithRoles): AuthenticatedUser {
     lastName: row.last_name,
     phone: row.phone,
     avatarUrl: row.avatar_url,
+    emailNotificationsEnabled: row.email_notifications_enabled,
     isActive: row.is_active,
     absenceStart: row.absence_start,
     absenceEnd: row.absence_end,

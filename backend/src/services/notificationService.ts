@@ -1,16 +1,37 @@
-import { PoolClient } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import { NotificationType } from '../types';
-import { sendAccountDeactivatedEmail, sendProcessCompletedEmail, sendTaskAssignedEmail } from '../lib/mailer';
+import {
+  sendAccountDeactivatedEmail,
+  sendPasswordChangedEmail,
+  sendProcessCompletedEmail,
+  sendTaskAssignedEmail,
+  sendWelcomeEmail,
+} from '../lib/mailer';
 import { logger } from '../lib/logger';
 
+type Executor = Pool | PoolClient;
+
 export async function createNotification(
-  client: PoolClient,
+  client: Executor,
   params: { userId: string; type: NotificationType; title: string; message: string; link?: string }
 ): Promise<void> {
   await client.query(
     `INSERT INTO notifications (user_id, type, title, message, link) VALUES ($1, $2, $3, $4, $5)`,
     [params.userId, params.type, params.title, params.message, params.link ?? null]
   );
+}
+
+/**
+ * Les notifications de flux de travail (tâches, désactivation, fin de
+ * processus) respectent la préférence email de l'utilisateur ; les emails de
+ * sécurité (bienvenue, mot de passe) sont toujours envoyés.
+ */
+async function isEmailEnabled(client: Executor, userId: string): Promise<boolean> {
+  const { rows } = await client.query<{ email_notifications_enabled: boolean }>(
+    'SELECT email_notifications_enabled FROM users WHERE id = $1',
+    [userId]
+  );
+  return rows[0]?.email_notifications_enabled ?? true;
 }
 
 export async function notifyTaskAssigned(
@@ -38,14 +59,16 @@ export async function notifyTaskAssigned(
     link: '/tasks',
   });
 
-  sendTaskAssignedEmail({
-    to: recipientEmail,
-    recipientName,
-    taskName,
-    processName,
-    isDelegated,
-    originalAssigneeName,
-  }).catch((err) => logger.error('notifyTaskAssigned email failed', { error: (err as Error).message }));
+  if (await isEmailEnabled(client, recipientId)) {
+    sendTaskAssignedEmail({
+      to: recipientEmail,
+      recipientName,
+      taskName,
+      processName,
+      isDelegated,
+      originalAssigneeName,
+    }).catch((err) => logger.error('notifyTaskAssigned email failed', { error: (err as Error).message }));
+  }
 }
 
 export async function notifyAccountDeactivated(
@@ -59,11 +82,13 @@ export async function notifyAccountDeactivated(
     message: `Votre compte a été désactivé. ${params.reassignedCount} tâche(s) réassignée(s) à votre chaîne de suppléance.`,
   });
 
-  sendAccountDeactivatedEmail({
-    to: params.email,
-    recipientName: params.fullName,
-    reassignedCount: params.reassignedCount,
-  }).catch((err) => logger.error('notifyAccountDeactivated email failed', { error: (err as Error).message }));
+  if (await isEmailEnabled(client, params.userId)) {
+    sendAccountDeactivatedEmail({
+      to: params.email,
+      recipientName: params.fullName,
+      reassignedCount: params.reassignedCount,
+    }).catch((err) => logger.error('notifyAccountDeactivated email failed', { error: (err as Error).message }));
+  }
 }
 
 export async function notifyProcessCompleted(
@@ -78,10 +103,51 @@ export async function notifyProcessCompleted(
     link: `/instances/${params.instanceId}`,
   });
 
-  sendProcessCompletedEmail({
+  if (await isEmailEnabled(client, params.userId)) {
+    sendProcessCompletedEmail({
+      to: params.email,
+      recipientName: params.fullName,
+      processName: params.processName,
+      outcome: params.outcome,
+    }).catch((err) => logger.error('notifyProcessCompleted email failed', { error: (err as Error).message }));
+  }
+}
+
+export async function notifyWelcome(
+  client: Executor,
+  params: { userId: string; email: string; fullName: string; temporaryPassword: string }
+): Promise<void> {
+  await createNotification(client, {
+    userId: params.userId,
+    type: 'GENERIC',
+    title: 'Bienvenue sur BPM Platform',
+    message: 'Votre compte a été créé. Un email contenant vos identifiants vous a été envoyé.',
+  });
+
+  sendWelcomeEmail({
     to: params.email,
     recipientName: params.fullName,
-    processName: params.processName,
-    outcome: params.outcome,
-  }).catch((err) => logger.error('notifyProcessCompleted email failed', { error: (err as Error).message }));
+    email: params.email,
+    temporaryPassword: params.temporaryPassword,
+  }).catch((err) => logger.error('notifyWelcome email failed', { error: (err as Error).message }));
+}
+
+export async function notifyPasswordChanged(
+  client: Executor,
+  params: { userId: string; email: string; fullName: string; changedByAdmin: boolean }
+): Promise<void> {
+  await createNotification(client, {
+    userId: params.userId,
+    type: 'GENERIC',
+    title: 'Mot de passe modifié',
+    message: params.changedByAdmin
+      ? 'Votre mot de passe a été réinitialisé par un administrateur.'
+      : 'Votre mot de passe a été modifié.',
+  });
+
+  sendPasswordChangedEmail({
+    to: params.email,
+    recipientName: params.fullName,
+    changedByAdmin: params.changedByAdmin,
+  }).catch((err) => logger.error('notifyPasswordChanged email failed', { error: (err as Error).message }));
 }

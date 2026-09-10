@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { Camera, KeyRound, Save, User as UserIcon, Users } from 'lucide-react';
+import { Camera, KeyRound, Mail, Save, User as UserIcon, Users } from 'lucide-react';
 import { api } from '../api/client';
 import { MinimalUser, PublicUser } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,7 @@ export function ProfilePage() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
   const [infoStatus, setInfoStatus] = useState<string | null>(null);
   const [infoError, setInfoError] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -47,6 +48,7 @@ export function ProfilePage() {
     setLastName(user.lastName ?? '');
     setPhone(user.phone ?? '');
     setEmail(user.email);
+    setEmailNotificationsEnabled(user.emailNotificationsEnabled);
   }, [user]);
 
   async function saveInfo(e: FormEvent) {
@@ -54,7 +56,7 @@ export function ProfilePage() {
     setInfoError(null);
     setInfoStatus('Enregistrement…');
     try {
-      await api.updateMyProfile({ firstName, lastName, phone: phone || null, email });
+      await api.updateMyProfile({ firstName, lastName, phone: phone || null, email, emailNotificationsEnabled });
       await refreshUser();
       setInfoStatus('Enregistré');
       setTimeout(() => setInfoStatus(null), 1500);
@@ -193,6 +195,16 @@ export function ProfilePage() {
               <input type="email" required className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
           </div>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={emailNotificationsEnabled}
+              onChange={(e) => setEmailNotificationsEnabled(e.target.checked)}
+            />
+            <Mail size={15} className="text-slate-400" />
+            Recevoir les notifications de workflow par email (tâches, processus terminés, compte désactivé)
+          </label>
+
           {infoError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{infoError}</p>}
           <div className="flex items-center gap-3">
             <button type="submit" className="btn-primary">

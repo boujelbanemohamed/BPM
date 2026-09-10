@@ -54,6 +54,7 @@ const profileSchema = z.object({
   lastName: z.string().trim().min(1, 'Le nom est requis').max(255),
   phone: z.string().trim().max(50).nullable().optional(),
   email: z.string().email(),
+  emailNotificationsEnabled: z.boolean().optional(),
 });
 
 usersRouter.put(
@@ -73,6 +74,13 @@ usersRouter.put(
       `UPDATE users SET first_name = $1, last_name = $2, full_name = $3, phone = $4, email = $5 WHERE id = $6`,
       [body.firstName, body.lastName, fullName, body.phone || null, body.email, userId]
     );
+
+    if (body.emailNotificationsEnabled !== undefined) {
+      await pool.query('UPDATE users SET email_notifications_enabled = $1 WHERE id = $2', [
+        body.emailNotificationsEnabled,
+        userId,
+      ]);
+    }
 
     await writeAuditLog({
       userId,

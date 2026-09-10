@@ -23,6 +23,7 @@ export interface PublicUser {
   lastName: string | null;
   phone: string | null;
   avatarUrl: string | null;
+  emailNotificationsEnabled: boolean;
   isActive: boolean;
   absenceStart: string | null;
   absenceEnd: string | null;

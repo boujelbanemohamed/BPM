@@ -9,7 +9,7 @@ import { findUserById, toPublicUser } from '../db/usersRepo';
 import { writeAuditLog, writeAuditLogTx } from '../lib/audit';
 import { HttpError } from '../middleware/errorHandler';
 import { reassignPendingTasksForUser } from '../services/delegationService';
-import { notifyAccountDeactivated, notifyTaskAssigned } from '../services/notificationService';
+import { notifyAccountDeactivated, notifyPasswordChanged, notifyTaskAssigned, notifyWelcome } from '../services/notificationService';
 
 export const adminUsersRouter = Router();
 adminUsersRouter.use(requireAuth, requireRole('ADMIN'));
@@ -68,6 +68,13 @@ adminUsersRouter.post(
         entityId: userId,
         details: { email: body.email, roleNames: body.roleNames },
         ipAddress: req.ip,
+      });
+
+      await notifyWelcome(client, {
+        userId,
+        email: body.email,
+        fullName,
+        temporaryPassword: body.password,
       });
 
       return userId;
@@ -138,6 +145,13 @@ adminUsersRouter.put(
       if (body.password !== undefined) {
         const passwordHash = await bcrypt.hash(body.password, env.BCRYPT_ROUNDS);
         await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, targetId]);
+
+        await notifyPasswordChanged(client, {
+          userId: targetId,
+          email: body.email ?? target.email,
+          fullName: `${body.firstName ?? target.firstName ?? ''} ${body.lastName ?? target.lastName ?? ''}`.trim() || target.fullName,
+          changedByAdmin: true,
+        });
       }
 
       if (body.delegateUser1Id !== undefined) {

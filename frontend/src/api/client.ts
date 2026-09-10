@@ -61,8 +61,13 @@ export const api = {
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ ok: true }>('/auth/me/password', { method: 'PUT', body: { currentPassword, newPassword } }),
 
-  updateMyProfile: (payload: { firstName: string; lastName: string; phone: string | null; email: string }) =>
-    request<{ user: PublicUser }>('/users/me', { method: 'PUT', body: payload }),
+  updateMyProfile: (payload: {
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+    email: string;
+    emailNotificationsEnabled?: boolean;
+  }) => request<{ user: PublicUser }>('/users/me', { method: 'PUT', body: payload }),
   uploadMyAvatar: async (file: File): Promise<{ user: PublicUser }> => {
     const formData = new FormData();
     formData.append('avatar', file);

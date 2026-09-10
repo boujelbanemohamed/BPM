@@ -24,6 +24,7 @@ export interface User {
   last_name: string | null;
   phone: string | null;
   avatar_url: string | null;
+  email_notifications_enabled: boolean;
   is_active: boolean;
   absence_start: string | null;
   absence_end: string | null;
@@ -41,6 +42,7 @@ export interface PublicUser {
   lastName: string | null;
   phone: string | null;
   avatarUrl: string | null;
+  emailNotificationsEnabled: boolean;
   isActive: boolean;
   absenceStart: string | null;
   absenceEnd: string | null;

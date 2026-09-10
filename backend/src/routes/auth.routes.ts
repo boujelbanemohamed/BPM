@@ -10,6 +10,7 @@ import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { writeAuditLog } from '../lib/audit';
 import { logger } from '../lib/logger';
+import { notifyPasswordChanged } from '../services/notificationService';
 
 export const authRouter = Router();
 
@@ -110,6 +111,13 @@ authRouter.put(
       entityType: 'user',
       entityId: req.user!.id,
       ipAddress: req.ip,
+    });
+
+    await notifyPasswordChanged(pool, {
+      userId: req.user!.id,
+      email: req.user!.email,
+      fullName: req.user!.fullName,
+      changedByAdmin: false,
     });
 
     res.json({ ok: true });
