@@ -123,7 +123,7 @@ instancesRouter.get(
        FROM audit_logs al
        LEFT JOIN users u ON u.id = al.user_id
        WHERE (al.entity_type = 'process_instance' AND al.entity_id = $1)
-          OR (al.entity_type = 'task' AND al.entity_id = ANY($2::uuid[]))
+          OR (al.entity_type = 'task' AND al.entity_id = ANY($2::text[]))
        ORDER BY al.created_at ASC`,
       [instance.id, taskIds]
     );
