@@ -22,8 +22,26 @@ export interface RoleUserSummary {
   isActive: boolean;
 }
 
+export interface RoleAssignedTask {
+  processId: string;
+  processName: string;
+  processStatus: ProcessStatus;
+  stepName: string;
+}
+
+export interface RolePermissionRule {
+  processId: string;
+  processName: string;
+  stepName: string;
+  fieldCount: number;
+  canViewDocuments: boolean;
+  canUploadDocuments: boolean;
+}
+
 export interface RoleWithUsers extends Role {
   users: RoleUserSummary[];
+  assignedTasks: RoleAssignedTask[];
+  permissionRules: RolePermissionRule[];
 }
 
 export interface User {

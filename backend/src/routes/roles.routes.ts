@@ -5,7 +5,8 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { writeAuditLog } from '../lib/audit';
-import { Role, RoleWithUsers } from '../types';
+import { parseGraph } from '../services/workflowEngine';
+import { PermissionMatrixRow, ProcessRow, Role, RoleAssignedTask, RolePermissionRule, RoleWithUsers } from '../types';
 
 export const rolesRouter = Router();
 rolesRouter.use(requireAuth);
@@ -37,11 +38,56 @@ rolesRouter.get(
        ORDER BY u.full_name ASC`
     );
 
+    // Tâches BPMN réellement assignées à chaque rôle, calculées en scannant
+    // tous les processus (le rôle est référencé par son nom dans le XML).
+    const { rows: processes } = await pool.query<ProcessRow>('SELECT * FROM processes ORDER BY name ASC, version DESC');
+    const assignedTasksByRoleName = new Map<string, RoleAssignedTask[]>();
+    for (const process of processes) {
+      let graph;
+      try {
+        graph = parseGraph(process.bpmn_xml);
+      } catch {
+        continue; // processus au XML invalide : on l'ignore plutôt que de faire échouer tout le registre
+      }
+      for (const node of graph.nodes) {
+        if (node.type !== 'userTask' || !node.assigneeRole) continue;
+        const list = assignedTasksByRoleName.get(node.assigneeRole) ?? [];
+        list.push({
+          processId: process.id,
+          processName: process.name,
+          processStatus: process.status,
+          stepName: node.name,
+        });
+        assignedTasksByRoleName.set(node.assigneeRole, list);
+      }
+    }
+
+    // Lignes de la matrice de droits qui concernent chaque rôle.
+    const { rows: matrixRows } = await pool.query<PermissionMatrixRow & { process_name: string }>(
+      `SELECT pm.*, p.name AS process_name
+       FROM permissions_matrix pm
+       JOIN processes p ON p.id = pm.process_id
+       ORDER BY p.name ASC, pm.step_name ASC`
+    );
+
     const overview: RoleWithUsers[] = roles.map((role) => ({
       ...role,
       users: userRows
         .filter((u) => u.role_id === role.id)
         .map((u) => ({ id: u.id, fullName: u.full_name, email: u.email, isActive: u.is_active })),
+      assignedTasks: assignedTasksByRoleName.get(role.name) ?? [],
+      permissionRules: matrixRows
+        .filter((r) => r.role_id === role.id)
+        .map(
+          (r): RolePermissionRule => ({
+            processId: r.process_id,
+            processName: r.process_name,
+            stepName: r.step_name,
+            fieldCount: Object.keys(r.field_permissions ?? {}).length,
+            canViewDocuments: r.can_view_documents,
+            canUploadDocuments: r.can_upload_documents,
+          })
+        ),
     }));
 
     res.json({ roles: overview });

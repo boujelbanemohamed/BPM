@@ -1,7 +1,42 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { PencilLine, PlusCircle, Shield, Users, X } from 'lucide-react';
+import { ClipboardList, KeyRound, Lock, PencilLine, PlusCircle, Shield, Users, X } from 'lucide-react';
 import { api } from '../api/client';
 import { RoleWithUsers } from '../types';
+
+const ADMIN_ACCESS = [
+  {
+    label: 'Gestion des utilisateurs',
+    detail: 'créer/modifier/désactiver des comptes, réinitialiser un mot de passe',
+    path: '/admin/users',
+  },
+  {
+    label: 'Conception des processus',
+    detail: 'créer un processus, éditer son BPMN, le publier',
+    path: '/processes',
+  },
+  {
+    label: 'Matrice de droits',
+    detail: 'définir qui voit/modifie quel champ à quelle étape',
+    path: '/processes/:id/permissions',
+  },
+  {
+    label: 'Le menu Configuration en entier',
+    detail: 'Notifications (SMTP + modèles email), Base de données, Audit, Rôles, Utilisateurs',
+    path: null,
+  },
+  {
+    label: "L'onglet Champs",
+    detail: 'registre de tous les champs de formulaire',
+    path: '/admin/fields',
+  },
+];
+
+const STANDARD_ACCESS = [
+  'Démarrer un processus et traiter les tâches qui lui sont assignées',
+  'Consulter la liste des instances de processus',
+  'Gérer le module Clients (créer, consulter, modifier)',
+  'Gérer son propre profil : nom, téléphone, avatar, mot de passe, préférence de notifications email, suppléants',
+];
 
 export function RolesPage() {
   const [roles, setRoles] = useState<RoleWithUsers[]>([]);
@@ -151,6 +186,82 @@ export function RolesPage() {
                   ))}
                 </ul>
               )}
+            </div>
+
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-400">
+                <KeyRound size={13} /> Accès
+              </p>
+
+              {role.name === 'ADMIN' && (
+                <div className="mb-3">
+                  <p className="mb-1 text-xs font-medium text-slate-400">Exclusif à ADMIN</p>
+                  <ul className="space-y-1.5">
+                    {ADMIN_ACCESS.map((item) => (
+                      <li key={item.label} className="text-sm text-slate-600">
+                        <span className="font-medium text-slate-700">{item.label}</span> : {item.detail}
+                        {item.path && (
+                          <code className="ml-1.5 rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-400">{item.path}</code>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="mb-3">
+                <p className="mb-1 text-xs font-medium text-slate-400">Accès standard (tout utilisateur connecté)</p>
+                <ul className="space-y-1.5">
+                  {STANDARD_ACCESS.map((item) => (
+                    <li key={item} className="text-sm text-slate-600">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <ClipboardList size={13} /> Tâches BPMN assignées à ce rôle
+                  </p>
+                  {role.assignedTasks.length === 0 ? (
+                    <p className="text-xs text-slate-400">Aucune tâche assignée à ce rôle pour l'instant.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {role.assignedTasks.map((t, i) => (
+                        <li key={i} className="text-xs text-slate-600">
+                          <span className="font-medium">{t.processName}</span> → {t.stepName}
+                          {t.processStatus !== 'PUBLISHED' && (
+                            <span className="ml-1 text-slate-400">({t.processStatus.toLowerCase()})</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <Lock size={13} /> Règles de droits définies
+                  </p>
+                  {role.permissionRules.length === 0 ? (
+                    <p className="text-xs text-slate-400">
+                      Aucune règle spécifique : accès par défaut aux champs et documents de son étape.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {role.permissionRules.map((r, i) => (
+                        <li key={i} className="text-xs text-slate-600">
+                          <span className="font-medium">{r.processName}</span> → {r.stepName} — {r.fieldCount} champ
+                          {r.fieldCount > 1 ? 's' : ''} configuré{r.fieldCount > 1 ? 's' : ''}, documents :{' '}
+                          {r.canUploadDocuments ? 'dépôt autorisé' : r.canViewDocuments ? 'consultation' : 'aucun accès'}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         ))}
