@@ -12,6 +12,7 @@ import {
   PlayCircle,
   ScrollText,
   Settings,
+  Shield,
   UserCog,
   Users,
   Workflow,
@@ -29,7 +30,7 @@ const dropdownLinkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
   }`;
 
-const CONFIG_PATHS = ['/admin/notifications', '/admin/database', '/admin/audit', '/admin/users'];
+const CONFIG_PATHS = ['/admin/notifications', '/admin/database', '/admin/audit', '/admin/users', '/admin/roles'];
 
 function ConfigMenu() {
   const location = useLocation();
@@ -70,6 +71,9 @@ function ConfigMenu() {
           </NavLink>
           <NavLink to="/admin/audit" className={dropdownLinkClass}>
             <ScrollText size={16} /> Audit
+          </NavLink>
+          <NavLink to="/admin/roles" className={dropdownLinkClass}>
+            <Shield size={16} /> Rôles
           </NavLink>
           <NavLink to="/admin/users" className={dropdownLinkClass}>
             <UserCog size={16} /> Utilisateurs

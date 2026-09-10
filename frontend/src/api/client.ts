@@ -12,6 +12,7 @@ import {
   ProcessInstance,
   PublicUser,
   Role,
+  RoleWithUsers,
   SmtpSettings,
   TaskItem,
 } from '../types';
@@ -85,6 +86,11 @@ export const api = {
   },
 
   listRoles: () => request<{ roles: Role[] }>('/roles'),
+  listRolesOverview: () => request<{ roles: RoleWithUsers[] }>('/roles/overview'),
+  createRole: (payload: { name: string; description?: string }) =>
+    request<{ role: Role }>('/roles', { method: 'POST', body: payload }),
+  updateRole: (id: number, payload: { description: string | null }) =>
+    request<{ role: Role }>(`/roles/${id}`, { method: 'PUT', body: payload }),
   listUsersMinimal: () => request<{ users: MinimalUser[] }>('/users'),
   getMyDelegation: () => request<{ delegation: PublicUser }>('/users/me/delegation'),
   updateMyDelegation: (payload: {

@@ -15,6 +15,17 @@ export interface Role {
   description: string | null;
 }
 
+export interface RoleUserSummary {
+  id: string;
+  fullName: string;
+  email: string;
+  isActive: boolean;
+}
+
+export interface RoleWithUsers extends Role {
+  users: RoleUserSummary[];
+}
+
 export interface PublicUser {
   id: string;
   email: string;

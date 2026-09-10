@@ -17,6 +17,7 @@ import { ClientDetailPage } from './pages/ClientDetailPage';
 import { FieldsRegistryPage } from './pages/FieldsRegistryPage';
 import { DatabaseSchemaPage } from './pages/DatabaseSchemaPage';
 import { AdminNotificationsPage } from './pages/AdminNotificationsPage';
+import { RolesPage } from './pages/RolesPage';
 
 export default function App() {
   return (
@@ -84,6 +85,14 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminNotificationsPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/roles"
+          element={
+            <AdminRoute>
+              <RolesPage />
             </AdminRoute>
           }
         />
