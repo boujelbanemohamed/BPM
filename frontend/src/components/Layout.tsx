@@ -1,6 +1,18 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Bell, ClipboardList, LayoutGrid, LogOut, PlayCircle, ScrollText, UserCog, Users, Workflow } from 'lucide-react';
+import {
+  Bell,
+  ClipboardList,
+  Database,
+  LayoutGrid,
+  ListTree,
+  LogOut,
+  PlayCircle,
+  ScrollText,
+  UserCog,
+  Users,
+  Workflow,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 
@@ -58,6 +70,12 @@ export function Layout() {
                 </NavLink>
                 <NavLink to="/admin/audit" className={navLinkClass}>
                   <ScrollText size={16} /> Audit
+                </NavLink>
+                <NavLink to="/admin/fields" className={navLinkClass}>
+                  <ListTree size={16} /> Champs
+                </NavLink>
+                <NavLink to="/admin/database" className={navLinkClass}>
+                  <Database size={16} /> Base de données
                 </NavLink>
               </>
             )}

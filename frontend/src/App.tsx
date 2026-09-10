@@ -14,6 +14,8 @@ import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AuditPage } from './pages/AuditPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { ClientDetailPage } from './pages/ClientDetailPage';
+import { FieldsRegistryPage } from './pages/FieldsRegistryPage';
+import { DatabaseSchemaPage } from './pages/DatabaseSchemaPage';
 
 export default function App() {
   return (
@@ -57,6 +59,22 @@ export default function App() {
           element={
             <AdminRoute>
               <AuditPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/fields"
+          element={
+            <AdminRoute>
+              <FieldsRegistryPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/database"
+          element={
+            <AdminRoute>
+              <DatabaseSchemaPage />
             </AdminRoute>
           }
         />

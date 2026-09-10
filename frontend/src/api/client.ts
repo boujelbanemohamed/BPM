@@ -1,7 +1,9 @@
 import {
   AuditLogEntry,
   ClientItem,
+  DatabaseTable,
   DocumentItem,
+  FieldRegistryRow,
   MinimalUser,
   NotificationItem,
   PermissionMatrixRow,
@@ -175,4 +177,7 @@ export const api = {
     id: string,
     payload: Partial<{ name: string; email: string; phone: string; address: string; notes: string }>
   ) => request<{ client: ClientItem }>(`/clients/${id}`, { method: 'PUT', body: payload }),
+
+  listFieldsRegistry: () => request<{ fields: FieldRegistryRow[] }>('/admin/fields'),
+  getDatabaseSchema: () => request<{ tables: DatabaseTable[] }>('/admin/database-schema'),
 };

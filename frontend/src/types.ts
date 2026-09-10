@@ -142,6 +142,32 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
+export interface FieldRegistryRow {
+  processId: string;
+  processName: string;
+  processStatus: ProcessStatus;
+  stepId: string;
+  stepName: string;
+  stepType: string;
+  fieldKey: string;
+  fieldLabel: string;
+  fieldType: string;
+  required: boolean;
+}
+
+export interface DatabaseColumn {
+  name: string;
+  type: string;
+  nullable: boolean;
+  default: string | null;
+}
+
+export interface DatabaseTable {
+  name: string;
+  rowCount: number;
+  columns: DatabaseColumn[];
+}
+
 export interface NotificationItem {
   id: string;
   user_id: string;
