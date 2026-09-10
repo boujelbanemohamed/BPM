@@ -201,6 +201,28 @@ export const api = {
     URL.revokeObjectURL(url);
   },
 
+  viewDocument: async (id: string): Promise<void> => {
+    // Ouvre l'onglet immédiatement (dans le geste utilisateur du clic) pour
+    // éviter le blocage popup, puis y charge le fichier une fois récupéré.
+    // Remarque : "noopener" ferait retourner null à window.open(), on ne
+    // pourrait alors plus naviguer cet onglet déjà ouvert.
+    const newTab = window.open('', '_blank');
+    const token = getToken();
+    try {
+      const res = await fetch(`/api/documents/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) throw new Error(`Échec de l'ouverture (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (newTab) newTab.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      newTab?.close();
+      throw err;
+    }
+  },
+
   listNotifications: () => request<{ notifications: NotificationItem[] }>('/notifications'),
   unreadCount: () => request<{ count: number }>('/notifications/unread-count'),
   markNotificationRead: (id: string) => request<{ notification: NotificationItem }>(`/notifications/${id}/read`, { method: 'POST' }),

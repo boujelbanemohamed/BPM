@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, FileText, Paperclip, UploadCloud, Users } from 'lucide-react';
+import { ArrowLeft, Download, Eye, FileText, Paperclip, UploadCloud, Users } from 'lucide-react';
 import { api } from '../api/client';
 import { AuditLogEntry, DocumentItem, ProcessInstance, TaskItem } from '../types';
 
@@ -147,12 +147,20 @@ export function InstanceDetailPage() {
                   ({formatBytes(d.size_bytes)} · {d.uploaded_by_name})
                 </span>
               </span>
-              <button
-                onClick={() => api.downloadDocument(d.id, d.filename)}
-                className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
-              >
-                <Download size={14} /> Télécharger
-              </button>
+              <span className="flex items-center gap-3">
+                <button
+                  onClick={() => api.viewDocument(d.id).catch((err) => window.alert((err as Error).message))}
+                  className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
+                >
+                  <Eye size={14} /> Visualiser
+                </button>
+                <button
+                  onClick={() => api.downloadDocument(d.id, d.filename)}
+                  className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
+                >
+                  <Download size={14} /> Télécharger
+                </button>
+              </span>
             </li>
           ))}
           {documents.length === 0 && <li className="py-2 text-slate-400">Aucun document.</li>}
