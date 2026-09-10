@@ -58,6 +58,30 @@ export function ProcessDesignerPage() {
     }
   }
 
+  async function saveReference(value: string) {
+    if (!process) return;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === process.reference) return;
+    try {
+      const { process: updated } = await api.updateProcess(process.id, { reference: trimmed });
+      setProcess(updated);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function saveVersion(value: string) {
+    if (!process) return;
+    const num = Number(value);
+    if (!Number.isInteger(num) || num < 1 || num === process.version) return;
+    try {
+      const { process: updated } = await api.updateProcess(process.id, { version: num });
+      setProcess(updated);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   async function exportPdf() {
     if (!process || !designerRef.current) return;
     // Ouvre l'onglet immédiatement (dans le geste utilisateur du clic) pour
@@ -139,6 +163,7 @@ export function ProcessDesignerPage() {
   if (!process) return <div className="p-6 text-slate-400">Chargement…</div>;
 
   const readOnly = process.status !== 'DRAFT' || !canDesign;
+  const canEditMeta = canDesign && process.status !== 'PUBLISHED';
 
   return (
     <div className="mx-auto max-w-[1400px] p-6">
@@ -153,8 +178,33 @@ export function ProcessDesignerPage() {
               {processStatusLabel(process.status)}
             </span>
           </h1>
-          <p className="mt-0.5 font-mono text-xs text-slate-400">
-            {process.reference} · v{process.version}
+          <p className="mt-0.5 flex items-center gap-1 font-mono text-xs text-slate-400">
+            {canEditMeta ? (
+              <input
+                key={`ref-${process.id}-${process.reference}`}
+                defaultValue={process.reference}
+                onBlur={(e) => saveReference(e.target.value)}
+                className="w-28 rounded border border-slate-200 bg-white px-1 py-0.5 font-mono text-xs text-slate-600"
+              />
+            ) : (
+              <span>{process.reference}</span>
+            )}
+            <span>·</span>
+            {canEditMeta ? (
+              <span className="flex items-center gap-0.5">
+                v
+                <input
+                  key={`ver-${process.id}-${process.version}`}
+                  type="number"
+                  min={1}
+                  defaultValue={process.version}
+                  onBlur={(e) => saveVersion(e.target.value)}
+                  className="w-14 rounded border border-slate-200 bg-white px-1 py-0.5 font-mono text-xs text-slate-600"
+                />
+              </span>
+            ) : (
+              <span>v{process.version}</span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">

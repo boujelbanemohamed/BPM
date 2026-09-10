@@ -151,10 +151,29 @@ const PROCESS_IMPORT_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
 processesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { rows } = await pool.query<ProcessRow & { created_by_name: string }>(
-      `SELECT p.*, u.full_name AS created_by_name
+    const { rows } = await pool.query<ProcessRow & { created_by_name: string; instance_count: number }>(
+      `SELECT p.*, u.full_name AS created_by_name,
+              (SELECT COUNT(*) FROM process_instances pi WHERE pi.process_id = p.id)::int AS instance_count
        FROM processes p JOIN users u ON u.id = p.created_by
+       WHERE p.deleted_at IS NULL
        ORDER BY p.name ASC, p.version DESC`
+    );
+    res.json({ processes: rows });
+  })
+);
+
+// Enregistrée avant GET /:id pour ne pas être interceptée par ce paramètre de route.
+processesRouter.get(
+  '/trash',
+  requirePageAccess('PROCESSES_DESIGN', 'VIEW'),
+  asyncHandler(async (req, res) => {
+    const { rows } = await pool.query<ProcessRow & { created_by_name: string; deleted_by_name: string | null }>(
+      `SELECT p.*, u.full_name AS created_by_name, d.full_name AS deleted_by_name
+       FROM processes p
+       JOIN users u ON u.id = p.created_by
+       LEFT JOIN users d ON d.id = p.deleted_by
+       WHERE p.deleted_at IS NOT NULL
+       ORDER BY p.deleted_at DESC`
     );
     res.json({ processes: rows });
   })
@@ -174,7 +193,9 @@ processesRouter.get(
 processesRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const { rows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1 AND deleted_at IS NULL', [
+      req.params.id,
+    ]);
     if (rows.length === 0) throw new HttpError(404, 'Processus introuvable');
     res.json({ process: rows[0] });
   })
@@ -306,6 +327,8 @@ const updateProcessSchema = z.object({
   name: z.string().min(2).optional(),
   description: z.string().optional(),
   bpmnXml: z.string().optional(),
+  reference: z.string().min(1).max(20).optional(),
+  version: z.number().int().min(1).max(9999).optional(),
 });
 
 processesRouter.put(
@@ -313,36 +336,56 @@ processesRouter.put(
   requirePageAccess('PROCESSES_DESIGN', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = updateProcessSchema.parse(req.body);
-    const { rows: existingRows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
-      req.params.id,
-    ]);
+    const { rows: existingRows } = await pool.query<ProcessRow>(
+      'SELECT * FROM processes WHERE id = $1 AND deleted_at IS NULL',
+      [req.params.id]
+    );
     const existing = existingRows[0];
     if (!existing) throw new HttpError(404, 'Processus introuvable');
-    if (existing.status !== 'DRAFT') throw new HttpError(409, 'Seul un processus en brouillon peut être modifié');
+    if (existing.status === 'PUBLISHED') {
+      throw new HttpError(409, 'Un processus publié ne peut pas être modifié');
+    }
+
+    const editingDesign = body.name !== undefined || body.description !== undefined || body.bpmnXml !== undefined;
+    if (editingDesign && existing.status !== 'DRAFT') {
+      throw new HttpError(409, 'Seul un processus en brouillon peut voir son diagramme modifié');
+    }
 
     if (body.bpmnXml) parseGraph(body.bpmnXml);
 
-    const { rows } = await pool.query<ProcessRow>(
-      `UPDATE processes SET name = $1, description = $2, bpmn_xml = $3, process_key = $4
-       WHERE id = $5 RETURNING *`,
-      [
-        body.name ?? existing.name,
-        body.description ?? existing.description,
-        body.bpmnXml ?? existing.bpmn_xml,
-        body.name ? slugify(body.name) : existing.process_key,
-        existing.id,
-      ]
-    );
+    try {
+      const { rows } = await pool.query<ProcessRow>(
+        `UPDATE processes SET name = $1, description = $2, bpmn_xml = $3, process_key = $4, reference = $5, version = $6
+         WHERE id = $7 RETURNING *`,
+        [
+          body.name ?? existing.name,
+          body.description ?? existing.description,
+          body.bpmnXml ?? existing.bpmn_xml,
+          body.name ? slugify(body.name) : existing.process_key,
+          body.reference ?? existing.reference,
+          body.version ?? existing.version,
+          existing.id,
+        ]
+      );
 
-    await writeAuditLog({
-      userId: req.user!.id,
-      action: 'PROCESS_UPDATED',
-      entityType: 'process',
-      entityId: existing.id,
-      ipAddress: req.ip,
-    });
+      await writeAuditLog({
+        userId: req.user!.id,
+        action: 'PROCESS_UPDATED',
+        entityType: 'process',
+        entityId: existing.id,
+        ipAddress: req.ip,
+      });
 
-    res.json({ process: rows[0] });
+      res.json({ process: rows[0] });
+    } catch (err: any) {
+      if (err.code === '23505') {
+        if (err.constraint === 'processes_reference_key') {
+          throw new HttpError(409, 'Cette référence est déjà utilisée par un autre processus');
+        }
+        throw new HttpError(409, 'Un processus avec ce nom et cette version existe déjà');
+      }
+      throw err;
+    }
   })
 );
 
@@ -350,9 +393,10 @@ processesRouter.post(
   '/:id/publish',
   requirePageAccess('PROCESSES_DESIGN', 'FULL'),
   asyncHandler(async (req, res) => {
-    const { rows: existingRows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
-      req.params.id,
-    ]);
+    const { rows: existingRows } = await pool.query<ProcessRow>(
+      'SELECT * FROM processes WHERE id = $1 AND deleted_at IS NULL',
+      [req.params.id]
+    );
     const existing = existingRows[0];
     if (!existing) throw new HttpError(404, 'Processus introuvable');
     if (existing.status !== 'DRAFT') throw new HttpError(409, 'Ce processus est déjà publié');
@@ -383,9 +427,10 @@ processesRouter.post(
   '/:id/archive',
   requirePageAccess('PROCESSES_DESIGN', 'FULL'),
   asyncHandler(async (req, res) => {
-    const { rows: existingRows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
-      req.params.id,
-    ]);
+    const { rows: existingRows } = await pool.query<ProcessRow>(
+      'SELECT * FROM processes WHERE id = $1 AND deleted_at IS NULL',
+      [req.params.id]
+    );
     const existing = existingRows[0];
     if (!existing) throw new HttpError(404, 'Processus introuvable');
     if (existing.status !== 'PUBLISHED') {
@@ -413,9 +458,10 @@ processesRouter.post(
   '/:id/duplicate',
   requirePageAccess('PROCESSES_DESIGN', 'FULL'),
   asyncHandler(async (req, res) => {
-    const { rows: existingRows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
-      req.params.id,
-    ]);
+    const { rows: existingRows } = await pool.query<ProcessRow>(
+      'SELECT * FROM processes WHERE id = $1 AND deleted_at IS NULL',
+      [req.params.id]
+    );
     const existing = existingRows[0];
     if (!existing) throw new HttpError(404, 'Processus introuvable');
 
@@ -454,6 +500,109 @@ processesRouter.post(
       if (err.code === '23505') throw new HttpError(409, 'Un processus avec ce nom et cette version existe déjà');
       throw err;
     }
+  })
+);
+
+processesRouter.post(
+  '/:id/delete',
+  requirePageAccess('PROCESSES_DESIGN', 'FULL'),
+  asyncHandler(async (req, res) => {
+    const { rows: existingRows } = await pool.query<ProcessRow>(
+      'SELECT * FROM processes WHERE id = $1 AND deleted_at IS NULL',
+      [req.params.id]
+    );
+    const existing = existingRows[0];
+    if (!existing) throw new HttpError(404, 'Processus introuvable');
+    if (existing.status === 'PUBLISHED') {
+      throw new HttpError(409, 'Un processus publié ne peut pas être supprimé');
+    }
+
+    const { rows: instanceRows } = await pool.query<{ count: string }>(
+      'SELECT COUNT(*) FROM process_instances WHERE process_id = $1',
+      [existing.id]
+    );
+    if (Number(instanceRows[0].count) > 0) {
+      throw new HttpError(409, 'Ce processus a des instances et ne peut pas être supprimé');
+    }
+
+    await pool.query('UPDATE processes SET deleted_at = now(), deleted_by = $1 WHERE id = $2', [
+      req.user!.id,
+      existing.id,
+    ]);
+
+    await writeAuditLog({
+      userId: req.user!.id,
+      action: 'PROCESS_DELETED',
+      entityType: 'process',
+      entityId: existing.id,
+      details: { name: existing.name, reference: existing.reference },
+      ipAddress: req.ip,
+    });
+
+    res.json({ ok: true });
+  })
+);
+
+processesRouter.post(
+  '/:id/restore',
+  requirePageAccess('PROCESSES_DESIGN', 'FULL'),
+  asyncHandler(async (req, res) => {
+    const { rows: existingRows } = await pool.query<ProcessRow>(
+      'SELECT * FROM processes WHERE id = $1 AND deleted_at IS NOT NULL',
+      [req.params.id]
+    );
+    const existing = existingRows[0];
+    if (!existing) throw new HttpError(404, "Processus introuvable dans la corbeille");
+
+    const { rows } = await pool.query<ProcessRow>(
+      'UPDATE processes SET deleted_at = NULL, deleted_by = NULL WHERE id = $1 RETURNING *',
+      [existing.id]
+    );
+
+    await writeAuditLog({
+      userId: req.user!.id,
+      action: 'PROCESS_RESTORED',
+      entityType: 'process',
+      entityId: existing.id,
+      details: { name: existing.name, reference: existing.reference },
+      ipAddress: req.ip,
+    });
+
+    res.json({ process: rows[0] });
+  })
+);
+
+processesRouter.delete(
+  '/:id/permanent',
+  requirePageAccess('PROCESSES_DESIGN', 'FULL'),
+  asyncHandler(async (req, res) => {
+    const { rows: existingRows } = await pool.query<ProcessRow>(
+      'SELECT * FROM processes WHERE id = $1 AND deleted_at IS NOT NULL',
+      [req.params.id]
+    );
+    const existing = existingRows[0];
+    if (!existing) throw new HttpError(404, "Processus introuvable dans la corbeille");
+
+    const { rows: instanceRows } = await pool.query<{ count: string }>(
+      'SELECT COUNT(*) FROM process_instances WHERE process_id = $1',
+      [existing.id]
+    );
+    if (Number(instanceRows[0].count) > 0) {
+      throw new HttpError(409, 'Ce processus a des instances et ne peut pas être supprimé définitivement');
+    }
+
+    await pool.query('DELETE FROM processes WHERE id = $1', [existing.id]);
+
+    await writeAuditLog({
+      userId: req.user!.id,
+      action: 'PROCESS_PERMANENTLY_DELETED',
+      entityType: 'process',
+      entityId: existing.id,
+      details: { name: existing.name, reference: existing.reference },
+      ipAddress: req.ip,
+    });
+
+    res.json({ ok: true });
   })
 );
 

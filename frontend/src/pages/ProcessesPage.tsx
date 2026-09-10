@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Archive, Copy, Download, FileUp, Plus, Settings, Play, PencilLine, ShieldCheck, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Archive, Copy, Download, FileUp, Plus, Settings, Play, PencilLine, ShieldCheck, Trash2, X } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -146,6 +146,17 @@ export function ProcessesPage() {
     }
   }
 
+  async function deleteProcess(process: ProcessDefinition) {
+    if (!window.confirm(`Supprimer le processus "${process.name}" (v${process.version}) ? Il sera déplacé dans la corbeille.`))
+      return;
+    try {
+      await api.deleteProcess(process.id);
+      refresh();
+    } catch (err) {
+      window.alert((err as Error).message);
+    }
+  }
+
   function start(process: ProcessDefinition) {
     const startFields = extractFormFields(process.bpmn_xml, 'startEvent');
     if (startFields.length === 0) {
@@ -174,6 +185,12 @@ export function ProcessesPage() {
         <h1 className="text-2xl font-bold text-slate-800">Processus</h1>
         {canDesign && (
           <div className="flex items-center gap-2">
+            <Link
+              to="/processes/trash"
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              <Trash2 size={14} /> Corbeille
+            </Link>
             <button
               onClick={downloadTemplate}
               className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
@@ -308,6 +325,14 @@ export function ProcessesPage() {
                         className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
                       >
                         <Copy size={14} /> {duplicating === p.id ? 'Duplication…' : 'Dupliquer'}
+                      </button>
+                    )}
+                    {canDesign && p.status !== 'PUBLISHED' && (p.instance_count ?? 0) === 0 && (
+                      <button
+                        onClick={() => deleteProcess(p)}
+                        className="flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
+                      >
+                        <Trash2 size={14} /> Supprimer
                       </button>
                     )}
                   </div>

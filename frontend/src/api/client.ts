@@ -176,11 +176,17 @@ export const api = {
   getProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}`),
   createProcess: (payload: { name: string; version?: number; description?: string; bpmnXml?: string }) =>
     request<{ process: ProcessDefinition }>('/processes', { method: 'POST', body: payload }),
-  updateProcess: (id: string, payload: { name?: string; description?: string; bpmnXml?: string }) =>
-    request<{ process: ProcessDefinition }>(`/processes/${id}`, { method: 'PUT', body: payload }),
+  updateProcess: (
+    id: string,
+    payload: { name?: string; description?: string; bpmnXml?: string; reference?: string; version?: number }
+  ) => request<{ process: ProcessDefinition }>(`/processes/${id}`, { method: 'PUT', body: payload }),
   publishProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/publish`, { method: 'POST' }),
   archiveProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/archive`, { method: 'POST' }),
   duplicateProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/duplicate`, { method: 'POST' }),
+  deleteProcess: (id: string) => request<{ ok: true }>(`/processes/${id}/delete`, { method: 'POST' }),
+  listProcessTrash: () => request<{ processes: ProcessDefinition[] }>('/processes/trash'),
+  restoreProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/restore`, { method: 'POST' }),
+  permanentlyDeleteProcess: (id: string) => request<{ ok: true }>(`/processes/${id}/permanent`, { method: 'DELETE' }),
   getPermissions: (processId: string) =>
     request<{ permissions: PermissionMatrixRow[] }>(`/processes/${processId}/permissions`),
   putPermissions: (

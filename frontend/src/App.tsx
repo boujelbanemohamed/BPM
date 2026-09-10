@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { ProtectedRoute, RequirePageAccess } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { ProcessesPage } from './pages/ProcessesPage';
+import { ProcessTrashPage } from './pages/ProcessTrashPage';
 import { ProcessDesignerPage } from './pages/ProcessDesignerPage';
 import { PermissionsMatrixPage } from './pages/PermissionsMatrixPage';
 import { TasksPage } from './pages/TasksPage';
@@ -32,6 +33,7 @@ export default function App() {
       >
         <Route index element={<Navigate to="/processes" replace />} />
         <Route path="/processes" element={<ProcessesPage />} />
+        <Route path="/processes/trash" element={<ProcessTrashPage />} />
         <Route path="/processes/:id" element={<ProcessDesignerPage />} />
         <Route
           path="/processes/:id/permissions"

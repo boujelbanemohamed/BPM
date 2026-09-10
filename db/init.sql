@@ -120,6 +120,8 @@ CREATE TABLE processes (
   created_by  UUID NOT NULL REFERENCES users(id),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at  TIMESTAMPTZ,
+  deleted_by  UUID REFERENCES users(id),
   UNIQUE (process_key, version)
 );
 
@@ -128,6 +130,7 @@ CREATE TRIGGER trg_processes_updated_at
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE INDEX idx_processes_key ON processes(process_key);
+CREATE INDEX idx_processes_deleted_at ON processes(deleted_at);
 CREATE INDEX idx_processes_status ON processes(status);
 
 -- ---------------------------------------------------------------------

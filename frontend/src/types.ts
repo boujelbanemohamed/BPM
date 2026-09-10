@@ -118,6 +118,9 @@ export interface ProcessDefinition {
   created_by_name?: string;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
+  deleted_by_name?: string | null;
+  instance_count?: number;
 }
 
 export interface ProcessInstance {

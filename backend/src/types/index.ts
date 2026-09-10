@@ -131,6 +131,8 @@ export interface ProcessRow {
   created_by: string;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+  deleted_by: string | null;
 }
 
 export interface ProcessInstanceRow {
