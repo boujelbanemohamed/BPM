@@ -1,16 +1,51 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { Transporter } from 'nodemailer';
+import { pool } from '../db/pool';
 import { env } from '../config/env';
 import { logger } from './logger';
+import { NotificationTemplateRow, SmtpSettingsRow } from '../types';
 
-export const transporter = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_SECURE,
-  auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD } : undefined,
-  connectionTimeout: 5000,
-});
+interface EffectiveSmtpConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  password: string;
+  from: string;
+}
 
-function layout(title: string, bodyHtml: string): string {
+async function getEffectiveSmtpConfig(): Promise<EffectiveSmtpConfig> {
+  let row: SmtpSettingsRow | undefined;
+  try {
+    const { rows } = await pool.query<SmtpSettingsRow>('SELECT * FROM smtp_settings WHERE id = 1');
+    row = rows[0];
+  } catch (err) {
+    logger.error('Failed to read smtp_settings, falling back to .env', { error: (err as Error).message });
+  }
+
+  const useDb = Boolean(row?.host);
+  return {
+    host: useDb ? row!.host! : env.SMTP_HOST,
+    port: useDb ? row!.port : env.SMTP_PORT,
+    secure: useDb ? row!.secure : env.SMTP_SECURE,
+    user: (useDb ? row!.username : env.SMTP_USER) ?? '',
+    password: (useDb ? row!.password : env.SMTP_PASSWORD) ?? '',
+    from: (useDb ? row!.from_address : null) || env.SMTP_FROM,
+  };
+}
+
+async function getTransporter(): Promise<{ transporter: Transporter; from: string }> {
+  const cfg = await getEffectiveSmtpConfig();
+  const transporter = nodemailer.createTransport({
+    host: cfg.host,
+    port: cfg.port,
+    secure: cfg.secure,
+    auth: cfg.user ? { user: cfg.user, pass: cfg.password } : undefined,
+    connectionTimeout: 5000,
+  });
+  return { transporter, from: cfg.from };
+}
+
+function layout(heading: string, bodyHtml: string): string {
   return `<!doctype html>
 <html lang="fr">
   <body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
@@ -25,7 +60,7 @@ function layout(title: string, bodyHtml: string): string {
             </tr>
             <tr>
               <td style="padding:24px;color:#1c2530;font-size:14px;line-height:1.6;">
-                <h2 style="margin:0 0 12px;font-size:18px;">${title}</h2>
+                <h2 style="margin:0 0 12px;font-size:18px;">${heading}</h2>
                 ${bodyHtml}
               </td>
             </tr>
@@ -42,11 +77,69 @@ function layout(title: string, bodyHtml: string): string {
 </html>`;
 }
 
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function substitute(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => (key in vars ? escapeHtml(vars[key]) : ''));
+}
+
+export interface RenderedTemplateStrings {
+  heading: string;
+  subject: string;
+  bodyHtml: string;
+}
+
+/** Rendu pur (sans accès DB), utilisé aussi bien pour l'envoi que pour l'aperçu admin. */
+export function renderTemplateStrings(tpl: RenderedTemplateStrings, vars: Record<string, string>): { subject: string; html: string } {
+  return {
+    subject: substitute(tpl.subject, vars),
+    html: layout(substitute(tpl.heading, vars), substitute(tpl.bodyHtml, vars)),
+  };
+}
+
+async function renderTemplate(key: string, vars: Record<string, string>): Promise<{ subject: string; html: string } | null> {
+  const { rows } = await pool.query<NotificationTemplateRow>('SELECT * FROM notification_templates WHERE key = $1', [key]);
+  const tpl = rows[0];
+  if (!tpl) {
+    logger.error('Notification template missing', { key });
+    return null;
+  }
+  return renderTemplateStrings({ heading: tpl.heading, subject: tpl.subject, bodyHtml: tpl.body_html }, vars);
+}
+
 async function send(to: string, subject: string, html: string): Promise<void> {
   try {
-    await transporter.sendMail({ from: env.SMTP_FROM, to, subject, html });
+    const { transporter, from } = await getTransporter();
+    await transporter.sendMail({ from, to, subject, html });
   } catch (err) {
     logger.error('Failed to send email', { to, subject, error: (err as Error).message });
+  }
+}
+
+export async function sendTestEmail(to: string, recipientName: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { transporter, from } = await getTransporter();
+    await transporter.sendMail({
+      from,
+      to,
+      subject: '[BPM] Email de test',
+      html: layout(
+        'Email de test',
+        `<p>Bonjour ${escapeHtml(recipientName)},</p>
+         <p>Ceci est un email de test envoyé depuis les paramètres SMTP de BPM Platform.</p>
+         <p>Si vous le recevez, la configuration fonctionne correctement.</p>`
+      ),
+    });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
   }
 }
 
@@ -58,20 +151,15 @@ export async function sendTaskAssignedEmail(params: {
   isDelegated: boolean;
   originalAssigneeName?: string;
 }): Promise<void> {
-  const { to, recipientName, taskName, processName, isDelegated, originalAssigneeName } = params;
-  const delegationNote = isDelegated
-    ? `<p style="background:#fff8e8;border:1px solid #f0d999;border-radius:6px;padding:10px 12px;">
-         Cette tâche vous est confiée <strong>en tant que suppléant</strong> de ${originalAssigneeName ?? 'l\'assigné initial'}.
-       </p>`
-    : '';
-  const html = layout(
-    'Nouvelle tâche à traiter',
-    `<p>Bonjour ${recipientName},</p>
-     <p>La tâche <strong>${taskName}</strong> du processus <strong>${processName}</strong> vous a été assignée et attend votre traitement.</p>
-     ${delegationNote}
-     <p><a href="${env.APP_BASE_URL}/tasks" style="color:#2f5ce0;">Ouvrir mes tâches</a></p>`
-  );
-  await send(to, `[BPM] Nouvelle tâche : ${taskName}`, html);
+  const rendered = await renderTemplate(params.isDelegated ? 'TASK_DELEGATED' : 'TASK_ASSIGNED', {
+    recipientName: params.recipientName,
+    taskName: params.taskName,
+    processName: params.processName,
+    originalAssigneeName: params.originalAssigneeName ?? "l'assigné initial",
+    tasksUrl: `${env.APP_BASE_URL}/tasks`,
+  });
+  if (!rendered) return;
+  await send(params.to, rendered.subject, rendered.html);
 }
 
 export async function sendAccountDeactivatedEmail(params: {
@@ -79,14 +167,12 @@ export async function sendAccountDeactivatedEmail(params: {
   recipientName: string;
   reassignedCount: number;
 }): Promise<void> {
-  const { to, recipientName, reassignedCount } = params;
-  const html = layout(
-    'Compte désactivé',
-    `<p>Bonjour ${recipientName},</p>
-     <p>Votre compte BPM Platform vient d'être désactivé par un administrateur.</p>
-     <p>${reassignedCount} tâche(s) en attente ont été automatiquement réassignées à votre chaîne de suppléance.</p>`
-  );
-  await send(to, '[BPM] Votre compte a été désactivé', html);
+  const rendered = await renderTemplate('ACCOUNT_DEACTIVATED', {
+    recipientName: params.recipientName,
+    reassignedCount: String(params.reassignedCount),
+  });
+  if (!rendered) return;
+  await send(params.to, rendered.subject, rendered.html);
 }
 
 export async function sendWelcomeEmail(params: {
@@ -95,19 +181,14 @@ export async function sendWelcomeEmail(params: {
   email: string;
   temporaryPassword: string;
 }): Promise<void> {
-  const { to, recipientName, email, temporaryPassword } = params;
-  const html = layout(
-    'Bienvenue sur BPM Platform',
-    `<p>Bonjour ${recipientName},</p>
-     <p>Un compte vient d'être créé pour vous sur BPM Platform par un administrateur.</p>
-     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f4f6f9;border-radius:6px;margin:12px 0;">
-       <tr><td style="padding:10px 12px;"><strong>Email :</strong> ${email}</td></tr>
-       <tr><td style="padding:0 12px 10px;"><strong>Mot de passe temporaire :</strong> ${temporaryPassword}</td></tr>
-     </table>
-     <p>Nous vous recommandons de changer ce mot de passe dès votre première connexion, depuis la page "Mon profil".</p>
-     <p><a href="${env.APP_BASE_URL}/login" style="color:#2f5ce0;">Me connecter</a></p>`
-  );
-  await send(to, '[BPM] Bienvenue — votre compte a été créé', html);
+  const rendered = await renderTemplate('WELCOME', {
+    recipientName: params.recipientName,
+    email: params.email,
+    temporaryPassword: params.temporaryPassword,
+    loginUrl: `${env.APP_BASE_URL}/login`,
+  });
+  if (!rendered) return;
+  await send(params.to, rendered.subject, rendered.html);
 }
 
 export async function sendPasswordChangedEmail(params: {
@@ -115,20 +196,11 @@ export async function sendPasswordChangedEmail(params: {
   recipientName: string;
   changedByAdmin: boolean;
 }): Promise<void> {
-  const { to, recipientName, changedByAdmin } = params;
-  const html = layout(
-    'Mot de passe modifié',
-    `<p>Bonjour ${recipientName},</p>
-     <p>${
-       changedByAdmin
-         ? 'Le mot de passe de votre compte BPM Platform vient d\'être réinitialisé par un administrateur.'
-         : 'Le mot de passe de votre compte BPM Platform vient d\'être modifié.'
-     }</p>
-     <p style="background:#fff8e8;border:1px solid #f0d999;border-radius:6px;padding:10px 12px;">
-       Si vous n'êtes pas à l'origine de cette action, contactez immédiatement un administrateur.
-     </p>`
-  );
-  await send(to, '[BPM] Votre mot de passe a été modifié', html);
+  const rendered = await renderTemplate(params.changedByAdmin ? 'PASSWORD_CHANGED_BY_ADMIN' : 'PASSWORD_CHANGED_SELF', {
+    recipientName: params.recipientName,
+  });
+  if (!rendered) return;
+  await send(params.to, rendered.subject, rendered.html);
 }
 
 export async function sendProcessCompletedEmail(params: {
@@ -137,12 +209,11 @@ export async function sendProcessCompletedEmail(params: {
   processName: string;
   outcome: string;
 }): Promise<void> {
-  const { to, recipientName, processName, outcome } = params;
-  const html = layout(
-    'Processus terminé',
-    `<p>Bonjour ${recipientName},</p>
-     <p>Le processus <strong>${processName}</strong> que vous avez démarré est terminé.</p>
-     <p>Issue : <strong>${outcome}</strong></p>`
-  );
-  await send(to, `[BPM] Processus terminé : ${processName}`, html);
+  const rendered = await renderTemplate('PROCESS_COMPLETED', {
+    recipientName: params.recipientName,
+    processName: params.processName,
+    outcome: params.outcome,
+  });
+  if (!rendered) return;
+  await send(params.to, rendered.subject, rendered.html);
 }

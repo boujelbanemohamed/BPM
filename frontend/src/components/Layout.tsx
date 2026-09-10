@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   ListTree,
   LogOut,
+  Mail,
   PlayCircle,
   ScrollText,
   UserCog,
@@ -76,6 +77,9 @@ export function Layout() {
                 </NavLink>
                 <NavLink to="/admin/database" className={navLinkClass}>
                   <Database size={16} /> Base de données
+                </NavLink>
+                <NavLink to="/admin/notifications" className={navLinkClass}>
+                  <Mail size={16} /> Notifications
                 </NavLink>
               </>
             )}

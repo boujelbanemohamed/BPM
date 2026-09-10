@@ -6,11 +6,13 @@ import {
   FieldRegistryRow,
   MinimalUser,
   NotificationItem,
+  NotificationTemplate,
   PermissionMatrixRow,
   ProcessDefinition,
   ProcessInstance,
   PublicUser,
   Role,
+  SmtpSettings,
   TaskItem,
 } from '../types';
 
@@ -211,4 +213,29 @@ export const api = {
 
   listFieldsRegistry: () => request<{ fields: FieldRegistryRow[] }>('/admin/fields'),
   getDatabaseSchema: () => request<{ tables: DatabaseTable[] }>('/admin/database-schema'),
+
+  getSmtpSettings: () => request<{ settings: SmtpSettings }>('/admin/smtp'),
+  updateSmtpSettings: (payload: {
+    host: string;
+    port: number;
+    secure: boolean;
+    username?: string;
+    password?: string;
+    fromAddress?: string;
+  }) => request<{ ok: true }>('/admin/smtp', { method: 'PUT', body: payload }),
+  sendSmtpTestEmail: () => request<{ ok: true }>('/admin/smtp/test', { method: 'POST' }),
+
+  listNotificationTemplates: () => request<{ templates: NotificationTemplate[] }>('/admin/notification-templates'),
+  updateNotificationTemplate: (key: string, payload: { heading: string; subject: string; bodyHtml: string }) =>
+    request<{ template: NotificationTemplate }>(`/admin/notification-templates/${key}`, {
+      method: 'PUT',
+      body: payload,
+    }),
+  resetNotificationTemplate: (key: string) =>
+    request<{ template: NotificationTemplate }>(`/admin/notification-templates/${key}/reset`, { method: 'POST' }),
+  previewNotificationTemplate: (key: string, payload: { heading: string; subject: string; bodyHtml: string }) =>
+    request<{ subject: string; html: string }>(`/admin/notification-templates/${key}/preview`, {
+      method: 'POST',
+      body: payload,
+    }),
 };

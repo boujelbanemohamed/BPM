@@ -173,6 +173,26 @@ export interface DatabaseTable {
   columns: DatabaseColumn[];
 }
 
+export interface SmtpSettings {
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  hasPassword: boolean;
+  fromAddress: string;
+  updatedAt: string | null;
+}
+
+export interface NotificationTemplate {
+  key: string;
+  heading: string;
+  subject: string;
+  body_html: string;
+  variables: string[];
+  updated_at: string;
+  updated_by: string | null;
+}
+
 export interface NotificationItem {
   id: string;
   user_id: string;

@@ -150,6 +150,28 @@ export interface AuditLogRow {
   created_at: string;
 }
 
+export interface SmtpSettingsRow {
+  id: number;
+  host: string | null;
+  port: number;
+  secure: boolean;
+  username: string | null;
+  password: string | null;
+  from_address: string | null;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+export interface NotificationTemplateRow {
+  key: string;
+  heading: string;
+  subject: string;
+  body_html: string;
+  variables: string[];
+  updated_at: string;
+  updated_by: string | null;
+}
+
 export interface NotificationRow {
   id: string;
   user_id: string;
