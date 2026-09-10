@@ -3,6 +3,7 @@ import { ClipboardList, KeyRound, Lock, PencilLine, PlusCircle, Save, Shield, Us
 import { api } from '../api/client';
 import { PAGE_KEYS, PageAccessLevel, PageKey, RoleWithUsers } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { processStatusLabel } from '../lib/processStatus';
 
 const PAGE_LABELS: Record<PageKey, { label: string; levels: PageAccessLevel[] }> = {
   PROCESSES_DESIGN: { label: 'Conception des processus', levels: ['NONE', 'VIEW', 'FULL'] },
@@ -284,7 +285,7 @@ export function RolesPage() {
                         <li key={i} className="text-xs text-slate-600">
                           <span className="font-medium">{t.processName}</span> → {t.stepName}
                           {t.processStatus !== 'PUBLISHED' && (
-                            <span className="ml-1 text-slate-400">({t.processStatus.toLowerCase()})</span>
+                            <span className="ml-1 text-slate-400">({processStatusLabel(t.processStatus).toLowerCase()})</span>
                           )}
                         </li>
                       ))}

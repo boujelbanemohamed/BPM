@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ListTree, Search } from 'lucide-react';
 import { api } from '../api/client';
 import { FieldRegistryRow } from '../types';
+import { processStatusLabel } from '../lib/processStatus';
 
 const statusBadge: Record<string, string> = {
   DRAFT: 'bg-amber-100 text-amber-700',
@@ -73,7 +74,7 @@ export function FieldsRegistryPage() {
                 {g.processName}
               </Link>
               <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[g.processStatus]}`}>
-                {g.processStatus}
+                {processStatusLabel(g.processStatus)}
               </span>
             </div>
             <table className="w-full text-sm">

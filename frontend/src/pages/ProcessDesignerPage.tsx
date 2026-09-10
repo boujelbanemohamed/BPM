@@ -5,17 +5,12 @@ import { api } from '../api/client';
 import { MinimalUser, ProcessDefinition, Role } from '../types';
 import { BpmnDesigner, BpmnDesignerHandle } from '../components/BpmnDesigner';
 import { useAuth } from '../context/AuthContext';
+import { processStatusLabel } from '../lib/processStatus';
 
 const statusBadge: Record<string, string> = {
   DRAFT: 'bg-amber-100 text-amber-700',
   PUBLISHED: 'bg-emerald-100 text-emerald-700',
   ARCHIVED: 'bg-slate-200 text-slate-600',
-};
-
-const statusLabel: Record<string, string> = {
-  DRAFT: 'Brouillon',
-  PUBLISHED: 'Publié',
-  ARCHIVED: 'Archivé',
 };
 
 function escapeHtml(value: string): string {
@@ -101,7 +96,7 @@ export function ProcessDesignerPage() {
 <body>
   <div class="print-bar"><button onclick="window.print()">Imprimer / Enregistrer en PDF</button></div>
   <header>
-    <h1>${escapeHtml(process.name)} <span class="badge badge-${statusClass}">${statusLabel[process.status] ?? process.status}</span></h1>
+    <h1>${escapeHtml(process.name)} <span class="badge badge-${statusClass}">${escapeHtml(processStatusLabel(process.status))}</span></h1>
     <div class="meta">Version ${process.version} · Exporté le ${exportDate}</div>
   </header>
   <div class="diagram">${svg}</div>
@@ -139,7 +134,7 @@ export function ProcessDesignerPage() {
           <h1 className="flex items-center gap-2 text-xl font-bold text-slate-800">
             {process.name}
             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[process.status]}`}>
-              {process.status}
+              {processStatusLabel(process.status)}
             </span>
           </h1>
         </div>

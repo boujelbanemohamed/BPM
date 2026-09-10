@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { DynamicForm, extractFormFields } from '../components/DynamicForm';
+import { processStatusLabel } from '../lib/processStatus';
 
 interface ImportResult {
   created: number;
@@ -198,7 +199,7 @@ export function ProcessesPage() {
                 <td className="px-4 py-3 text-slate-500">v{p.version}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[p.status]}`}>
-                    {p.status}
+                    {processStatusLabel(p.status)}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-slate-500">{p.created_by_name}</td>
