@@ -3,6 +3,7 @@ import BpmnModeler from 'bpmn-js/lib/Modeler';
 import NavigatedViewer from 'bpmn-js/lib/NavigatedViewer';
 import { Plus, Trash2 } from 'lucide-react';
 import bpmPlatformModdle from '../bpmn/bpmPlatformModdle.json';
+import { frTranslationsModule } from '../bpmn/frTranslations';
 import { FormField, MinimalUser, Role } from '../types';
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
@@ -60,6 +61,7 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
     const modeler = new ModelerClass({
       container: containerRef.current,
       moddleExtensions: { bpm: bpmPlatformModdle },
+      additionalModules: [frTranslationsModule],
     });
     modelerRef.current = modeler;
     let cancelled = false;
