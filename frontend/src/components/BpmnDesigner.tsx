@@ -11,6 +11,7 @@ import 'bpmn-js/dist/assets/bpmn-js.css';
 
 export interface BpmnDesignerHandle {
   getXml: () => Promise<string>;
+  getSvg: () => Promise<string>;
 }
 
 interface Props {
@@ -51,6 +52,11 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
       if (!modelerRef.current) return initialXml;
       const { xml } = await modelerRef.current.saveXML({ format: true });
       return xml as string;
+    },
+    getSvg: async () => {
+      if (!modelerRef.current) return '';
+      const { svg } = await modelerRef.current.saveSVG();
+      return svg as string;
     },
   }));
 

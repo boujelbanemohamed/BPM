@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, ShieldCheck, UploadCloud } from 'lucide-react';
+import { ArrowLeft, Printer, Save, ShieldCheck, UploadCloud } from 'lucide-react';
 import { api } from '../api/client';
 import { MinimalUser, ProcessDefinition, Role } from '../types';
 import { BpmnDesigner, BpmnDesignerHandle } from '../components/BpmnDesigner';
@@ -11,6 +11,21 @@ const statusBadge: Record<string, string> = {
   PUBLISHED: 'bg-emerald-100 text-emerald-700',
   ARCHIVED: 'bg-slate-200 text-slate-600',
 };
+
+const statusLabel: Record<string, string> = {
+  DRAFT: 'Brouillon',
+  PUBLISHED: 'Publié',
+  ARCHIVED: 'Archivé',
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export function ProcessDesignerPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +63,57 @@ export function ProcessDesignerPage() {
     }
   }
 
+  async function exportPdf() {
+    if (!process || !designerRef.current) return;
+    // Ouvre l'onglet immédiatement (dans le geste utilisateur du clic) pour
+    // éviter le blocage popup, puis y écrit le contenu une fois le SVG prêt.
+    const printTab = window.open('', '_blank');
+    try {
+      const svg = await designerRef.current.getSvg();
+      if (!printTab) throw new Error("Impossible d'ouvrir l'onglet d'impression (bloqué par le navigateur)");
+
+      const exportDate = new Date().toLocaleString('fr-FR');
+      const statusClass = process.status.toLowerCase();
+      printTab.document.write(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>${escapeHtml(process.name)} — export PDF</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px; color: #1e293b; }
+  header { margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+  h1 { margin: 0 0 6px; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+  .meta { font-size: 13px; color: #64748b; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 600; }
+  .badge-draft { background: #fef3c7; color: #92400e; }
+  .badge-published { background: #d1fae5; color: #065f46; }
+  .badge-archived { background: #e2e8f0; color: #475569; }
+  .diagram svg { width: 100%; height: auto; max-height: 900px; }
+  .print-bar { margin-bottom: 16px; }
+  .print-bar button {
+    padding: 8px 16px; font-size: 14px; font-weight: 600; border-radius: 8px;
+    border: none; background: #4f46e5; color: white; cursor: pointer;
+  }
+  @media print { .print-bar { display: none; } }
+  @page { size: A4 landscape; margin: 12mm; }
+</style>
+</head>
+<body>
+  <div class="print-bar"><button onclick="window.print()">Imprimer / Enregistrer en PDF</button></div>
+  <header>
+    <h1>${escapeHtml(process.name)} <span class="badge badge-${statusClass}">${statusLabel[process.status] ?? process.status}</span></h1>
+    <div class="meta">Version ${process.version} · Exporté le ${exportDate}</div>
+  </header>
+  <div class="diagram">${svg}</div>
+</body>
+</html>`);
+      printTab.document.close();
+    } catch (err) {
+      printTab?.close();
+      window.alert((err as Error).message);
+    }
+  }
+
   async function publish() {
     if (!process) return;
     await save();
@@ -79,6 +145,9 @@ export function ProcessDesignerPage() {
         </div>
         <div className="flex items-center gap-2">
           {status && <span className="text-sm text-slate-400">{status}</span>}
+          <button onClick={exportPdf} className="btn-secondary">
+            <Printer size={16} /> Imprimer PDF
+          </button>
           {canSeePermissions && (
             <button onClick={() => navigate(`/processes/${process.id}/permissions`)} className="btn-secondary">
               <ShieldCheck size={16} /> Matrice de droits
