@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Eye, Mail, RotateCcw, Save, Send, Settings } from 'lucide-react';
 import { api } from '../api/client';
 import { NotificationTemplate, SmtpSettings } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   WELCOME: 'Bienvenue (création de compte)',
@@ -14,6 +15,8 @@ const TEMPLATE_LABELS: Record<string, string> = {
 };
 
 function SmtpSettingsTab() {
+  const { hasAccess } = useAuth();
+  const canEdit = hasAccess('NOTIFICATIONS_CONFIG', 'FULL');
   const [settings, setSettings] = useState<SmtpSettings | null>(null);
   const [host, setHost] = useState('');
   const [port, setPort] = useState(587);
@@ -90,7 +93,13 @@ function SmtpSettingsTab() {
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-slate-500">Serveur SMTP</span>
-          <input className="input" placeholder="smtp.example.com" value={host} onChange={(e) => setHost(e.target.value)} />
+          <input
+            className="input"
+            placeholder="smtp.example.com"
+            value={host}
+            disabled={!canEdit}
+            onChange={(e) => setHost(e.target.value)}
+          />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-slate-500">Port</span>
@@ -98,26 +107,33 @@ function SmtpSettingsTab() {
             type="number"
             className="input"
             value={port}
+            disabled={!canEdit}
             onChange={(e) => setPort(Number(e.target.value))}
           />
         </label>
       </div>
 
       <label className="flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" checked={secure} onChange={(e) => setSecure(e.target.checked)} />
+        <input type="checkbox" checked={secure} disabled={!canEdit} onChange={(e) => setSecure(e.target.checked)} />
         Connexion TLS implicite (à activer pour le port 465, désactiver pour le port 587 en STARTTLS)
       </label>
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-slate-500">Identifiant</span>
-          <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} />
+          <input className="input" value={username} disabled={!canEdit} onChange={(e) => setUsername(e.target.value)} />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-slate-500">
             Mot de passe {settings.hasPassword ? '(laisser vide pour ne pas le modifier)' : ''}
           </span>
-          <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input
+            type="password"
+            className="input"
+            value={password}
+            disabled={!canEdit}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </label>
       </div>
 
@@ -127,31 +143,38 @@ function SmtpSettingsTab() {
           className="input"
           placeholder='"BPM Platform" <no-reply@bpm.local>'
           value={fromAddress}
+          disabled={!canEdit}
           onChange={(e) => setFromAddress(e.target.value)}
         />
       </label>
 
       {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
-      <div className="flex items-center gap-3">
-        <button type="submit" className="btn-primary">
-          <Save size={16} /> Enregistrer
-        </button>
-        {status && <span className="text-sm text-slate-400">{status}</span>}
-      </div>
+      {canEdit && (
+        <div className="flex items-center gap-3">
+          <button type="submit" className="btn-primary">
+            <Save size={16} /> Enregistrer
+          </button>
+          {status && <span className="text-sm text-slate-400">{status}</span>}
+        </div>
+      )}
 
-      <div className="border-t border-slate-100 pt-4">
-        <button type="button" onClick={sendTest} disabled={testing} className="btn-secondary">
-          <Send size={16} /> {testing ? 'Envoi…' : 'Envoyer un email de test'}
-        </button>
-        <p className="mt-1 text-xs text-slate-400">Envoyé à votre propre adresse email, avec la configuration enregistrée ci-dessus.</p>
-        {testStatus && <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{testStatus}</p>}
-        {testError && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{testError}</p>}
-      </div>
+      {canEdit && (
+        <div className="border-t border-slate-100 pt-4">
+          <button type="button" onClick={sendTest} disabled={testing} className="btn-secondary">
+            <Send size={16} /> {testing ? 'Envoi…' : 'Envoyer un email de test'}
+          </button>
+          <p className="mt-1 text-xs text-slate-400">Envoyé à votre propre adresse email, avec la configuration enregistrée ci-dessus.</p>
+          {testStatus && <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{testStatus}</p>}
+          {testError && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{testError}</p>}
+        </div>
+      )}
     </form>
   );
 }
 
 function TemplatesTab() {
+  const { hasAccess } = useAuth();
+  const canEdit = hasAccess('NOTIFICATIONS_CONFIG', 'FULL');
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [heading, setHeading] = useState('');
@@ -241,9 +264,11 @@ function TemplatesTab() {
           <form onSubmit={save} className="card space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-slate-700">{TEMPLATE_LABELS[selected.key] ?? selected.key}</h2>
-              <button type="button" onClick={reset} className="btn-secondary">
-                <RotateCcw size={14} /> Réinitialiser
-              </button>
+              {canEdit && (
+                <button type="button" onClick={reset} className="btn-secondary">
+                  <RotateCcw size={14} /> Réinitialiser
+                </button>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-1.5">
@@ -256,11 +281,11 @@ function TemplatesTab() {
 
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-slate-500">Titre affiché dans l'email</span>
-              <input className="input" value={heading} onChange={(e) => setHeading(e.target.value)} />
+              <input className="input" value={heading} disabled={!canEdit} onChange={(e) => setHeading(e.target.value)} />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-slate-500">Objet de l'email</span>
-              <input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} />
+              <input className="input" value={subject} disabled={!canEdit} onChange={(e) => setSubject(e.target.value)} />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-slate-500">Corps du message (HTML)</span>
@@ -268,15 +293,18 @@ function TemplatesTab() {
                 className="input font-mono text-xs"
                 rows={12}
                 value={bodyHtml}
+                disabled={!canEdit}
                 onChange={(e) => setBodyHtml(e.target.value)}
               />
             </label>
 
             {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
             <div className="flex items-center gap-3">
-              <button type="submit" className="btn-primary">
-                <Save size={16} /> Enregistrer
-              </button>
+              {canEdit && (
+                <button type="submit" className="btn-primary">
+                  <Save size={16} /> Enregistrer
+                </button>
+              )}
               <button type="button" onClick={showPreview} disabled={previewing} className="btn-secondary">
                 <Eye size={16} /> {previewing ? 'Génération…' : 'Aperçu'}
               </button>

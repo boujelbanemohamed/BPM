@@ -11,6 +11,8 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { writeAuditLog } from '../lib/audit';
 import { logger } from '../lib/logger';
 import { notifyPasswordChanged } from '../services/notificationService';
+import { getAllEffectiveLevels } from '../middleware/pageAccess';
+import { PAGE_KEYS } from '../types';
 
 export const authRouter = Router();
 
@@ -68,7 +70,8 @@ authRouter.post(
     });
 
     logger.info('User logged in', { userId: record.id, email: record.email });
-    res.json({ token, user: toPublicUser(record.authUser) });
+    const pageAccess = await getAllEffectiveLevels(record.authUser.roles, record.authUser.roleIds, PAGE_KEYS);
+    res.json({ token, user: toPublicUser(record.authUser), pageAccess });
   })
 );
 
@@ -76,7 +79,8 @@ authRouter.get(
   '/me',
   requireAuth,
   asyncHandler(async (req, res) => {
-    res.json({ user: toPublicUser(req.user!) });
+    const pageAccess = await getAllEffectiveLevels(req.user!.roles, req.user!.roleIds, PAGE_KEYS);
+    res.json({ user: toPublicUser(req.user!), pageAccess });
   })
 );
 

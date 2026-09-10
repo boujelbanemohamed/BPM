@@ -9,6 +9,21 @@ export type NotificationType =
   | 'ACCOUNT_DEACTIVATED'
   | 'GENERIC';
 
+export type PageAccessLevel = 'NONE' | 'VIEW' | 'FULL';
+
+export const PAGE_KEYS = [
+  'PROCESSES_DESIGN',
+  'PERMISSIONS_MATRIX',
+  'USERS',
+  'AUDIT',
+  'DATABASE',
+  'FIELDS_REGISTRY',
+  'NOTIFICATIONS_CONFIG',
+  'ROLES',
+] as const;
+
+export type PageKey = (typeof PAGE_KEYS)[number];
+
 export interface Role {
   id: number;
   name: string;
@@ -42,6 +57,7 @@ export interface RoleWithUsers extends Role {
   users: RoleUserSummary[];
   assignedTasks: RoleAssignedTask[];
   permissionRules: RolePermissionRule[];
+  pageAccess: Record<PageKey, PageAccessLevel>;
 }
 
 export interface User {

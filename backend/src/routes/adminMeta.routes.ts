@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { pool } from '../db/pool';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
+import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { parseGraph } from '../services/workflowEngine';
 import { ProcessRow } from '../types';
 
 export const adminMetaRouter = Router();
-adminMetaRouter.use(requireAuth, requireRole('ADMIN'));
+adminMetaRouter.use(requireAuth);
 
 interface FieldRegistryRow {
   processId: string;
@@ -23,6 +24,7 @@ interface FieldRegistryRow {
 
 adminMetaRouter.get(
   '/fields',
+  requirePageAccess('FIELDS_REGISTRY', 'VIEW'),
   asyncHandler(async (req, res) => {
     const { rows: processes } = await pool.query<ProcessRow>(
       'SELECT * FROM processes ORDER BY name ASC, version DESC'
@@ -68,6 +70,7 @@ interface ColumnRow {
 
 adminMetaRouter.get(
   '/database-schema',
+  requirePageAccess('DATABASE', 'VIEW'),
   asyncHandler(async (req, res) => {
     const { rows: columns } = await pool.query<ColumnRow>(
       `SELECT table_name, column_name, data_type, is_nullable, column_default

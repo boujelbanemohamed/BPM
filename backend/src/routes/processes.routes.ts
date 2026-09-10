@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { pool, withTransaction } from '../db/pool';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
+import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { writeAuditLog, writeAuditLogTx } from '../lib/audit';
@@ -67,7 +68,7 @@ const createProcessSchema = z.object({
 
 processesRouter.post(
   '/',
-  requireRole('ADMIN'),
+  requirePageAccess('PROCESSES_DESIGN', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = createProcessSchema.parse(req.body);
     const bpmnXml = body.bpmnXml ?? DEFAULT_BPMN;
@@ -105,7 +106,7 @@ const updateProcessSchema = z.object({
 
 processesRouter.put(
   '/:id',
-  requireRole('ADMIN'),
+  requirePageAccess('PROCESSES_DESIGN', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = updateProcessSchema.parse(req.body);
     const { rows: existingRows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
@@ -143,7 +144,7 @@ processesRouter.put(
 
 processesRouter.post(
   '/:id/publish',
-  requireRole('ADMIN'),
+  requirePageAccess('PROCESSES_DESIGN', 'FULL'),
   asyncHandler(async (req, res) => {
     const { rows: existingRows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
       req.params.id,
@@ -180,6 +181,7 @@ processesRouter.post(
 
 processesRouter.get(
   '/:id/permissions',
+  requirePageAccess('PERMISSIONS_MATRIX', 'VIEW'),
   asyncHandler(async (req, res) => {
     const { rows } = await pool.query<PermissionMatrixRow>(
       'SELECT * FROM permissions_matrix WHERE process_id = $1 ORDER BY step_name ASC',
@@ -201,7 +203,7 @@ const putPermissionsSchema = z.object({ rows: z.array(permissionRowSchema) });
 
 processesRouter.put(
   '/:id/permissions',
-  requireRole('ADMIN'),
+  requirePageAccess('PERMISSIONS_MATRIX', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = putPermissionsSchema.parse(req.body);
     const processId = req.params.id;

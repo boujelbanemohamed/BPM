@@ -15,7 +15,9 @@ const statusBadge: Record<string, string> = {
 export function ProcessDesignerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { hasAccess } = useAuth();
+  const canDesign = hasAccess('PROCESSES_DESIGN', 'FULL');
+  const canSeePermissions = hasAccess('PERMISSIONS_MATRIX', 'VIEW');
   const [process, setProcess] = useState<ProcessDefinition | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [users, setUsers] = useState<MinimalUser[]>([]);
@@ -59,7 +61,7 @@ export function ProcessDesignerPage() {
 
   if (!process) return <div className="p-6 text-slate-400">Chargement…</div>;
 
-  const readOnly = process.status !== 'DRAFT' || !isAdmin;
+  const readOnly = process.status !== 'DRAFT' || !canDesign;
 
   return (
     <div className="mx-auto max-w-[1400px] p-6">
@@ -77,7 +79,7 @@ export function ProcessDesignerPage() {
         </div>
         <div className="flex items-center gap-2">
           {status && <span className="text-sm text-slate-400">{status}</span>}
-          {isAdmin && (
+          {canSeePermissions && (
             <button onClick={() => navigate(`/processes/${process.id}/permissions`)} className="btn-secondary">
               <ShieldCheck size={16} /> Matrice de droits
             </button>

@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../db/pool';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
+import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { AuditLogRow } from '../types';
 
 export const auditRouter = Router();
-auditRouter.use(requireAuth, requireRole('ADMIN'));
+auditRouter.use(requireAuth, requirePageAccess('AUDIT', 'VIEW'));
 
 const querySchema = z.object({
   userId: z.string().uuid().optional(),

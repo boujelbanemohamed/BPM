@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
+import { PageAccessLevel, PageKey } from '../types';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -30,13 +31,20 @@ const dropdownLinkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
   }`;
 
-const CONFIG_PATHS = ['/admin/notifications', '/admin/database', '/admin/audit', '/admin/users', '/admin/roles'];
+const CONFIG_ITEMS: { path: string; pageKey: PageKey; label: string; icon: typeof Mail }[] = [
+  { path: '/admin/notifications', pageKey: 'NOTIFICATIONS_CONFIG', label: 'Notifications', icon: Mail },
+  { path: '/admin/database', pageKey: 'DATABASE', label: 'Base de données', icon: Database },
+  { path: '/admin/audit', pageKey: 'AUDIT', label: 'Audit', icon: ScrollText },
+  { path: '/admin/roles', pageKey: 'ROLES', label: 'Rôles', icon: Shield },
+  { path: '/admin/users', pageKey: 'USERS', label: 'Utilisateurs', icon: UserCog },
+];
 
-function ConfigMenu() {
+function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: PageAccessLevel) => boolean }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const isActive = CONFIG_PATHS.some((p) => location.pathname.startsWith(p));
+  const visibleItems = CONFIG_ITEMS.filter((item) => hasAccess(item.pageKey, 'VIEW'));
+  const isActive = visibleItems.some((item) => location.pathname.startsWith(item.path));
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -49,6 +57,8 @@ function ConfigMenu() {
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
+
+  if (visibleItems.length === 0) return null;
 
   return (
     <div className="relative" ref={ref}>
@@ -63,21 +73,11 @@ function ConfigMenu() {
       </button>
       {open && (
         <div className="absolute left-0 top-full z-10 mt-1 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
-          <NavLink to="/admin/notifications" className={dropdownLinkClass}>
-            <Mail size={16} /> Notifications
-          </NavLink>
-          <NavLink to="/admin/database" className={dropdownLinkClass}>
-            <Database size={16} /> Base de données
-          </NavLink>
-          <NavLink to="/admin/audit" className={dropdownLinkClass}>
-            <ScrollText size={16} /> Audit
-          </NavLink>
-          <NavLink to="/admin/roles" className={dropdownLinkClass}>
-            <Shield size={16} /> Rôles
-          </NavLink>
-          <NavLink to="/admin/users" className={dropdownLinkClass}>
-            <UserCog size={16} /> Utilisateurs
-          </NavLink>
+          {visibleItems.map((item) => (
+            <NavLink key={item.path} to={item.path} className={dropdownLinkClass}>
+              <item.icon size={16} /> {item.label}
+            </NavLink>
+          ))}
         </div>
       )}
     </div>
@@ -85,7 +85,7 @@ function ConfigMenu() {
 }
 
 export function Layout() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, hasAccess } = useAuth();
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
@@ -126,14 +126,12 @@ export function Layout() {
             <NavLink to="/clients" className={navLinkClass}>
               <Users size={16} /> Clients
             </NavLink>
-            {isAdmin && (
-              <>
-                <NavLink to="/admin/fields" className={navLinkClass}>
-                  <ListTree size={16} /> Champs
-                </NavLink>
-                <ConfigMenu />
-              </>
+            {hasAccess('FIELDS_REGISTRY', 'VIEW') && (
+              <NavLink to="/admin/fields" className={navLinkClass}>
+                <ListTree size={16} /> Champs
+              </NavLink>
             )}
+            <ConfigMenu hasAccess={hasAccess} />
           </nav>
         </div>
         <div className="flex items-center gap-4">

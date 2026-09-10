@@ -1,12 +1,23 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { pool } from '../db/pool';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { pool, withTransaction } from '../db/pool';
+import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
-import { writeAuditLog } from '../lib/audit';
+import { writeAuditLog, writeAuditLogTx } from '../lib/audit';
+import { requirePageAccess } from '../middleware/pageAccess';
 import { parseGraph } from '../services/workflowEngine';
-import { PermissionMatrixRow, ProcessRow, Role, RoleAssignedTask, RolePermissionRule, RoleWithUsers } from '../types';
+import {
+  PAGE_KEYS,
+  PageAccessLevel,
+  PageKey,
+  PermissionMatrixRow,
+  ProcessRow,
+  Role,
+  RoleAssignedTask,
+  RolePermissionRule,
+  RoleWithUsers,
+} from '../types';
 
 export const rolesRouter = Router();
 rolesRouter.use(requireAuth);
@@ -22,7 +33,7 @@ rolesRouter.get(
 /** Vue admin : chaque rôle avec la liste des utilisateurs qui le possèdent. */
 rolesRouter.get(
   '/overview',
-  requireRole('ADMIN'),
+  requirePageAccess('ROLES', 'VIEW'),
   asyncHandler(async (req, res) => {
     const { rows: roles } = await pool.query<Role>('SELECT id, name, description FROM roles ORDER BY name ASC');
     const { rows: userRows } = await pool.query<{
@@ -70,6 +81,25 @@ rolesRouter.get(
        ORDER BY p.name ASC, pm.step_name ASC`
     );
 
+    // Accès aux pages configuré pour chaque rôle (ADMIN a toujours FULL
+    // partout et n'a jamais de ligne dans role_page_permissions).
+    const { rows: pageAccessRows } = await pool.query<{
+      role_id: number;
+      page_key: PageKey;
+      access_level: PageAccessLevel;
+    }>('SELECT role_id, page_key, access_level FROM role_page_permissions');
+
+    function buildPageAccess(role: Role): Record<PageKey, PageAccessLevel> {
+      const result = {} as Record<PageKey, PageAccessLevel>;
+      for (const key of PAGE_KEYS) result[key] = role.name === 'ADMIN' ? 'FULL' : 'NONE';
+      if (role.name !== 'ADMIN') {
+        for (const row of pageAccessRows) {
+          if (row.role_id === role.id) result[row.page_key] = row.access_level;
+        }
+      }
+      return result;
+    }
+
     const overview: RoleWithUsers[] = roles.map((role) => ({
       ...role,
       users: userRows
@@ -88,6 +118,7 @@ rolesRouter.get(
             canUploadDocuments: r.can_upload_documents,
           })
         ),
+      pageAccess: buildPageAccess(role),
     }));
 
     res.json({ roles: overview });
@@ -106,7 +137,7 @@ const createRoleSchema = z.object({
 
 rolesRouter.post(
   '/',
-  requireRole('ADMIN'),
+  requirePageAccess('ROLES', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = createRoleSchema.parse(req.body);
     const name = body.name.toUpperCase();
@@ -117,6 +148,14 @@ rolesRouter.post(
     const { rows } = await pool.query<Role>(
       'INSERT INTO roles (name, description) VALUES ($1, $2) RETURNING id, name, description',
       [name, body.description || null]
+    );
+
+    // Accès par défaut d'un nouveau rôle : consultation des processus,
+    // comme les autres rôles non-admin (le reste démarre à NONE).
+    await pool.query(
+      `INSERT INTO role_page_permissions (role_id, page_key, access_level, updated_by)
+       VALUES ($1, 'PROCESSES_DESIGN', 'VIEW', $2)`,
+      [rows[0].id, req.user!.id]
     );
 
     await writeAuditLog({
@@ -141,7 +180,7 @@ const updateRoleSchema = z.object({
  *  role_id ; le renommer casserait silencieusement ces références. */
 rolesRouter.put(
   '/:id',
-  requireRole('ADMIN'),
+  requirePageAccess('ROLES', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = updateRoleSchema.parse(req.body);
     const { rows } = await pool.query<Role>(
@@ -160,5 +199,61 @@ rolesRouter.put(
     });
 
     res.json({ role: rows[0] });
+  })
+);
+
+const pageAccessSchema = z.object({
+  pageAccess: z.record(z.enum(['NONE', 'VIEW', 'FULL'])),
+});
+
+/**
+ * Remplace intégralement l'accès aux pages d'un rôle. Le rôle ADMIN n'est
+ * jamais configurable ici : il a toujours accès complet à tout.
+ *
+ * Accorder FULL sur la page "Rôles" à un rôle non-admin lui donne le
+ * pouvoir de modifier les accès de tous les rôles, y compris les siens —
+ * c'est une délégation consciente, au même titre que le reste de cette
+ * fonctionnalité.
+ */
+rolesRouter.put(
+  '/:id/page-access',
+  requirePageAccess('ROLES', 'FULL'),
+  asyncHandler(async (req, res) => {
+    const body = pageAccessSchema.parse(req.body);
+    const roleId = Number(req.params.id);
+    if (!Number.isInteger(roleId)) throw new HttpError(400, 'Identifiant de rôle invalide');
+
+    const { rows: roleRows } = await pool.query<Role>('SELECT id, name, description FROM roles WHERE id = $1', [
+      roleId,
+    ]);
+    const role = roleRows[0];
+    if (!role) throw new HttpError(404, 'Rôle introuvable');
+    if (role.name === 'ADMIN') {
+      throw new HttpError(400, "Le rôle ADMIN a toujours accès à tout : ses accès ne sont pas configurables");
+    }
+
+    await withTransaction(async (client) => {
+      for (const [pageKey, level] of Object.entries(body.pageAccess)) {
+        if (!(PAGE_KEYS as readonly string[]).includes(pageKey)) continue;
+        await client.query(
+          `INSERT INTO role_page_permissions (role_id, page_key, access_level, updated_by)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (role_id, page_key)
+           DO UPDATE SET access_level = EXCLUDED.access_level, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+          [roleId, pageKey, level, req.user!.id]
+        );
+      }
+
+      await writeAuditLogTx(client, {
+        userId: req.user!.id,
+        action: 'ROLE_PAGE_ACCESS_UPDATED',
+        entityType: 'role',
+        entityId: String(roleId),
+        details: body.pageAccess,
+        ipAddress: req.ip,
+      });
+    });
+
+    res.json({ ok: true });
   })
 );

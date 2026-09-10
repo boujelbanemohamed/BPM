@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { PlusCircle, PowerOff, Power, PencilLine, X } from 'lucide-react';
 import { api } from '../api/client';
 import { PublicUser, Role } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface FormState {
   id: string | null;
@@ -32,6 +33,8 @@ const EMPTY_FORM: FormState = {
 };
 
 export function AdminUsersPage() {
+  const { hasAccess } = useAuth();
+  const canEdit = hasAccess('USERS', 'FULL');
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [form, setForm] = useState<FormState | null>(null);
@@ -141,9 +144,11 @@ export function AdminUsersPage() {
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Administration des utilisateurs</h1>
-        <button onClick={openCreate} className="btn-primary">
-          <PlusCircle size={16} /> Nouvel utilisateur
-        </button>
+        {canEdit && (
+          <button onClick={openCreate} className="btn-primary">
+            <PlusCircle size={16} /> Nouvel utilisateur
+          </button>
+        )}
       </div>
 
       {info && <p className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{info}</p>}
@@ -302,26 +307,28 @@ export function AdminUsersPage() {
                   {users.find((x) => x.id === u.delegateUser2Id)?.fullName ?? '—'}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    <button onClick={() => openEdit(u)} className="btn-secondary">
-                      <PencilLine size={14} /> Modifier
-                    </button>
-                    {u.isActive ? (
-                      <button
-                        onClick={() => deactivate(u)}
-                        className="flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
-                      >
-                        <PowerOff size={14} /> Désactiver
+                  {canEdit && (
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => openEdit(u)} className="btn-secondary">
+                        <PencilLine size={14} /> Modifier
                       </button>
-                    ) : (
-                      <button
-                        onClick={() => activate(u)}
-                        className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                      >
-                        <Power size={14} /> Réactiver
-                      </button>
-                    )}
-                  </div>
+                      {u.isActive ? (
+                        <button
+                          onClick={() => deactivate(u)}
+                          className="flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+                        >
+                          <PowerOff size={14} /> Désactiver
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => activate(u)}
+                          className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                        >
+                          <Power size={14} /> Réactiver
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

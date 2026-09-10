@@ -27,6 +27,7 @@ CREATE TYPE notification_type AS ENUM (
   'TASK_ASSIGNED', 'TASK_DELEGATED', 'TASK_REASSIGNED',
   'PROCESS_COMPLETED', 'ACCOUNT_DEACTIVATED', 'GENERIC'
 );
+CREATE TYPE page_access_level AS ENUM ('NONE', 'VIEW', 'FULL');
 
 -- ---------------------------------------------------------------------
 -- roles
@@ -82,6 +83,25 @@ CREATE TABLE user_roles (
   role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
   PRIMARY KEY (user_id, role_id)
 );
+
+-- ---------------------------------------------------------------------
+-- role_page_permissions — accès configurable par rôle aux pages
+-- d'administration/conception (le rôle ADMIN a toujours accès à tout et
+-- n'est jamais présent ici ; l'absence de ligne pour un couple
+-- (rôle, page) vaut NONE).
+-- ---------------------------------------------------------------------
+CREATE TABLE role_page_permissions (
+  role_id      INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  page_key     VARCHAR(50) NOT NULL,
+  access_level page_access_level NOT NULL DEFAULT 'NONE',
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by   UUID REFERENCES users(id),
+  PRIMARY KEY (role_id, page_key)
+);
+
+CREATE TRIGGER trg_role_page_permissions_updated_at
+  BEFORE UPDATE ON role_page_permissions
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ---------------------------------------------------------------------
 -- processes — définitions BPMN 2.0
@@ -225,7 +245,7 @@ CREATE TABLE audit_logs (
   user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
   action      VARCHAR(100) NOT NULL,
   entity_type VARCHAR(100),
-  entity_id   UUID,
+  entity_id   VARCHAR(255),
   details     JSONB NOT NULL DEFAULT '{}'::jsonb,
   ip_address  VARCHAR(64),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -367,6 +387,14 @@ INSERT INTO roles (name, description) VALUES
   ('ADMIN',     'Administrateur de la plateforme'),
   ('VALIDATOR', 'Validateur de workflow'),
   ('OPERATOR',  'Opérateur / utilisateur standard');
+
+-- Accès par défaut des rôles non-admin : consultation des processus
+-- (comportement déjà existant avant l'introduction de cette permission,
+-- préservé pour ne pas régresser). Tout le reste (Utilisateurs, Audit,
+-- Base de données, Champs, Notifications, Rôles, Matrice de droits)
+-- reste à NONE tant qu'un administrateur ne l'octroie pas explicitement.
+INSERT INTO role_page_permissions (role_id, page_key, access_level)
+  SELECT id, 'PROCESSES_DESIGN', 'VIEW' FROM roles WHERE name <> 'ADMIN';
 
 -- Mot de passe de tous les comptes de démo : Admin123!
 INSERT INTO users (id, email, password_hash, full_name, first_name, last_name, is_active) VALUES

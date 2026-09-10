@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
 import { api } from '../api/client';
 import { FormField, PermissionMatrixRow, ProcessDefinition, Role } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface StepInfo {
   id: string;
@@ -39,6 +40,8 @@ function rowKey(stepName: string, roleId: number): string {
 
 export function PermissionsMatrixPage() {
   const { id } = useParams<{ id: string }>();
+  const { hasAccess } = useAuth();
+  const canEdit = hasAccess('PERMISSIONS_MATRIX', 'FULL');
   const [process, setProcess] = useState<ProcessDefinition | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [rows, setRows] = useState<Record<string, RowState>>({});
@@ -130,9 +133,11 @@ export function PermissionsMatrixPage() {
         <h1 className="text-xl font-bold text-slate-800">Matrice de droits — {process.name}</h1>
         <div className="flex items-center gap-3">
           {status && <span className="text-sm text-slate-400">{status}</span>}
-          <button onClick={save} className="btn-primary">
-            <Save size={16} /> Enregistrer la matrice
-          </button>
+          {canEdit && (
+            <button onClick={save} className="btn-primary">
+              <Save size={16} /> Enregistrer la matrice
+            </button>
+          )}
         </div>
       </div>
 
@@ -171,6 +176,7 @@ export function PermissionsMatrixPage() {
                                   <input
                                     type="checkbox"
                                     checked={perm.read}
+                                    disabled={!canEdit}
                                     onChange={(e) => updateFieldPermission(step.name, role.id, f.key, { read: e.target.checked })}
                                   />
                                   L
@@ -179,6 +185,7 @@ export function PermissionsMatrixPage() {
                                   <input
                                     type="checkbox"
                                     checked={perm.write}
+                                    disabled={!canEdit}
                                     onChange={(e) => updateFieldPermission(step.name, role.id, f.key, { write: e.target.checked })}
                                   />
                                   E
@@ -191,6 +198,7 @@ export function PermissionsMatrixPage() {
                           <input
                             type="checkbox"
                             checked={row.canViewDocuments}
+                            disabled={!canEdit}
                             onChange={(e) => updateRow(step.name, role.id, { canViewDocuments: e.target.checked })}
                           />
                         </td>
@@ -198,6 +206,7 @@ export function PermissionsMatrixPage() {
                           <input
                             type="checkbox"
                             checked={row.canUploadDocuments}
+                            disabled={!canEdit}
                             onChange={(e) => updateRow(step.name, role.id, { canUploadDocuments: e.target.checked })}
                           />
                         </td>

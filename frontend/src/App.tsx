@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute';
+import { ProtectedRoute, RequirePageAccess } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { ProcessesPage } from './pages/ProcessesPage';
 import { ProcessDesignerPage } from './pages/ProcessDesignerPage';
@@ -36,9 +36,9 @@ export default function App() {
         <Route
           path="/processes/:id/permissions"
           element={
-            <AdminRoute>
+            <RequirePageAccess pageKey="PERMISSIONS_MATRIX" minLevel="VIEW">
               <PermissionsMatrixPage />
-            </AdminRoute>
+            </RequirePageAccess>
           }
         />
         <Route path="/tasks" element={<TasksPage />} />
@@ -51,49 +51,49 @@ export default function App() {
         <Route
           path="/admin/users"
           element={
-            <AdminRoute>
+            <RequirePageAccess pageKey="USERS" minLevel="VIEW">
               <AdminUsersPage />
-            </AdminRoute>
+            </RequirePageAccess>
           }
         />
         <Route
           path="/admin/audit"
           element={
-            <AdminRoute>
+            <RequirePageAccess pageKey="AUDIT" minLevel="VIEW">
               <AuditPage />
-            </AdminRoute>
+            </RequirePageAccess>
           }
         />
         <Route
           path="/admin/fields"
           element={
-            <AdminRoute>
+            <RequirePageAccess pageKey="FIELDS_REGISTRY" minLevel="VIEW">
               <FieldsRegistryPage />
-            </AdminRoute>
+            </RequirePageAccess>
           }
         />
         <Route
           path="/admin/database"
           element={
-            <AdminRoute>
+            <RequirePageAccess pageKey="DATABASE" minLevel="VIEW">
               <DatabaseSchemaPage />
-            </AdminRoute>
+            </RequirePageAccess>
           }
         />
         <Route
           path="/admin/notifications"
           element={
-            <AdminRoute>
+            <RequirePageAccess pageKey="NOTIFICATIONS_CONFIG" minLevel="VIEW">
               <AdminNotificationsPage />
-            </AdminRoute>
+            </RequirePageAccess>
           }
         />
         <Route
           path="/admin/roles"
           element={
-            <AdminRoute>
+            <RequirePageAccess pageKey="ROLES" minLevel="VIEW">
               <RolesPage />
-            </AdminRoute>
+            </RequirePageAccess>
           }
         />
       </Route>

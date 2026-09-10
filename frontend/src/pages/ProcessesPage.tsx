@@ -13,7 +13,9 @@ const statusBadge: Record<string, string> = {
 };
 
 export function ProcessesPage() {
-  const { isAdmin } = useAuth();
+  const { hasAccess } = useAuth();
+  const canDesign = hasAccess('PROCESSES_DESIGN', 'FULL');
+  const canSeePermissions = hasAccess('PERMISSIONS_MATRIX', 'VIEW');
   const [processes, setProcesses] = useState<ProcessDefinition[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [startModalProcess, setStartModalProcess] = useState<ProcessDefinition | null>(null);
@@ -80,7 +82,7 @@ export function ProcessesPage() {
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Processus</h1>
-        {isAdmin && (
+        {canDesign && (
           <button
             onClick={createProcess}
             className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
@@ -120,10 +122,10 @@ export function ProcessesPage() {
                       onClick={() => navigate(`/processes/${p.id}`)}
                       className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
                     >
-                      {p.status === 'DRAFT' ? <PencilLine size={14} /> : <Settings size={14} />}
-                      {p.status === 'DRAFT' ? 'Modifier' : 'Voir'}
+                      {p.status === 'DRAFT' && canDesign ? <PencilLine size={14} /> : <Settings size={14} />}
+                      {p.status === 'DRAFT' && canDesign ? 'Modifier' : 'Voir'}
                     </button>
-                    {isAdmin && (
+                    {canSeePermissions && (
                       <button
                         onClick={() => navigate(`/processes/${p.id}/permissions`)}
                         className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
@@ -131,7 +133,7 @@ export function ProcessesPage() {
                         <ShieldCheck size={14} /> Droits
                       </button>
                     )}
-                    {isAdmin && p.status === 'DRAFT' && (
+                    {canDesign && p.status === 'DRAFT' && (
                       <button
                         onClick={() => publish(p.id)}
                         className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"

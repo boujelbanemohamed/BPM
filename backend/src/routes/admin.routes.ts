@@ -2,7 +2,8 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { pool, withTransaction } from '../db/pool';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
+import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { env } from '../config/env';
 import { findUserById, toPublicUser } from '../db/usersRepo';
@@ -12,7 +13,7 @@ import { reassignPendingTasksForUser } from '../services/delegationService';
 import { notifyAccountDeactivated, notifyPasswordChanged, notifyTaskAssigned, notifyWelcome } from '../services/notificationService';
 
 export const adminUsersRouter = Router();
-adminUsersRouter.use(requireAuth, requireRole('ADMIN'));
+adminUsersRouter.use(requireAuth, requirePageAccess('USERS', 'VIEW'));
 
 adminUsersRouter.get(
   '/',
@@ -34,6 +35,7 @@ const createUserSchema = z.object({
 
 adminUsersRouter.post(
   '/',
+  requirePageAccess('USERS', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = createUserSchema.parse(req.body);
     const passwordHash = await bcrypt.hash(body.password, env.BCRYPT_ROUNDS);
@@ -105,6 +107,7 @@ const updateUserSchema = z
 
 adminUsersRouter.put(
   '/:id',
+  requirePageAccess('USERS', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = updateUserSchema.parse(req.body);
     const targetId = req.params.id;
@@ -215,6 +218,7 @@ adminUsersRouter.put(
 
 adminUsersRouter.post(
   '/:id/deactivate',
+  requirePageAccess('USERS', 'FULL'),
   asyncHandler(async (req, res) => {
     const targetId = req.params.id;
     if (targetId === req.user!.id) {
@@ -289,6 +293,7 @@ adminUsersRouter.post(
 
 adminUsersRouter.post(
   '/:id/activate',
+  requirePageAccess('USERS', 'FULL'),
   asyncHandler(async (req, res) => {
     const targetId = req.params.id;
     const target = await findUserById(pool, targetId);

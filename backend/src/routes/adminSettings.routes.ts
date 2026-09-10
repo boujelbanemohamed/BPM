@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../db/pool';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
+import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { writeAuditLog } from '../lib/audit';
@@ -9,7 +10,7 @@ import { renderTemplateStrings, sendTestEmail } from '../lib/mailer';
 import { NotificationTemplateRow, SmtpSettingsRow } from '../types';
 
 export const adminSettingsRouter = Router();
-adminSettingsRouter.use(requireAuth, requireRole('ADMIN'));
+adminSettingsRouter.use(requireAuth, requirePageAccess('NOTIFICATIONS_CONFIG', 'VIEW'));
 
 /** Valeurs d'exemple pour l'aperçu, une par variable connue dans les modèles. */
 const SAMPLE_VARS: Record<string, string> = {
@@ -57,6 +58,7 @@ const smtpSchema = z.object({
 
 adminSettingsRouter.put(
   '/smtp',
+  requirePageAccess('NOTIFICATIONS_CONFIG', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = smtpSchema.parse(req.body);
 
@@ -99,6 +101,7 @@ adminSettingsRouter.put(
 
 adminSettingsRouter.post(
   '/smtp/test',
+  requirePageAccess('NOTIFICATIONS_CONFIG', 'FULL'),
   asyncHandler(async (req, res) => {
     const result = await sendTestEmail(req.user!.email, req.user!.fullName);
     if (!result.ok) throw new HttpError(502, `Échec de l'envoi : ${result.error}`);
@@ -124,6 +127,7 @@ const templateSchema = z.object({
 
 adminSettingsRouter.put(
   '/notification-templates/:key',
+  requirePageAccess('NOTIFICATIONS_CONFIG', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = templateSchema.parse(req.body);
     const { rows } = await pool.query<NotificationTemplateRow>(
@@ -148,6 +152,7 @@ adminSettingsRouter.put(
 
 adminSettingsRouter.post(
   '/notification-templates/:key/reset',
+  requirePageAccess('NOTIFICATIONS_CONFIG', 'FULL'),
   asyncHandler(async (req, res) => {
     const { rows: defaultRows } = await pool.query<{ heading: string; subject: string; body_html: string }>(
       `SELECT heading, subject, body_html FROM notification_templates_defaults WHERE key = $1`,

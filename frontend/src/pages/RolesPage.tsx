@@ -1,7 +1,25 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { ClipboardList, KeyRound, Lock, PencilLine, PlusCircle, Shield, Users, X } from 'lucide-react';
+import { ClipboardList, KeyRound, Lock, PencilLine, PlusCircle, Save, Shield, Users, X } from 'lucide-react';
 import { api } from '../api/client';
-import { RoleWithUsers } from '../types';
+import { PAGE_KEYS, PageAccessLevel, PageKey, RoleWithUsers } from '../types';
+import { useAuth } from '../context/AuthContext';
+
+const PAGE_LABELS: Record<PageKey, { label: string; levels: PageAccessLevel[] }> = {
+  PROCESSES_DESIGN: { label: 'Conception des processus', levels: ['NONE', 'VIEW', 'FULL'] },
+  PERMISSIONS_MATRIX: { label: 'Matrice de droits', levels: ['NONE', 'VIEW', 'FULL'] },
+  USERS: { label: 'Utilisateurs', levels: ['NONE', 'VIEW', 'FULL'] },
+  AUDIT: { label: 'Audit', levels: ['NONE', 'VIEW'] },
+  DATABASE: { label: 'Base de données', levels: ['NONE', 'VIEW'] },
+  FIELDS_REGISTRY: { label: 'Champs', levels: ['NONE', 'VIEW'] },
+  NOTIFICATIONS_CONFIG: { label: 'Notifications (SMTP + modèles email)', levels: ['NONE', 'VIEW', 'FULL'] },
+  ROLES: { label: 'Rôles', levels: ['NONE', 'VIEW', 'FULL'] },
+};
+
+const LEVEL_LABELS: Record<PageAccessLevel, string> = {
+  NONE: 'Aucun accès',
+  VIEW: 'Consultation',
+  FULL: 'Accès complet',
+};
 
 const ADMIN_ACCESS = [
   {
@@ -39,6 +57,8 @@ const STANDARD_ACCESS = [
 ];
 
 export function RolesPage() {
+  const { hasAccess } = useAuth();
+  const canManage = hasAccess('ROLES', 'FULL');
   const [roles, setRoles] = useState<RoleWithUsers[]>([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -48,6 +68,10 @@ export function RolesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
+
+  const [pageAccessDrafts, setPageAccessDrafts] = useState<Record<number, Record<PageKey, PageAccessLevel>>>({});
+  const [accessStatus, setAccessStatus] = useState<Record<number, string | null>>({});
+  const [accessError, setAccessError] = useState<Record<number, string | null>>({});
 
   function load() {
     api.listRolesOverview().then(({ roles }) => setRoles(roles));
@@ -86,15 +110,42 @@ export function RolesPage() {
     }
   }
 
+  function getAccessDraft(role: RoleWithUsers): Record<PageKey, PageAccessLevel> {
+    return pageAccessDrafts[role.id] ?? role.pageAccess;
+  }
+
+  function setAccessLevel(role: RoleWithUsers, pageKey: PageKey, level: PageAccessLevel) {
+    setPageAccessDrafts((prev) => ({
+      ...prev,
+      [role.id]: { ...getAccessDraft(role), [pageKey]: level },
+    }));
+  }
+
+  async function saveAccess(role: RoleWithUsers) {
+    setAccessError((prev) => ({ ...prev, [role.id]: null }));
+    setAccessStatus((prev) => ({ ...prev, [role.id]: 'Enregistrement…' }));
+    try {
+      await api.updateRolePageAccess(role.id, getAccessDraft(role));
+      setAccessStatus((prev) => ({ ...prev, [role.id]: 'Enregistré' }));
+      load();
+      setTimeout(() => setAccessStatus((prev) => ({ ...prev, [role.id]: null })), 1500);
+    } catch (err) {
+      setAccessError((prev) => ({ ...prev, [role.id]: (err as Error).message }));
+      setAccessStatus((prev) => ({ ...prev, [role.id]: null }));
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
           <Shield size={22} /> Rôles
         </h1>
-        <button onClick={() => setCreating(true)} className="btn-primary">
-          <PlusCircle size={16} /> Nouveau rôle
-        </button>
+        {canManage && (
+          <button onClick={() => setCreating(true)} className="btn-primary">
+            <PlusCircle size={16} /> Nouveau rôle
+          </button>
+        )}
       </div>
 
       <p className="mb-6 text-sm text-slate-500">
@@ -103,7 +154,7 @@ export function RolesPage() {
         processus déjà conçus.
       </p>
 
-      {creating && (
+      {creating && canManage && (
         <form onSubmit={createRole} className="card mb-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-slate-700">Nouveau rôle</h2>
@@ -141,7 +192,7 @@ export function RolesPage() {
                     {role.users.length} utilisateur{role.users.length > 1 ? 's' : ''}
                   </span>
                 </div>
-                {editingId === role.id ? (
+                {editingId === role.id && canManage ? (
                   <div className="mt-2 space-y-2">
                     <input
                       className="input"
@@ -163,7 +214,7 @@ export function RolesPage() {
                   <p className="mt-1.5 text-sm text-slate-500">{role.description || <em>Aucune description</em>}</p>
                 )}
               </div>
-              {editingId !== role.id && (
+              {editingId !== role.id && canManage && (
                 <button onClick={() => startEdit(role)} className="btn-secondary">
                   <PencilLine size={14} /> Modifier
                 </button>
@@ -262,6 +313,39 @@ export function RolesPage() {
                   )}
                 </div>
               </div>
+
+              {role.name !== 'ADMIN' && canManage && (
+                <div className="mt-4 border-t border-slate-100 pt-3">
+                  <p className="mb-1 text-xs font-medium text-slate-400">
+                    Configurer l'accès aux pages (octroyé par le superadmin)
+                  </p>
+                  <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                    {PAGE_KEYS.map((key) => (
+                      <label key={key} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-slate-600">{PAGE_LABELS[key].label}</span>
+                        <select
+                          className="input w-auto py-1 text-xs"
+                          value={getAccessDraft(role)[key]}
+                          onChange={(e) => setAccessLevel(role, key, e.target.value as PageAccessLevel)}
+                        >
+                          {PAGE_LABELS[key].levels.map((lvl) => (
+                            <option key={lvl} value={lvl}>
+                              {LEVEL_LABELS[lvl]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                  {accessError[role.id] && <p className="mt-2 text-sm text-rose-600">{accessError[role.id]}</p>}
+                  <div className="mt-3 flex items-center gap-3">
+                    <button onClick={() => saveAccess(role)} className="btn-primary">
+                      <Save size={16} /> Enregistrer les accès
+                    </button>
+                    {accessStatus[role.id] && <span className="text-sm text-slate-400">{accessStatus[role.id]}</span>}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}

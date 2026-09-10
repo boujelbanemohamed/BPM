@@ -7,6 +7,8 @@ import {
   MinimalUser,
   NotificationItem,
   NotificationTemplate,
+  PageAccessLevel,
+  PageKey,
   PermissionMatrixRow,
   ProcessDefinition,
   ProcessInstance,
@@ -59,8 +61,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 export const api = {
   login: (email: string, password: string) =>
-    request<{ token: string; user: PublicUser }>('/auth/login', { method: 'POST', body: { email, password } }),
-  me: () => request<{ user: PublicUser }>('/auth/me'),
+    request<{ token: string; user: PublicUser; pageAccess: Record<PageKey, PageAccessLevel> }>('/auth/login', {
+      method: 'POST',
+      body: { email, password },
+    }),
+  me: () => request<{ user: PublicUser; pageAccess: Record<PageKey, PageAccessLevel> }>('/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ ok: true }>('/auth/me/password', { method: 'PUT', body: { currentPassword, newPassword } }),
 
@@ -91,6 +96,8 @@ export const api = {
     request<{ role: Role }>('/roles', { method: 'POST', body: payload }),
   updateRole: (id: number, payload: { description: string | null }) =>
     request<{ role: Role }>(`/roles/${id}`, { method: 'PUT', body: payload }),
+  updateRolePageAccess: (id: number, pageAccess: Record<PageKey, PageAccessLevel>) =>
+    request<{ ok: true }>(`/roles/${id}/page-access`, { method: 'PUT', body: { pageAccess } }),
   listUsersMinimal: () => request<{ users: MinimalUser[] }>('/users'),
   getMyDelegation: () => request<{ delegation: PublicUser }>('/users/me/delegation'),
   updateMyDelegation: (payload: {
