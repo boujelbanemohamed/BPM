@@ -19,6 +19,10 @@ export interface PublicUser {
   id: string;
   email: string;
   fullName: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
   isActive: boolean;
   absenceStart: string | null;
   absenceEnd: string | null;

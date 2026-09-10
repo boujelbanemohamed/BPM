@@ -20,6 +20,10 @@ export interface User {
   email: string;
   password_hash: string;
   full_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
   is_active: boolean;
   absence_start: string | null;
   absence_end: string | null;
@@ -33,6 +37,10 @@ export interface PublicUser {
   id: string;
   email: string;
   fullName: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
   isActive: boolean;
   absenceStart: string | null;
   absenceEnd: string | null;

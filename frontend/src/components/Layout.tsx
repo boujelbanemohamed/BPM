@@ -90,8 +90,17 @@ export function Layout() {
               </span>
             )}
           </NavLink>
-          <NavLink to="/profile" className="text-sm text-slate-600 hover:text-brand-700">
-            {user?.fullName} <span className="text-slate-400">· {user?.roles.join(', ')}</span>
+          <NavLink to="/profile" className="flex items-center gap-2 text-sm text-slate-600 hover:text-brand-700">
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+            ) : (
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+                {(user?.firstName?.[0] ?? user?.fullName?.[0] ?? '?').toUpperCase()}
+              </span>
+            )}
+            <span>
+              {user?.fullName} <span className="text-slate-400">· {user?.roles.join(', ')}</span>
+            </span>
           </NavLink>
           <button
             onClick={logout}

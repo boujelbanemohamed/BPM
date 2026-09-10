@@ -1,11 +1,11 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { KeyRound, Save, Users } from 'lucide-react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { Camera, KeyRound, Save, User as UserIcon, Users } from 'lucide-react';
 import { api } from '../api/client';
 import { MinimalUser, PublicUser } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [delegation, setDelegation] = useState<PublicUser | null>(null);
   const [users, setUsers] = useState<MinimalUser[]>([]);
   const [delegate1, setDelegate1] = useState('');
@@ -14,6 +14,16 @@ export function ProfilePage() {
   const [absenceEnd, setAbsenceEnd] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [infoStatus, setInfoStatus] = useState<string | null>(null);
+  const [infoError, setInfoError] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -30,6 +40,45 @@ export function ProfilePage() {
     });
     api.listUsersMinimal().then(({ users }) => setUsers(users));
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setFirstName(user.firstName ?? '');
+    setLastName(user.lastName ?? '');
+    setPhone(user.phone ?? '');
+    setEmail(user.email);
+  }, [user]);
+
+  async function saveInfo(e: FormEvent) {
+    e.preventDefault();
+    setInfoError(null);
+    setInfoStatus('Enregistrement…');
+    try {
+      await api.updateMyProfile({ firstName, lastName, phone: phone || null, email });
+      await refreshUser();
+      setInfoStatus('Enregistré');
+      setTimeout(() => setInfoStatus(null), 1500);
+    } catch (err) {
+      setInfoError((err as Error).message);
+      setInfoStatus(null);
+    }
+  }
+
+  async function onAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setAvatarError(null);
+    setAvatarUploading(true);
+    try {
+      await api.uploadMyAvatar(file);
+      await refreshUser();
+    } catch (err) {
+      setAvatarError((err as Error).message);
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -74,6 +123,85 @@ export function ProfilePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6">
       <h1 className="text-2xl font-bold text-slate-800">Mon profil</h1>
+
+      <div className="card space-y-4">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-700">
+          <UserIcon size={18} /> Mes informations
+        </h2>
+
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt="Photo de profil"
+                className="h-20 w-20 rounded-full object-cover ring-2 ring-slate-100"
+              />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-100 text-2xl font-bold text-brand-700 ring-2 ring-slate-100">
+                {(user?.firstName?.[0] ?? user?.fullName?.[0] ?? '?').toUpperCase()}
+                {(user?.lastName?.[0] ?? '').toUpperCase()}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-brand-600 text-white shadow hover:bg-brand-700 disabled:opacity-50"
+              title="Changer la photo de profil"
+            >
+              <Camera size={14} />
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={onAvatarChange}
+            />
+          </div>
+          <div className="text-sm text-slate-500">
+            <p>{avatarUploading ? 'Envoi de la photo…' : 'PNG, JPEG ou WebP, 5 Mo max.'}</p>
+            {avatarError && <p className="text-rose-600">{avatarError}</p>}
+          </div>
+        </div>
+
+        <form onSubmit={saveInfo} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Prénom</span>
+              <input required className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Nom</span>
+              <input required className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Téléphone</span>
+              <input
+                type="tel"
+                className="input"
+                placeholder="+33 6 12 34 56 78"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Email</span>
+              <input type="email" required className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+          </div>
+          {infoError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{infoError}</p>}
+          <div className="flex items-center gap-3">
+            <button type="submit" className="btn-primary">
+              <Save size={16} /> Enregistrer
+            </button>
+            {infoStatus && <span className="text-sm text-slate-400">{infoStatus}</span>}
+          </div>
+        </form>
+      </div>
 
       <form onSubmit={save} className="card space-y-4">
         <h2 className="flex items-center gap-2 font-semibold text-slate-700">

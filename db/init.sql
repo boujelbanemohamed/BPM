@@ -45,6 +45,10 @@ CREATE TABLE users (
   email               VARCHAR(255) UNIQUE NOT NULL,
   password_hash       VARCHAR(255) NOT NULL,
   full_name           VARCHAR(255) NOT NULL,
+  first_name          VARCHAR(255),
+  last_name           VARCHAR(255),
+  phone               VARCHAR(50),
+  avatar_url          VARCHAR(500),
   is_active           BOOLEAN NOT NULL DEFAULT TRUE,
   absence_start       DATE,
   absence_end         DATE,
@@ -256,12 +260,12 @@ INSERT INTO roles (name, description) VALUES
   ('OPERATOR',  'Opérateur / utilisateur standard');
 
 -- Mot de passe de tous les comptes de démo : Admin123!
-INSERT INTO users (id, email, password_hash, full_name, is_active) VALUES
-  ('11111111-1111-1111-1111-111111111111', 'admin@bpm.local',     crypt('Admin123!', gen_salt('bf', 12)), 'Administrateur Système', TRUE),
-  ('22222222-2222-2222-2222-222222222222', 'validator@bpm.local', crypt('Admin123!', gen_salt('bf', 12)), 'Valérie Validateur',     TRUE),
-  ('33333333-3333-3333-3333-333333333333', 'operator@bpm.local',  crypt('Admin123!', gen_salt('bf', 12)), 'Olivier Opérateur',      TRUE),
-  ('44444444-4444-4444-4444-444444444444', 'backup1@bpm.local',   crypt('Admin123!', gen_salt('bf', 12)), 'Brigitte Suppléant1',    TRUE),
-  ('55555555-5555-5555-5555-555555555555', 'backup2@bpm.local',   crypt('Admin123!', gen_salt('bf', 12)), 'Bernard Suppléant2',     TRUE);
+INSERT INTO users (id, email, password_hash, full_name, first_name, last_name, is_active) VALUES
+  ('11111111-1111-1111-1111-111111111111', 'admin@bpm.local',     crypt('Admin123!', gen_salt('bf', 12)), 'Administrateur Système', 'Administrateur', 'Système',     TRUE),
+  ('22222222-2222-2222-2222-222222222222', 'validator@bpm.local', crypt('Admin123!', gen_salt('bf', 12)), 'Valérie Validateur',     'Valérie',        'Validateur',  TRUE),
+  ('33333333-3333-3333-3333-333333333333', 'operator@bpm.local',  crypt('Admin123!', gen_salt('bf', 12)), 'Olivier Opérateur',      'Olivier',        'Opérateur',   TRUE),
+  ('44444444-4444-4444-4444-444444444444', 'backup1@bpm.local',   crypt('Admin123!', gen_salt('bf', 12)), 'Brigitte Suppléant1',    'Brigitte',       'Suppléant1',  TRUE),
+  ('55555555-5555-5555-5555-555555555555', 'backup2@bpm.local',   crypt('Admin123!', gen_salt('bf', 12)), 'Bernard Suppléant2',     'Bernard',        'Suppléant2',  TRUE);
 
 INSERT INTO user_roles (user_id, role_id)
 SELECT '11111111-1111-1111-1111-111111111111', id FROM roles WHERE name = 'ADMIN';

@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import path from 'path';
 import { env } from './config/env';
 import { logger } from './lib/logger';
 import { pool } from './db/pool';
@@ -36,6 +37,8 @@ app.use((req, _res, next) => {
 });
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, timestamp: new Date().toISOString() }));
+
+app.use('/uploads/avatars', express.static(path.join(env.UPLOAD_DIR, 'avatars')));
 
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);

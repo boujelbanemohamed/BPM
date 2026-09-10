@@ -61,6 +61,22 @@ export const api = {
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ ok: true }>('/auth/me/password', { method: 'PUT', body: { currentPassword, newPassword } }),
 
+  updateMyProfile: (payload: { firstName: string; lastName: string; phone: string | null; email: string }) =>
+    request<{ user: PublicUser }>('/users/me', { method: 'PUT', body: payload }),
+  uploadMyAvatar: async (file: File): Promise<{ user: PublicUser }> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const token = getToken();
+    const res = await fetch('/api/users/me/avatar', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
+    return data as { user: PublicUser };
+  },
+
   listRoles: () => request<{ roles: Role[] }>('/roles'),
   listUsersMinimal: () => request<{ users: MinimalUser[] }>('/users'),
   getMyDelegation: () => request<{ delegation: PublicUser }>('/users/me/delegation'),
