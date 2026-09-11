@@ -1,0 +1,536 @@
+{
+  "common": {
+    "appName": "BPM Platform",
+    "nav": {
+      "processes": "Processus",
+      "myTasks": "Mes tâches",
+      "instances": "Instances",
+      "clients": "Clients",
+      "documents": "Documents",
+      "fields": "Champs",
+      "configuration": "Configuration",
+      "notifications": "Notifications",
+      "database": "Base de données",
+      "audit": "Audit",
+      "roles": "Rôles",
+      "users": "Utilisateurs",
+      "logout": "Déconnexion"
+    },
+    "search": {
+      "placeholder": "Rechercher...",
+      "ariaLabel": "Rechercher",
+      "close": "Fermer la recherche",
+      "clear": "Effacer",
+      "loading": "Recherche...",
+      "noResults": "Aucun résultat pour « {{query}} »",
+      "processes": "Processus",
+      "instances": "Instances",
+      "documents": "Documents"
+    },
+    "sending": "Envoi…",
+    "language": "Langue",
+    "fieldRequired": "Le champ \"{{label}}\" est obligatoire",
+    "yes": "Oui",
+    "no": "Non",
+    "pagination": {
+      "previous": "Précédent",
+      "next": "Suivant",
+      "range": "{{from}}–{{to}} / {{total}}"
+    }
+  },
+  "processes": {
+    "title": "Processus",
+    "trash": "Corbeille",
+    "downloadTemplate": "Modèle XML",
+    "importing": "Import en cours…",
+    "import": "Importer XML",
+    "new": "Nouveau processus",
+    "importResultTitle": "Résultat de l'import XML",
+    "importCreated": "{{count}} processus créé(s)",
+    "importErrors": "{{count}} erreur(s)",
+    "table": {
+      "reference": "Référence",
+      "name": "Nom",
+      "version": "Version",
+      "status": "Statut",
+      "attachment": "Pièce jointe",
+      "createdBy": "Créé par",
+      "actions": "Actions"
+    },
+    "empty": "Aucun processus pour l'instant.",
+    "view": "Voir",
+    "edit": "Modifier",
+    "compare": "Comparer",
+    "permissions": "Droits",
+    "publish": "Publier",
+    "start": "Démarrer",
+    "archive": "Archiver",
+    "duplicate": "Dupliquer",
+    "duplicating": "Duplication…",
+    "delete": "Supprimer",
+    "visualize": "Visualiser",
+    "confirmPublish": "Publier ce processus ? Il ne pourra plus être modifié ensuite.",
+    "confirmArchive": "Archiver ce processus ? Il ne pourra plus être démarré, mais les instances déjà en cours continueront normalement.",
+    "confirmDelete": "Supprimer le processus \"{{name}}\" (v{{version}}) ? Il sera déplacé dans la corbeille.",
+    "nameRequired": "Le nom est requis",
+    "versionInvalid": "La version doit être un nombre entier supérieur ou égal à 1",
+    "selectFolder": "Sélectionnez un dossier à attacher",
+    "selectDocument": "Sélectionnez un document à attacher",
+    "createModal": {
+      "title": "Nouveau processus",
+      "name": "Nom du processus",
+      "version": "Version",
+      "attachment": "Pièce jointe (facultatif)",
+      "none": "— aucune —",
+      "folderOption": "Un dossier de la bibliothèque Documents",
+      "documentOption": "Un document de la bibliothèque Documents",
+      "attachFolder": "Dossier à attacher",
+      "chooseFolder": "— choisir un dossier —",
+      "noFolders": "Aucun dossier disponible pour l'instant.",
+      "attachDocument": "Document à attacher",
+      "chooseDocument": "— choisir un document —",
+      "noDocuments": "Aucun document disponible pour l'instant.",
+      "creating": "Création…",
+      "submit": "Créer le processus",
+      "documentCount_one": "{{count}} document",
+      "documentCount_other": "{{count}} documents"
+    },
+    "startModal": {
+      "title": "Démarrer : {{name}}",
+      "submit": "Démarrer l'instance"
+    }
+  },
+  "profile": {
+    "title": "Mon profil",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "cancel": "Annuler",
+    "myInfo": {
+      "heading": "Mes informations",
+      "changePhotoTitle": "Changer la photo de profil",
+      "uploading": "Envoi de la photo…",
+      "photoHint": "PNG, JPEG ou WebP, 5 Mo max.",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "phone": "Téléphone",
+      "email": "Email",
+      "emailNotifications": "Recevoir les notifications de workflow par email (tâches, processus terminés, compte désactivé)"
+    },
+    "delegation": {
+      "heading": "Mes délégations & congés",
+      "description": "Si votre compte est désactivé ou que vous êtes en congé sur la période ci-dessous, vos tâches en attente seront automatiquement réassignées à votre Suppléant 1, puis à votre Suppléant 2 si celui-ci est également indisponible.",
+      "delegate1": "Suppléant 1 (prioritaire)",
+      "delegate2": "Suppléant 2 (backup secondaire)",
+      "none": "— aucun —",
+      "absenceStart": "Début de congé",
+      "absenceEnd": "Fin de congé"
+    },
+    "password": {
+      "heading": "Changer mon mot de passe",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe (8 caractères min.)",
+      "update": "Mettre à jour",
+      "changed": "Mot de passe modifié"
+    },
+    "twoFactor": {
+      "heading": "Authentification à deux facteurs (2FA)",
+      "enabledNote": "2FA activée. Notez ces codes de secours dans un endroit sûr : ils ne seront plus affichés.",
+      "notedCodes": "J'ai noté mes codes",
+      "enabledSimple": "La 2FA est activée sur votre compte.",
+      "disable": "Désactiver la 2FA",
+      "confirmWithPassword": "Confirmez avec votre mot de passe",
+      "disabling": "Désactivation…",
+      "confirmDisable": "Confirmer la désactivation",
+      "setupDescription": "Ajoutez une étape de vérification supplémentaire à la connexion via une application d'authentification (Google Authenticator, Authy...).",
+      "enable": "Activer la 2FA",
+      "scanQr": "Scannez ce QR code avec votre application d'authentification, puis saisissez le code à 6 chiffres généré pour confirmer.",
+      "sixDigitCode": "Code à 6 chiffres",
+      "verifying": "Vérification…",
+      "confirm": "Confirmer"
+    }
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "login": "Se connecter",
+    "loggingIn": "Connexion…",
+    "demoAccounts": "Comptes de démo (mot de passe Admin123!) : admin@bpm.local · validator@bpm.local · operator@bpm.local",
+    "twoFactorTitle": "Vérification en deux étapes",
+    "twoFactorInstructions": "Saisissez le code à 6 chiffres de votre application d'authentification, ou l'un de vos codes de secours.",
+    "code": "Code",
+    "verify": "Vérifier",
+    "verifying": "Vérification…",
+    "back": "Retour",
+    "forgotTitle": "Email envoyé",
+    "forgotSentMessage": "Si un compte existe avec cette adresse, un email contenant un lien de réinitialisation vient de vous être envoyé.",
+    "backToLogin": "Retour à la connexion",
+    "forgotInstructions": "Saisissez votre adresse email : nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+    "sendLink": "Envoyer le lien",
+    "passwordMismatch": "Les deux mots de passe ne correspondent pas",
+    "invalidResetLink": "Lien de réinitialisation invalide : le jeton est manquant dans l'URL.",
+    "passwordChanged": "Mot de passe modifié",
+    "passwordChangedMessage": "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+    "goToLogin": "Aller à la connexion",
+    "chooseNewPassword": "Choisissez un nouveau mot de passe.",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "saving": "Enregistrement…",
+    "chooseThisPassword": "Choisir ce mot de passe"
+  },
+  "tasks": {
+    "title": "Mes tâches",
+    "delegated": "Reçue par suppléance",
+    "pool": "Pool {{role}}",
+    "process": "Processus : {{name}}",
+    "close": "Fermer",
+    "handle": "Traiter",
+    "submit": "Valider la tâche",
+    "empty": "Aucune tâche en attente."
+  },
+  "instances": {
+    "title": "Instances",
+    "table": {
+      "process": "Processus",
+      "status": "Statut",
+      "currentStep": "Étape actuelle",
+      "startedBy": "Démarrée par",
+      "startedAt": "Le"
+    },
+    "view": "Voir",
+    "empty": "Aucune instance pour l'instant."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Tout marquer comme lu",
+    "open": "Ouvrir",
+    "markRead": "Marquer lu",
+    "empty": "Aucune notification."
+  },
+  "clients": {
+    "title": "Clients",
+    "new": "Nouveau client",
+    "namePlaceholder": "Nom *",
+    "emailPlaceholder": "Email",
+    "phonePlaceholder": "Téléphone",
+    "create": "Créer",
+    "nameRequired": "Le nom est obligatoire",
+    "searchPlaceholder": "Rechercher un client…",
+    "table": {
+      "name": "Nom",
+      "email": "Email",
+      "phone": "Téléphone",
+      "folders": "Dossiers"
+    },
+    "view": "Voir",
+    "empty": "Aucun client.",
+    "detail": {
+      "backToClients": "Retour aux clients",
+      "contactInfo": "Coordonnées",
+      "name": "Nom",
+      "address": "Adresse",
+      "notes": "Notes",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "relatedProcesses": "Processus liés ({{count}})",
+      "table": {
+        "process": "Processus",
+        "status": "Statut",
+        "currentStep": "Étape actuelle",
+        "startedAt": "Démarré le"
+      },
+      "view": "Voir",
+      "empty": "Aucun dossier pour ce client."
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "newFolder": "Nouveau dossier",
+    "folderCount_one": "{{count}} document",
+    "folderCount_other": "{{count}} documents",
+    "empty": "Aucun dossier pour l'instant.",
+    "createModal": {
+      "title": "Nouveau dossier",
+      "name": "Nom du dossier",
+      "creating": "Création…",
+      "submit": "Créer le dossier"
+    },
+    "nameRequired": "Le nom est requis",
+    "backToDocuments": "Retour aux documents",
+    "uploadFile": "Déposer un fichier",
+    "view": "Visualiser",
+    "download": "Télécharger",
+    "loading": "Chargement…",
+    "emptyFiles": "Aucun document."
+  },
+  "audit": {
+    "title": "Audit trail",
+    "filterPlaceholder": "Filtrer par action (ex: TASK_COMPLETED)",
+    "filter": "Filtrer",
+    "eventCount": "{{count}} événement(s)",
+    "table": {
+      "date": "Date",
+      "actor": "Acteur",
+      "action": "Action",
+      "entity": "Entité",
+      "details": "Détails",
+      "ip": "IP"
+    },
+    "empty": "Aucun événement."
+  },
+  "adminUsers": {
+    "title": "Administration des utilisateurs",
+    "twoFactorCount": "{{count}} / {{total}} utilisateur(s) avec la 2FA activée",
+    "downloadTemplate": "Modèle CSV",
+    "importing": "Import en cours…",
+    "import": "Importer CSV",
+    "new": "Nouvel utilisateur",
+    "importResultTitle": "Résultat de l'import CSV",
+    "created": "{{count}} créé(s)",
+    "updated": "{{count}} mis à jour",
+    "errors": "{{count}} erreur(s)",
+    "row": "Ligne {{row}}",
+    "editTitle": "Modifier l'utilisateur",
+    "passwordEditHint": "Mot de passe (8 caractères min., laisser vide pour ne pas le modifier)",
+    "passwordNewHint": "Mot de passe initial (8 caractères min.)",
+    "roles": "Rôles",
+    "delegate1": "Suppléant 1",
+    "delegate2": "Suppléant 2",
+    "createAccount": "Créer le compte",
+    "table": {
+      "name": "Nom",
+      "email": "Email",
+      "roles": "Rôles",
+      "status": "Statut",
+      "twoFactor": "2FA",
+      "delegates": "Suppléants",
+      "actions": "Actions"
+    },
+    "active": "Actif",
+    "inactive": "Désactivé",
+    "twoFactorEnabled": "Activée",
+    "edit": "Modifier",
+    "deactivate": "Désactiver",
+    "reactivate": "Réactiver",
+    "confirmDeactivate": "Désactiver le compte de {{name}} ? Ses tâches en attente seront réassignées à sa chaîne de suppléance.",
+    "deactivatedInfo": "Compte désactivé. {{count}} tâche(s) réassignée(s)."
+  },
+  "roles": {
+    "title": "Rôles",
+    "new": "Nouveau rôle",
+    "description": "Un rôle définit à qui une tâche BPMN peut être assignée et sert de clé dans la matrice de droits d'un processus. Le nom d'un rôle n'est pas modifiable une fois créé, car il est référencé tel quel dans les processus déjà conçus.",
+    "createForm": {
+      "title": "Nouveau rôle",
+      "namePattern": "Nom (lettres, chiffres, underscores — ex. JURISTE)",
+      "description": "Description",
+      "submit": "Créer le rôle"
+    },
+    "userCount_one": "{{count}} utilisateur",
+    "userCount_other": "{{count}} utilisateurs",
+    "editDescriptionPlaceholder": "Description du rôle",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "noDescription": "Aucune description",
+    "users": "Utilisateurs",
+    "noUsers": "Aucun utilisateur n'a ce rôle.",
+    "access": "Accès",
+    "adminExclusive": "Exclusif à ADMIN",
+    "standardAccess": "Accès standard (tout utilisateur connecté)",
+    "assignedTasks": "Tâches BPMN assignées à ce rôle",
+    "noAssignedTasks": "Aucune tâche assignée à ce rôle pour l'instant.",
+    "permissionRules": "Règles de droits définies",
+    "noPermissionRules": "Aucune règle spécifique : accès par défaut aux champs et documents de son étape.",
+    "fieldCount_one": "{{count}} champ configuré",
+    "fieldCount_other": "{{count}} champs configurés",
+    "documentsUpload": "dépôt autorisé",
+    "documentsView": "consultation",
+    "documentsNone": "aucun accès",
+    "configurePageAccess": "Configurer l'accès aux pages (octroyé par le superadmin)",
+    "saveAccess": "Enregistrer les accès",
+    "loading": "Chargement…",
+    "pageLabels": {
+      "PROCESSES_DESIGN": "Conception des processus",
+      "PERMISSIONS_MATRIX": "Matrice de droits",
+      "USERS": "Utilisateurs",
+      "AUDIT": "Audit",
+      "DATABASE": "Base de données",
+      "FIELDS_REGISTRY": "Champs",
+      "NOTIFICATIONS_CONFIG": "Notifications (SMTP + modèles email)",
+      "ROLES": "Rôles",
+      "DOCUMENTS": "Documents (bibliothèque de dossiers/fichiers)"
+    },
+    "levelLabels": {
+      "NONE": "Aucun accès",
+      "VIEW": "Consultation",
+      "FULL": "Accès complet"
+    },
+    "adminAccess": {
+      "users": { "label": "Gestion des utilisateurs", "detail": "créer/modifier/désactiver des comptes, réinitialiser un mot de passe" },
+      "processDesign": { "label": "Conception des processus", "detail": "créer un processus, éditer son BPMN, le publier" },
+      "permissionsMatrix": { "label": "Matrice de droits", "detail": "définir qui voit/modifie quel champ à quelle étape" },
+      "configMenu": { "label": "Le menu Configuration en entier", "detail": "Notifications (SMTP + modèles email), Base de données, Audit, Rôles, Utilisateurs" },
+      "fieldsTab": { "label": "L'onglet Champs", "detail": "registre de tous les champs de formulaire" }
+    },
+    "standardAccessItems": {
+      "startProcess": "Démarrer un processus et traiter les tâches qui lui sont assignées",
+      "viewInstances": "Consulter la liste des instances de processus",
+      "manageClients": "Gérer le module Clients (créer, consulter, modifier)",
+      "manageProfile": "Gérer son propre profil : nom, téléphone, avatar, mot de passe, préférence de notifications email, suppléants"
+    }
+  },
+  "designer": {
+    "backToProcesses": "Retour aux processus",
+    "loading": "Chargement…",
+    "noAttachment": "Aucune pièce jointe",
+    "edit": "Modifier",
+    "printPdf": "Imprimer PDF",
+    "permissionsMatrix": "Matrice de droits",
+    "readOnlyNotice": "Ce processus est publié : lecture seule. Créez un nouveau processus pour une nouvelle version.",
+    "attachEditor": {
+      "none": "— aucune pièce jointe —",
+      "folder": "Un dossier",
+      "document": "Un document"
+    },
+    "pdfExport": {
+      "titleSuffix": "{{name}} — export PDF",
+      "printButton": "Imprimer / Enregistrer en PDF",
+      "exportedOn": "Exporté le {{date}}",
+      "popupBlocked": "Impossible d'ouvrir l'onglet d'impression (bloqué par le navigateur)"
+    }
+  },
+  "trash": {
+    "title": "Corbeille",
+    "table": {
+      "reference": "Référence",
+      "name": "Nom",
+      "version": "Version",
+      "deletedBy": "Supprimé par",
+      "deletedAt": "Supprimé le",
+      "actions": "Actions"
+    },
+    "restore": "Restaurer",
+    "deletePermanently": "Supprimer définitivement",
+    "confirmDeletePermanently": "Supprimer définitivement le processus \"{{name}}\" (v{{version}}) ? Cette action est irréversible.",
+    "empty": "La corbeille est vide."
+  },
+  "matrix": {
+    "backToProcess": "Retour au processus",
+    "title": "Matrice de droits — {{name}}",
+    "save": "Enregistrer la matrice",
+    "noUserTasks": "Aucune tâche utilisateur dans ce processus.",
+    "table": {
+      "role": "Rôle",
+      "viewDocuments": "Voir documents",
+      "uploadDocuments": "Déposer documents",
+      "read": "L",
+      "write": "E"
+    }
+  },
+  "fields": {
+    "title": "Registre des champs",
+    "description": "Vue d'ensemble de tous les champs de formulaire définis dans tous les processus (Début et tâches utilisateur), pour éviter les doublons/incohérences de clés.",
+    "searchPlaceholder": "Filtrer par clé, libellé, processus, étape…",
+    "table": {
+      "step": "Étape",
+      "type": "Type",
+      "key": "Clé",
+      "label": "Libellé",
+      "fieldType": "Type de champ",
+      "required": "Obligatoire"
+    },
+    "stepTypes": {
+      "startEvent": "Début",
+      "userTask": "Tâche",
+      "exclusiveGateway": "Passerelle",
+      "endEvent": "Fin"
+    },
+    "empty": "Aucun champ trouvé."
+  },
+  "database": {
+    "title": "Base de données",
+    "description_one": "Structure actuelle du schéma PostgreSQL ({{count}} table) — lecture seule.",
+    "description_other": "Structure actuelle du schéma PostgreSQL ({{count}} tables) — lecture seule.",
+    "rowCount_one": "{{count}} ligne",
+    "rowCount_other": "{{count}} lignes",
+    "table": {
+      "column": "Colonne",
+      "type": "Type",
+      "nullable": "Null",
+      "default": "Défaut"
+    },
+    "nullableYes": "oui",
+    "nullableNo": "non",
+    "loading": "Chargement…"
+  },
+  "adminNotifications": {
+    "title": "Notifications",
+    "tabs": {
+      "smtp": "Paramètres SMTP",
+      "templates": "Modèles d'emails"
+    },
+    "templateLabels": {
+      "WELCOME": "Bienvenue (création de compte)",
+      "PASSWORD_CHANGED_SELF": "Mot de passe modifié (par l'utilisateur)",
+      "PASSWORD_CHANGED_BY_ADMIN": "Mot de passe réinitialisé (par un admin)",
+      "PASSWORD_RESET_REQUESTED": "Demande de réinitialisation (mot de passe oublié)",
+      "TASK_ASSIGNED": "Tâche assignée",
+      "TASK_DELEGATED": "Tâche déléguée (suppléance)",
+      "ACCOUNT_DEACTIVATED": "Compte désactivé",
+      "PROCESS_COMPLETED": "Processus terminé"
+    },
+    "smtp": {
+      "loading": "Chargement…",
+      "envHint": "Si le champ \"Serveur\" ci-dessous est vide, la plateforme utilise la configuration du fichier",
+      "envHintMiddle": "(variables",
+      "envHintEnd": ").",
+      "host": "Serveur SMTP",
+      "port": "Port",
+      "secureLabel": "Connexion TLS implicite (à activer pour le port 465, désactiver pour le port 587 en STARTTLS)",
+      "username": "Identifiant",
+      "passwordLabel": "Mot de passe",
+      "passwordKeepHint": "(laisser vide pour ne pas le modifier)",
+      "fromAddress": "Adresse d'expédition",
+      "save": "Enregistrer",
+      "sendTest": "Envoyer un email de test",
+      "sending": "Envoi…",
+      "testHint": "Envoyé à votre propre adresse email, avec la configuration enregistrée ci-dessus.",
+      "testSuccess": "Email de test envoyé — vérifiez votre boîte de réception."
+    },
+    "templates": {
+      "reset": "Réinitialiser",
+      "confirmReset": "Réinitialiser ce modèle à son contenu par défaut ?",
+      "heading": "Titre affiché dans l'email",
+      "subject": "Objet de l'email",
+      "bodyHtml": "Corps du message (HTML)",
+      "save": "Enregistrer",
+      "preview": "Aperçu",
+      "generating": "Génération…",
+      "previewSubject": "Objet :",
+      "previewTitle": "Aperçu de l'email"
+    }
+  },
+  "diff": {
+    "backToProcess": "Retour au processus",
+    "title": "Comparer les versions — {{name}}",
+    "needTwoVersions": "Il faut au moins deux versions publiées de ce processus pour pouvoir les comparer.",
+    "oldVersion": "Ancienne version",
+    "newVersion": "Nouvelle version",
+    "sameVersion": "Choisissez deux versions différentes pour voir leurs différences.",
+    "loadError": "Impossible de charger le diagramme BPMN : {{message}}",
+    "computeError": "Impossible de calculer les différences : {{message}}",
+    "added_one": "{{count}} ajouté",
+    "added_other": "{{count}} ajoutés",
+    "removed_one": "{{count}} supprimé",
+    "removed_other": "{{count}} supprimés",
+    "changed_one": "{{count}} modifié",
+    "changed_other": "{{count}} modifiés"
+  },
+  "processStatus": {
+    "DRAFT": "Brouillon",
+    "PUBLISHED": "Publié",
+    "ARCHIVED": "Archivé"
+  }
+}
