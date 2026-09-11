@@ -98,6 +98,45 @@
       "submit": "Start instance"
     }
   },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "login": "Log in",
+    "loggingIn": "Logging in…",
+    "demoAccounts": "Demo accounts (password Admin123!): admin@bpm.local · validator@bpm.local · operator@bpm.local",
+    "twoFactorTitle": "Two-factor verification",
+    "twoFactorInstructions": "Enter the 6-digit code from your authenticator app, or one of your backup codes.",
+    "code": "Code",
+    "verify": "Verify",
+    "verifying": "Verifying…",
+    "back": "Back",
+    "forgotTitle": "Email sent",
+    "forgotSentMessage": "If an account exists with this address, an email with a reset link has just been sent to you.",
+    "backToLogin": "Back to login",
+    "forgotInstructions": "Enter your email address: we'll send you a link to choose a new password.",
+    "sendLink": "Send link",
+    "passwordMismatch": "The two passwords do not match",
+    "invalidResetLink": "Invalid reset link: the token is missing from the URL.",
+    "passwordChanged": "Password changed",
+    "passwordChangedMessage": "You can now log in with your new password.",
+    "goToLogin": "Go to login",
+    "chooseNewPassword": "Choose a new password.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "saving": "Saving…",
+    "chooseThisPassword": "Choose this password"
+  },
+  "tasks": {
+    "title": "My tasks",
+    "delegated": "Received via delegation",
+    "pool": "Pool {{role}}",
+    "process": "Process: {{name}}",
+    "close": "Close",
+    "handle": "Handle",
+    "submit": "Complete task",
+    "empty": "No pending tasks."
+  },
   "instances": {
     "title": "Instances",
     "table": {

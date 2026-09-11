@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { api } from '../api/client';
 import { TaskItem } from '../types';
 import { ContextLine, DynamicForm } from '../components/DynamicForm';
 
 export function TasksPage() {
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,7 +33,7 @@ export function TasksPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-800">Mes tâches</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-800">{t('tasks.title')}</h1>
       <div className="space-y-3">
         {tasks.map((task) => (
           <div key={task.id} className="card">
@@ -41,16 +43,16 @@ export function TasksPage() {
                   <span className="font-medium text-slate-800">{task.step_name}</span>
                   {task.is_delegated && (
                     <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                      <Users size={12} /> Reçue par suppléance
+                      <Users size={12} /> {t('tasks.delegated')}
                     </span>
                   )}
                   {task.is_pool_task && !task.is_delegated && (
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
-                      Pool {task.role_name}
+                      {t('tasks.pool', { role: task.role_name })}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-400">Processus : {task.process_name}</p>
+                <p className="text-xs text-slate-400">{t('tasks.process', { name: task.process_name })}</p>
                 <ContextLine data={task.instance_form_data} />
               </div>
               <button
@@ -58,14 +60,14 @@ export function TasksPage() {
                 className="btn-secondary"
               >
                 {openTaskId === task.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                {openTaskId === task.id ? 'Fermer' : 'Traiter'}
+                {openTaskId === task.id ? t('tasks.close') : t('tasks.handle')}
               </button>
             </div>
             {openTaskId === task.id && (
               <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <DynamicForm
                   fields={task.form_schema}
-                  submitLabel="Valider la tâche"
+                  submitLabel={t('tasks.submit')}
                   busy={busy}
                   onSubmit={(formData) => complete(task.id, formData)}
                 />
@@ -73,7 +75,7 @@ export function TasksPage() {
             )}
           </div>
         ))}
-        {tasks.length === 0 && <div className="card text-center text-slate-400">Aucune tâche en attente.</div>}
+        {tasks.length === 0 && <div className="card text-center text-slate-400">{t('tasks.empty')}</div>}
       </div>
     </div>
   );

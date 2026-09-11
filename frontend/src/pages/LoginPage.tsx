@@ -1,9 +1,12 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { LogIn, ShieldCheck, Workflow } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { login, verifyTwoFactor } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('admin@bpm.local');
@@ -47,15 +50,18 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="absolute right-4 top-4">
+        <LanguageSwitcher />
+      </div>
       {!pendingToken ? (
         <form onSubmit={onSubmitPassword} className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="mb-6 flex items-center gap-2 text-brand-700">
             <Workflow size={26} />
-            <h1 className="text-xl font-bold">BPM Platform</h1>
+            <h1 className="text-xl font-bold">{t('common.appName')}</h1>
           </div>
           <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium text-slate-600">Email</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t('auth.email')}</label>
             <input
               type="email"
               required
@@ -65,7 +71,7 @@ export function LoginPage() {
             />
           </div>
           <div className="mb-2">
-            <label className="mb-1 block text-sm font-medium text-slate-600">Mot de passe</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t('auth.password')}</label>
             <input
               type="password"
               required
@@ -76,7 +82,7 @@ export function LoginPage() {
           </div>
           <div className="mb-5 text-right">
             <Link to="/forgot-password" className="text-xs font-medium text-brand-600 hover:underline">
-              Mot de passe oublié ?
+              {t('auth.forgotPassword')}
             </Link>
           </div>
           {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
@@ -85,23 +91,19 @@ export function LoginPage() {
             disabled={busy}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
           >
-            <LogIn size={16} /> {busy ? 'Connexion…' : 'Se connecter'}
+            <LogIn size={16} /> {busy ? t('auth.loggingIn') : t('auth.login')}
           </button>
-          <p className="mt-5 text-center text-xs text-slate-400">
-            Comptes de démo (mot de passe Admin123!) : admin@bpm.local · validator@bpm.local · operator@bpm.local
-          </p>
+          <p className="mt-5 text-center text-xs text-slate-400">{t('auth.demoAccounts')}</p>
         </form>
       ) : (
         <form onSubmit={onSubmitCode} className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="mb-6 flex items-center gap-2 text-brand-700">
             <ShieldCheck size={26} />
-            <h1 className="text-xl font-bold">Vérification en deux étapes</h1>
+            <h1 className="text-xl font-bold">{t('auth.twoFactorTitle')}</h1>
           </div>
-          <p className="mb-4 text-sm text-slate-500">
-            Saisissez le code à 6 chiffres de votre application d'authentification, ou l'un de vos codes de secours.
-          </p>
+          <p className="mb-4 text-sm text-slate-500">{t('auth.twoFactorInstructions')}</p>
           <div className="mb-5">
-            <label className="mb-1 block text-sm font-medium text-slate-600">Code</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t('auth.code')}</label>
             <input
               autoFocus
               required
@@ -117,7 +119,7 @@ export function LoginPage() {
             disabled={busy}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
           >
-            <ShieldCheck size={16} /> {busy ? 'Vérification…' : 'Vérifier'}
+            <ShieldCheck size={16} /> {busy ? t('auth.verifying') : t('auth.verify')}
           </button>
           <button
             type="button"
@@ -128,7 +130,7 @@ export function LoginPage() {
             }}
             className="mt-3 w-full text-center text-xs font-medium text-slate-500 hover:text-brand-600"
           >
-            Retour
+            {t('auth.back')}
           </button>
         </form>
       )}

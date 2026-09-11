@@ -98,6 +98,45 @@
       "submit": "Démarrer l'instance"
     }
   },
+  "auth": {
+    "email": "Email",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "login": "Se connecter",
+    "loggingIn": "Connexion…",
+    "demoAccounts": "Comptes de démo (mot de passe Admin123!) : admin@bpm.local · validator@bpm.local · operator@bpm.local",
+    "twoFactorTitle": "Vérification en deux étapes",
+    "twoFactorInstructions": "Saisissez le code à 6 chiffres de votre application d'authentification, ou l'un de vos codes de secours.",
+    "code": "Code",
+    "verify": "Vérifier",
+    "verifying": "Vérification…",
+    "back": "Retour",
+    "forgotTitle": "Email envoyé",
+    "forgotSentMessage": "Si un compte existe avec cette adresse, un email contenant un lien de réinitialisation vient de vous être envoyé.",
+    "backToLogin": "Retour à la connexion",
+    "forgotInstructions": "Saisissez votre adresse email : nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+    "sendLink": "Envoyer le lien",
+    "passwordMismatch": "Les deux mots de passe ne correspondent pas",
+    "invalidResetLink": "Lien de réinitialisation invalide : le jeton est manquant dans l'URL.",
+    "passwordChanged": "Mot de passe modifié",
+    "passwordChangedMessage": "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+    "goToLogin": "Aller à la connexion",
+    "chooseNewPassword": "Choisissez un nouveau mot de passe.",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "saving": "Enregistrement…",
+    "chooseThisPassword": "Choisir ce mot de passe"
+  },
+  "tasks": {
+    "title": "Mes tâches",
+    "delegated": "Reçue par suppléance",
+    "pool": "Pool {{role}}",
+    "process": "Processus : {{name}}",
+    "close": "Fermer",
+    "handle": "Traiter",
+    "submit": "Valider la tâche",
+    "empty": "Aucune tâche en attente."
+  },
   "instances": {
     "title": "Instances",
     "table": {
