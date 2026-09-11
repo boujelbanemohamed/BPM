@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { Download, FileUp, PlusCircle, PowerOff, Power, PencilLine, X } from 'lucide-react';
+import { Download, FileUp, PlusCircle, PowerOff, Power, PencilLine, ShieldCheck, ShieldOff, X } from 'lucide-react';
 import { api } from '../api/client';
 import { PublicUser, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -174,11 +174,18 @@ export function AdminUsersPage() {
   }
 
   const otherUsers = users.filter((u) => u.id !== form?.id);
+  const twoFactorCount = users.filter((u) => u.twoFactorEnabled).length;
 
   return (
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Administration des utilisateurs</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Administration des utilisateurs</h1>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+            <ShieldCheck size={14} className="text-emerald-600" />
+            {twoFactorCount} / {users.length} utilisateur{users.length > 1 ? 's' : ''} avec la 2FA activée
+          </p>
+        </div>
         {canEdit && (
           <div className="flex items-center gap-2">
             <button onClick={downloadTemplate} className="btn-secondary">
@@ -358,6 +365,7 @@ export function AdminUsersPage() {
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Rôles</th>
               <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3">2FA</th>
               <th className="px-4 py-3">Suppléants</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -376,6 +384,17 @@ export function AdminUsersPage() {
                   >
                     {u.isActive ? 'Actif' : 'Désactivé'}
                   </span>
+                </td>
+                <td className="px-4 py-3">
+                  {u.twoFactorEnabled ? (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                      <ShieldCheck size={14} /> Activée
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs text-slate-400">
+                      <ShieldOff size={14} /> —
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-400">
                   {users.find((x) => x.id === u.delegateUser1Id)?.fullName ?? '—'} /{' '}
