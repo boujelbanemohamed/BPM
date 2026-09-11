@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Archive, ArrowLeft, Printer, Save, ShieldCheck, UploadCloud } from 'lucide-react';
+import { Archive, ArrowLeft, Download, Eye, FileText, Folder, Printer, Save, ShieldCheck, UploadCloud } from 'lucide-react';
 import { api } from '../api/client';
 import { MinimalUser, ProcessDefinition, Role } from '../types';
 import { BpmnDesigner, BpmnDesignerHandle } from '../components/BpmnDesigner';
@@ -206,6 +206,33 @@ export function ProcessDesignerPage() {
               <span>v{process.version}</span>
             )}
           </p>
+          {process.attached_folder_id && (
+            <Link
+              to={`/documents/${process.attached_folder_id}`}
+              className="mt-1 flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
+            >
+              <Folder size={13} /> {process.attached_folder_name}
+            </Link>
+          )}
+          {process.attached_document_id && (
+            <span className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+              <FileText size={13} className="text-slate-400" /> {process.attached_document_name}
+              <button
+                onClick={() =>
+                  api.viewLibraryDocument(process.attached_document_id!).catch((err) => window.alert((err as Error).message))
+                }
+                className="flex items-center gap-0.5 font-semibold text-brand-600 hover:underline"
+              >
+                <Eye size={12} /> Visualiser
+              </button>
+              <button
+                onClick={() => api.downloadLibraryDocument(process.attached_document_id!, process.attached_document_name!)}
+                className="flex items-center gap-0.5 font-semibold text-brand-600 hover:underline"
+              >
+                <Download size={12} /> Télécharger
+              </button>
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {status && <span className="text-sm text-slate-400">{status}</span>}

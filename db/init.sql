@@ -247,6 +247,11 @@ CREATE TABLE library_documents (
 
 CREATE INDEX idx_library_documents_folder ON library_documents(folder_id);
 
+-- Pièce jointe optionnelle d'un processus : un dossier ou un document de la
+-- bibliothèque, choisi à la création du processus.
+ALTER TABLE processes ADD COLUMN attached_folder_id UUID REFERENCES document_folders(id) ON DELETE SET NULL;
+ALTER TABLE processes ADD COLUMN attached_document_id UUID REFERENCES library_documents(id) ON DELETE SET NULL;
+
 -- ---------------------------------------------------------------------
 -- permissions_matrix — droits fins par processus / étape / rôle
 -- field_permissions: {"<field_key>": {"read": bool, "write": bool}, ...}

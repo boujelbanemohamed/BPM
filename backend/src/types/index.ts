@@ -133,6 +133,8 @@ export interface ProcessRow {
   updated_at: string;
   deleted_at: string | null;
   deleted_by: string | null;
+  attached_folder_id: string | null;
+  attached_document_id: string | null;
 }
 
 export interface ProcessInstanceRow {

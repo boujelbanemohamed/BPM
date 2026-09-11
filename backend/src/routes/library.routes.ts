@@ -85,6 +85,19 @@ libraryRouter.post(
 );
 
 libraryRouter.get(
+  '/documents',
+  asyncHandler(async (_req, res) => {
+    const { rows } = await pool.query<LibraryDocumentRow & { folder_name: string }>(
+      `SELECT d.*, f.name AS folder_name
+       FROM library_documents d
+       JOIN document_folders f ON f.id = d.folder_id
+       ORDER BY f.name ASC, d.filename ASC`
+    );
+    res.json({ documents: rows });
+  })
+);
+
+libraryRouter.get(
   '/folders/:id',
   asyncHandler(async (req, res) => {
     const { rows: folderRows } = await pool.query<DocumentFolderRow & { created_by_name: string }>(

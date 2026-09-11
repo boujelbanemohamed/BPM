@@ -2,7 +2,7 @@ import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Archive, Copy, Download, FileUp, Plus, Settings, Play, PencilLine, ShieldCheck, Trash2, X } from 'lucide-react';
 import { api } from '../api/client';
-import { ProcessDefinition } from '../types';
+import { DocumentFolder, LibraryDocumentItem, ProcessDefinition } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { DynamicForm, extractFormFields } from '../components/DynamicForm';
 import { processStatusLabel } from '../lib/processStatus';
@@ -30,6 +30,11 @@ export function ProcessesPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createName, setCreateName] = useState('');
   const [createVersion, setCreateVersion] = useState('1');
+  const [attachmentType, setAttachmentType] = useState<'none' | 'folder' | 'document'>('none');
+  const [attachedFolderId, setAttachedFolderId] = useState('');
+  const [attachedDocumentId, setAttachedDocumentId] = useState('');
+  const [attachableFolders, setAttachableFolders] = useState<DocumentFolder[]>([]);
+  const [attachableDocuments, setAttachableDocuments] = useState<LibraryDocumentItem[]>([]);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -53,8 +58,13 @@ export function ProcessesPage() {
   function openCreateModal() {
     setCreateName('');
     setCreateVersion('1');
+    setAttachmentType('none');
+    setAttachedFolderId('');
+    setAttachedDocumentId('');
     setCreateError(null);
     setCreateModalOpen(true);
+    api.listFolders().then(({ folders }) => setAttachableFolders(folders)).catch(() => {});
+    api.listAllLibraryDocuments().then(({ documents }) => setAttachableDocuments(documents)).catch(() => {});
   }
 
   async function submitCreateProcess(e: FormEvent) {
@@ -70,9 +80,22 @@ export function ProcessesPage() {
       setCreateError('La version doit être un nombre entier supérieur ou égal à 1');
       return;
     }
+    if (attachmentType === 'folder' && !attachedFolderId) {
+      setCreateError('Sélectionnez un dossier à attacher');
+      return;
+    }
+    if (attachmentType === 'document' && !attachedDocumentId) {
+      setCreateError('Sélectionnez un document à attacher');
+      return;
+    }
     setCreateBusy(true);
     try {
-      const { process } = await api.createProcess({ name: trimmedName, version });
+      const { process } = await api.createProcess({
+        name: trimmedName,
+        version,
+        attachedFolderId: attachmentType === 'folder' ? attachedFolderId : undefined,
+        attachedDocumentId: attachmentType === 'document' ? attachedDocumentId : undefined,
+      });
       setCreateModalOpen(false);
       navigate(`/processes/${process.id}`);
     } catch (err) {
@@ -380,6 +403,58 @@ export function ProcessesPage() {
                   onChange={(e) => setCreateVersion(e.target.value)}
                 />
               </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">Pièce jointe (facultatif)</span>
+                <select
+                  className="input"
+                  value={attachmentType}
+                  onChange={(e) => setAttachmentType(e.target.value as 'none' | 'folder' | 'document')}
+                >
+                  <option value="none">— aucune —</option>
+                  <option value="folder">Un dossier de la bibliothèque Documents</option>
+                  <option value="document">Un document de la bibliothèque Documents</option>
+                </select>
+              </label>
+
+              {attachmentType === 'folder' && (
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-500">Dossier à attacher</span>
+                  <select className="input" value={attachedFolderId} onChange={(e) => setAttachedFolderId(e.target.value)}>
+                    <option value="">— choisir un dossier —</option>
+                    {attachableFolders.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name} ({f.document_count ?? 0} document{(f.document_count ?? 0) > 1 ? 's' : ''})
+                      </option>
+                    ))}
+                  </select>
+                  {attachableFolders.length === 0 && (
+                    <span className="mt-1 block text-xs text-slate-400">Aucun dossier disponible pour l'instant.</span>
+                  )}
+                </label>
+              )}
+
+              {attachmentType === 'document' && (
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-500">Document à attacher</span>
+                  <select
+                    className="input"
+                    value={attachedDocumentId}
+                    onChange={(e) => setAttachedDocumentId(e.target.value)}
+                  >
+                    <option value="">— choisir un document —</option>
+                    {attachableDocuments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.filename} ({d.folder_name})
+                      </option>
+                    ))}
+                  </select>
+                  {attachableDocuments.length === 0 && (
+                    <span className="mt-1 block text-xs text-slate-400">Aucun document disponible pour l'instant.</span>
+                  )}
+                </label>
+              )}
+
               {createError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{createError}</p>}
               <button type="submit" disabled={createBusy} className="btn-primary w-full justify-center">
                 {createBusy ? 'Création…' : 'Créer le processus'}

@@ -176,8 +176,14 @@ export const api = {
 
   listProcesses: () => request<{ processes: ProcessDefinition[] }>('/processes'),
   getProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}`),
-  createProcess: (payload: { name: string; version?: number; description?: string; bpmnXml?: string }) =>
-    request<{ process: ProcessDefinition }>('/processes', { method: 'POST', body: payload }),
+  createProcess: (payload: {
+    name: string;
+    version?: number;
+    description?: string;
+    bpmnXml?: string;
+    attachedFolderId?: string;
+    attachedDocumentId?: string;
+  }) => request<{ process: ProcessDefinition }>('/processes', { method: 'POST', body: payload }),
   updateProcess: (
     id: string,
     payload: { name?: string; description?: string; bpmnXml?: string; reference?: string; version?: number }
@@ -306,6 +312,7 @@ export const api = {
 
   listFolders: () => request<{ folders: DocumentFolder[] }>('/library/folders'),
   createFolder: (name: string) => request<{ folder: DocumentFolder }>('/library/folders', { method: 'POST', body: { name } }),
+  listAllLibraryDocuments: () => request<{ documents: LibraryDocumentItem[] }>('/library/documents'),
   getFolder: (id: string) =>
     request<{ folder: DocumentFolder; documents: LibraryDocumentItem[] }>(`/library/folders/${id}`),
   uploadLibraryDocument: async (folderId: string, file: File): Promise<{ document: LibraryDocumentItem }> => {

@@ -151,10 +151,21 @@ const PROCESS_IMPORT_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
 processesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { rows } = await pool.query<ProcessRow & { created_by_name: string; instance_count: number }>(
+    const { rows } = await pool.query<
+      ProcessRow & {
+        created_by_name: string;
+        instance_count: number;
+        attached_folder_name: string | null;
+        attached_document_name: string | null;
+      }
+    >(
       `SELECT p.*, u.full_name AS created_by_name,
-              (SELECT COUNT(*) FROM process_instances pi WHERE pi.process_id = p.id)::int AS instance_count
-       FROM processes p JOIN users u ON u.id = p.created_by
+              (SELECT COUNT(*) FROM process_instances pi WHERE pi.process_id = p.id)::int AS instance_count,
+              af.name AS attached_folder_name, ad.filename AS attached_document_name
+       FROM processes p
+       JOIN users u ON u.id = p.created_by
+       LEFT JOIN document_folders af ON af.id = p.attached_folder_id
+       LEFT JOIN library_documents ad ON ad.id = p.attached_document_id
        WHERE p.deleted_at IS NULL
        ORDER BY p.name ASC, p.version DESC`
     );
@@ -193,9 +204,16 @@ processesRouter.get(
 processesRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const { rows } = await pool.query<ProcessRow>('SELECT * FROM processes WHERE id = $1 AND deleted_at IS NULL', [
-      req.params.id,
-    ]);
+    const { rows } = await pool.query<
+      ProcessRow & { attached_folder_name: string | null; attached_document_name: string | null }
+    >(
+      `SELECT p.*, af.name AS attached_folder_name, ad.filename AS attached_document_name
+       FROM processes p
+       LEFT JOIN document_folders af ON af.id = p.attached_folder_id
+       LEFT JOIN library_documents ad ON ad.id = p.attached_document_id
+       WHERE p.id = $1 AND p.deleted_at IS NULL`,
+      [req.params.id]
+    );
     if (rows.length === 0) throw new HttpError(404, 'Processus introuvable');
     res.json({ process: rows[0] });
   })
@@ -206,6 +224,8 @@ const createProcessSchema = z.object({
   version: z.number().int().min(1).max(9999).optional(),
   description: z.string().optional(),
   bpmnXml: z.string().optional(),
+  attachedFolderId: z.string().uuid().optional(),
+  attachedDocumentId: z.string().uuid().optional(),
 });
 
 processesRouter.post(
@@ -219,9 +239,18 @@ processesRouter.post(
 
     try {
       const { rows } = await pool.query<ProcessRow>(
-        `INSERT INTO processes (process_key, name, description, bpmn_xml, version, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [slugify(body.name), body.name, body.description ?? null, bpmnXml, version, req.user!.id]
+        `INSERT INTO processes (process_key, name, description, bpmn_xml, version, created_by, attached_folder_id, attached_document_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [
+          slugify(body.name),
+          body.name,
+          body.description ?? null,
+          bpmnXml,
+          version,
+          req.user!.id,
+          body.attachedFolderId ?? null,
+          body.attachedDocumentId ?? null,
+        ]
       );
 
       await writeAuditLog({
@@ -236,6 +265,7 @@ processesRouter.post(
       res.status(201).json({ process: rows[0] });
     } catch (err: any) {
       if (err.code === '23505') throw new HttpError(409, 'Un processus avec ce nom et cette version existe déjà');
+      if (err.code === '23503') throw new HttpError(400, 'Le dossier ou le document sélectionné est introuvable');
       throw err;
     }
   })

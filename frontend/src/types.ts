@@ -121,6 +121,10 @@ export interface ProcessDefinition {
   deleted_at?: string | null;
   deleted_by_name?: string | null;
   instance_count?: number;
+  attached_folder_id?: string | null;
+  attached_folder_name?: string | null;
+  attached_document_id?: string | null;
+  attached_document_name?: string | null;
 }
 
 export interface ProcessInstance {
@@ -194,6 +198,7 @@ export interface LibraryDocumentItem {
   uploaded_by: string;
   uploaded_by_name?: string;
   uploaded_at: string;
+  folder_name?: string;
 }
 
 export interface PermissionMatrixRow {
