@@ -1,5 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Archive,
   Copy,
@@ -36,6 +37,7 @@ const statusBadge: Record<string, string> = {
 };
 
 export function ProcessesPage() {
+  const { t } = useTranslation();
   const { hasAccess } = useAuth();
   const canDesign = hasAccess('PROCESSES_DESIGN', 'FULL');
   const canSeePermissions = hasAccess('PERMISSIONS_MATRIX', 'VIEW');
@@ -88,20 +90,20 @@ export function ProcessesPage() {
     setCreateError(null);
     const trimmedName = createName.trim();
     if (!trimmedName) {
-      setCreateError('Le nom est requis');
+      setCreateError(t('processes.nameRequired'));
       return;
     }
     const version = createVersion.trim() ? Number(createVersion) : undefined;
     if (version !== undefined && (!Number.isInteger(version) || version < 1)) {
-      setCreateError('La version doit être un nombre entier supérieur ou égal à 1');
+      setCreateError(t('processes.versionInvalid'));
       return;
     }
     if (attachmentType === 'folder' && !attachedFolderId) {
-      setCreateError('Sélectionnez un dossier à attacher');
+      setCreateError(t('processes.selectFolder'));
       return;
     }
     if (attachmentType === 'document' && !attachedDocumentId) {
-      setCreateError('Sélectionnez un document à attacher');
+      setCreateError(t('processes.selectDocument'));
       return;
     }
     setCreateBusy(true);
@@ -147,7 +149,7 @@ export function ProcessesPage() {
   }
 
   async function publish(id: string) {
-    if (!window.confirm('Publier ce processus ? Il ne pourra plus être modifié ensuite.')) return;
+    if (!window.confirm(t('processes.confirmPublish'))) return;
     try {
       await api.publishProcess(id);
       refresh();
@@ -157,12 +159,7 @@ export function ProcessesPage() {
   }
 
   async function archive(id: string) {
-    if (
-      !window.confirm(
-        "Archiver ce processus ? Il ne pourra plus être démarré, mais les instances déjà en cours continueront normalement."
-      )
-    )
-      return;
+    if (!window.confirm(t('processes.confirmArchive'))) return;
     try {
       await api.archiveProcess(id);
       refresh();
@@ -186,8 +183,7 @@ export function ProcessesPage() {
   }
 
   async function deleteProcess(process: ProcessDefinition) {
-    if (!window.confirm(`Supprimer le processus "${process.name}" (v${process.version}) ? Il sera déplacé dans la corbeille.`))
-      return;
+    if (!window.confirm(t('processes.confirmDelete', { name: process.name, version: process.version }))) return;
     try {
       await api.deleteProcess(process.id);
       refresh();
@@ -221,27 +217,27 @@ export function ProcessesPage() {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Processus</h1>
+        <h1 className="text-2xl font-bold text-slate-800">{t('processes.title')}</h1>
         {canDesign && (
           <div className="flex items-center gap-2">
             <Link
               to="/processes/trash"
               className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
             >
-              <Trash2 size={14} /> Corbeille
+              <Trash2 size={14} /> {t('processes.trash')}
             </Link>
             <button
               onClick={downloadTemplate}
               className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
             >
-              <Download size={14} /> Modèle XML
+              <Download size={14} /> {t('processes.downloadTemplate')}
             </button>
             <button
               onClick={() => xmlInputRef.current?.click()}
               disabled={importing}
               className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
             >
-              <FileUp size={14} /> {importing ? 'Import en cours…' : 'Importer XML'}
+              <FileUp size={14} /> {importing ? t('processes.importing') : t('processes.import')}
             </button>
             <input
               ref={xmlInputRef}
@@ -255,7 +251,7 @@ export function ProcessesPage() {
               onClick={openCreateModal}
               className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
             >
-              <Plus size={16} /> Nouveau processus
+              <Plus size={16} /> {t('processes.new')}
             </button>
           </div>
         )}
@@ -266,17 +262,17 @@ export function ProcessesPage() {
       {importResult && (
         <div className="card mb-6">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-700">Résultat de l'import XML</h2>
+            <h2 className="font-semibold text-slate-700">{t('processes.importResultTitle')}</h2>
             <button onClick={() => setImportResult(null)}>
               <X size={16} className="text-slate-400" />
             </button>
           </div>
           <p className="mb-2 text-sm text-slate-600">
-            <span className="font-semibold text-emerald-700">{importResult.created} processus créé(s)</span>
+            <span className="font-semibold text-emerald-700">{t('processes.importCreated', { count: importResult.created })}</span>
             {importResult.errors.length > 0 && (
               <>
                 {' '}
-                · <span className="font-semibold text-rose-700">{importResult.errors.length} erreur(s)</span>
+                · <span className="font-semibold text-rose-700">{t('processes.importErrors', { count: importResult.errors.length })}</span>
               </>
             )}
           </p>
@@ -292,17 +288,17 @@ export function ProcessesPage() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-3">Référence</th>
-              <th className="px-4 py-3">Nom</th>
-              <th className="px-4 py-3">Version</th>
-              <th className="px-4 py-3">Statut</th>
-              <th className="px-4 py-3">Pièce jointe</th>
-              <th className="px-4 py-3">Créé par</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th className="px-4 py-3">{t('processes.table.reference')}</th>
+              <th className="px-4 py-3">{t('processes.table.name')}</th>
+              <th className="px-4 py-3">{t('processes.table.version')}</th>
+              <th className="px-4 py-3">{t('processes.table.status')}</th>
+              <th className="px-4 py-3">{t('processes.table.attachment')}</th>
+              <th className="px-4 py-3">{t('processes.table.createdBy')}</th>
+              <th className="px-4 py-3 text-right">{t('processes.table.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -336,7 +332,7 @@ export function ProcessesPage() {
                             .catch((err) => window.alert((err as Error).message))
                         }
                         className="shrink-0 text-brand-600 hover:text-brand-700"
-                        title="Visualiser"
+                        title={t('processes.visualize')}
                       >
                         <Eye size={13} />
                       </button>
@@ -352,7 +348,7 @@ export function ProcessesPage() {
                       className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
                     >
                       {p.status === 'DRAFT' && canDesign ? <PencilLine size={14} /> : <Settings size={14} />}
-                      {p.status === 'DRAFT' && canDesign ? 'Modifier' : 'Voir'}
+                      {p.status === 'DRAFT' && canDesign ? t('processes.edit') : t('processes.view')}
                     </button>
                     {p.status === 'PUBLISHED' &&
                       processes.some((other) => other.process_key === p.process_key && other.id !== p.id && other.status === 'PUBLISHED') && (
@@ -360,7 +356,7 @@ export function ProcessesPage() {
                           onClick={() => navigate(`/processes/${p.id}/compare`)}
                           className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
                         >
-                          <GitCompare size={14} /> Comparer
+                          <GitCompare size={14} /> {t('processes.compare')}
                         </button>
                       )}
                     {canSeePermissions && (
@@ -368,7 +364,7 @@ export function ProcessesPage() {
                         onClick={() => navigate(`/processes/${p.id}/permissions`)}
                         className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
                       >
-                        <ShieldCheck size={14} /> Droits
+                        <ShieldCheck size={14} /> {t('processes.permissions')}
                       </button>
                     )}
                     {canDesign && p.status === 'DRAFT' && (
@@ -376,7 +372,7 @@ export function ProcessesPage() {
                         onClick={() => publish(p.id)}
                         className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                       >
-                        Publier
+                        {t('processes.publish')}
                       </button>
                     )}
                     {p.status === 'PUBLISHED' && (
@@ -384,7 +380,7 @@ export function ProcessesPage() {
                         onClick={() => start(p)}
                         className="flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
                       >
-                        <Play size={14} /> Démarrer
+                        <Play size={14} /> {t('processes.start')}
                       </button>
                     )}
                     {canDesign && p.status === 'PUBLISHED' && (
@@ -392,7 +388,7 @@ export function ProcessesPage() {
                         onClick={() => archive(p.id)}
                         className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
                       >
-                        <Archive size={14} /> Archiver
+                        <Archive size={14} /> {t('processes.archive')}
                       </button>
                     )}
                     {canDesign && (
@@ -401,7 +397,7 @@ export function ProcessesPage() {
                         disabled={duplicating === p.id}
                         className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
                       >
-                        <Copy size={14} /> {duplicating === p.id ? 'Duplication…' : 'Dupliquer'}
+                        <Copy size={14} /> {duplicating === p.id ? t('processes.duplicating') : t('processes.duplicate')}
                       </button>
                     )}
                     {canDesign && p.status !== 'PUBLISHED' && (p.instance_count ?? 0) === 0 && (
@@ -409,7 +405,7 @@ export function ProcessesPage() {
                         onClick={() => deleteProcess(p)}
                         className="flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
                       >
-                        <Trash2 size={14} /> Supprimer
+                        <Trash2 size={14} /> {t('processes.delete')}
                       </button>
                     )}
                   </div>
@@ -419,7 +415,7 @@ export function ProcessesPage() {
             {processes.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                  Aucun processus pour l'instant.
+                  {t('processes.empty')}
                 </td>
               </tr>
             )}
@@ -431,14 +427,14 @@ export function ProcessesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-semibold text-slate-800">Nouveau processus</h2>
+              <h2 className="font-semibold text-slate-800">{t('processes.createModal.title')}</h2>
               <button onClick={() => setCreateModalOpen(false)} disabled={createBusy}>
                 <X size={18} className="text-slate-400" />
               </button>
             </div>
             <form onSubmit={submitCreateProcess} className="space-y-4">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">Nom du processus</span>
+                <span className="mb-1 block text-xs font-medium text-slate-500">{t('processes.createModal.name')}</span>
                 <input
                   autoFocus
                   className="input"
@@ -447,7 +443,7 @@ export function ProcessesPage() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">Version</span>
+                <span className="mb-1 block text-xs font-medium text-slate-500">{t('processes.createModal.version')}</span>
                 <input
                   type="number"
                   min={1}
@@ -459,44 +455,44 @@ export function ProcessesPage() {
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">Pièce jointe (facultatif)</span>
+                <span className="mb-1 block text-xs font-medium text-slate-500">{t('processes.createModal.attachment')}</span>
                 <select
                   className="input"
                   value={attachmentType}
                   onChange={(e) => setAttachmentType(e.target.value as 'none' | 'folder' | 'document')}
                 >
-                  <option value="none">— aucune —</option>
-                  <option value="folder">Un dossier de la bibliothèque Documents</option>
-                  <option value="document">Un document de la bibliothèque Documents</option>
+                  <option value="none">{t('processes.createModal.none')}</option>
+                  <option value="folder">{t('processes.createModal.folderOption')}</option>
+                  <option value="document">{t('processes.createModal.documentOption')}</option>
                 </select>
               </label>
 
               {attachmentType === 'folder' && (
                 <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-slate-500">Dossier à attacher</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-500">{t('processes.createModal.attachFolder')}</span>
                   <select className="input" value={attachedFolderId} onChange={(e) => setAttachedFolderId(e.target.value)}>
-                    <option value="">— choisir un dossier —</option>
+                    <option value="">{t('processes.createModal.chooseFolder')}</option>
                     {attachableFolders.map((f) => (
                       <option key={f.id} value={f.id}>
-                        {f.name} ({f.document_count ?? 0} document{(f.document_count ?? 0) > 1 ? 's' : ''})
+                        {f.name} ({t('processes.createModal.documentCount', { count: f.document_count ?? 0 })})
                       </option>
                     ))}
                   </select>
                   {attachableFolders.length === 0 && (
-                    <span className="mt-1 block text-xs text-slate-400">Aucun dossier disponible pour l'instant.</span>
+                    <span className="mt-1 block text-xs text-slate-400">{t('processes.createModal.noFolders')}</span>
                   )}
                 </label>
               )}
 
               {attachmentType === 'document' && (
                 <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-slate-500">Document à attacher</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-500">{t('processes.createModal.attachDocument')}</span>
                   <select
                     className="input"
                     value={attachedDocumentId}
                     onChange={(e) => setAttachedDocumentId(e.target.value)}
                   >
-                    <option value="">— choisir un document —</option>
+                    <option value="">{t('processes.createModal.chooseDocument')}</option>
                     {attachableDocuments.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.filename} ({d.folder_name})
@@ -504,14 +500,14 @@ export function ProcessesPage() {
                     ))}
                   </select>
                   {attachableDocuments.length === 0 && (
-                    <span className="mt-1 block text-xs text-slate-400">Aucun document disponible pour l'instant.</span>
+                    <span className="mt-1 block text-xs text-slate-400">{t('processes.createModal.noDocuments')}</span>
                   )}
                 </label>
               )}
 
               {createError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{createError}</p>}
               <button type="submit" disabled={createBusy} className="btn-primary w-full justify-center">
-                {createBusy ? 'Création…' : 'Créer le processus'}
+                {createBusy ? t('processes.createModal.creating') : t('processes.createModal.submit')}
               </button>
             </form>
           </div>
@@ -522,14 +518,14 @@ export function ProcessesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-semibold text-slate-800">Démarrer : {startModalProcess.name}</h2>
+              <h2 className="font-semibold text-slate-800">{t('processes.startModal.title', { name: startModalProcess.name })}</h2>
               <button onClick={() => setStartModalProcess(null)} disabled={startBusy}>
                 <X size={18} className="text-slate-400" />
               </button>
             </div>
             <DynamicForm
               fields={extractFormFields(startModalProcess.bpmn_xml, 'startEvent')}
-              submitLabel="Démarrer l'instance"
+              submitLabel={t('processes.startModal.submit')}
               busy={startBusy}
               onSubmit={(formData) => startInstance(startModalProcess.id, formData)}
             />

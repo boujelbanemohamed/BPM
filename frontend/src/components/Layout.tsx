@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bell,
   ChevronDown,
@@ -22,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 import { PageAccessLevel, PageKey } from '../types';
 import { SearchBox } from './SearchBox';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -33,19 +35,24 @@ const dropdownLinkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
   }`;
 
-const CONFIG_ITEMS: { path: string; pageKey: PageKey; label: string; icon: typeof Mail }[] = [
-  { path: '/admin/notifications', pageKey: 'NOTIFICATIONS_CONFIG', label: 'Notifications', icon: Mail },
-  { path: '/admin/database', pageKey: 'DATABASE', label: 'Base de données', icon: Database },
-  { path: '/admin/audit', pageKey: 'AUDIT', label: 'Audit', icon: ScrollText },
-  { path: '/admin/roles', pageKey: 'ROLES', label: 'Rôles', icon: Shield },
-  { path: '/admin/users', pageKey: 'USERS', label: 'Utilisateurs', icon: UserCog },
-];
+function useConfigItems(): { path: string; pageKey: PageKey; label: string; icon: typeof Mail }[] {
+  const { t } = useTranslation();
+  return [
+    { path: '/admin/notifications', pageKey: 'NOTIFICATIONS_CONFIG', label: t('common.nav.notifications'), icon: Mail },
+    { path: '/admin/database', pageKey: 'DATABASE', label: t('common.nav.database'), icon: Database },
+    { path: '/admin/audit', pageKey: 'AUDIT', label: t('common.nav.audit'), icon: ScrollText },
+    { path: '/admin/roles', pageKey: 'ROLES', label: t('common.nav.roles'), icon: Shield },
+    { path: '/admin/users', pageKey: 'USERS', label: t('common.nav.users'), icon: UserCog },
+  ];
+}
 
 function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: PageAccessLevel) => boolean }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const visibleItems = CONFIG_ITEMS.filter((item) => hasAccess(item.pageKey, 'VIEW'));
+  const configItems = useConfigItems();
+  const visibleItems = configItems.filter((item) => hasAccess(item.pageKey, 'VIEW'));
   const isActive = visibleItems.some((item) => location.pathname.startsWith(item.path));
 
   useEffect(() => {
@@ -70,7 +77,7 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
           isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
         }`}
       >
-        <Settings size={16} /> Configuration
+        <Settings size={16} /> {t('common.nav.configuration')}
         <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
@@ -87,6 +94,7 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
 }
 
 export function Layout() {
+  const { t } = useTranslation();
   const { user, logout, hasAccess } = useAuth();
   const [unread, setUnread] = useState(0);
 
@@ -113,35 +121,36 @@ export function Layout() {
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3 shadow-sm">
         <div className="flex items-center gap-6">
           <span className="flex items-center gap-2 text-lg font-bold text-brand-700">
-            <Workflow size={22} /> BPM Platform
+            <Workflow size={22} /> {t('common.appName')}
           </span>
           <nav className="flex items-center gap-1">
             <NavLink to="/processes" className={navLinkClass}>
-              <LayoutGrid size={16} /> Processus
+              <LayoutGrid size={16} /> {t('common.nav.processes')}
             </NavLink>
             <NavLink to="/tasks" className={navLinkClass}>
-              <ClipboardList size={16} /> Mes tâches
+              <ClipboardList size={16} /> {t('common.nav.myTasks')}
             </NavLink>
             <NavLink to="/instances" className={navLinkClass}>
-              <PlayCircle size={16} /> Instances
+              <PlayCircle size={16} /> {t('common.nav.instances')}
             </NavLink>
             <NavLink to="/clients" className={navLinkClass}>
-              <Users size={16} /> Clients
+              <Users size={16} /> {t('common.nav.clients')}
             </NavLink>
             {hasAccess('DOCUMENTS', 'VIEW') && (
               <NavLink to="/documents" className={navLinkClass}>
-                <FolderOpen size={16} /> Documents
+                <FolderOpen size={16} /> {t('common.nav.documents')}
               </NavLink>
             )}
             {hasAccess('FIELDS_REGISTRY', 'VIEW') && (
               <NavLink to="/admin/fields" className={navLinkClass}>
-                <ListTree size={16} /> Champs
+                <ListTree size={16} /> {t('common.nav.fields')}
               </NavLink>
             )}
             <ConfigMenu hasAccess={hasAccess} />
           </nav>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
           <SearchBox />
           <NavLink to="/notifications" className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100">
             <Bell size={20} />
@@ -167,7 +176,7 @@ export function Layout() {
             onClick={logout}
             className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
           >
-            <LogOut size={16} /> Déconnexion
+            <LogOut size={16} /> {t('common.nav.logout')}
           </button>
         </div>
       </header>

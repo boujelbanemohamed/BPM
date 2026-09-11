@@ -14,9 +14,11 @@
     "bpmn-js": "^17.11.1",
     "bpmn-js-differ": "^3.2.0",
     "bpmn-moddle": "^10.2.0",
+    "i18next": "^26.4.2",
     "lucide-react": "^0.446.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-i18next": "^17.0.13",
     "react-router-dom": "^7.18.3"
   },
   "devDependencies": {

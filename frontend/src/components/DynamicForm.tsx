@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FormField } from '../types';
 import { ClientPicker } from './ClientPicker';
 
@@ -68,6 +69,7 @@ export function DynamicForm({
   submitLabel: string;
   busy?: boolean;
 }) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -76,7 +78,7 @@ export function DynamicForm({
     for (const field of fields) {
       const value = formData[field.key];
       if (field.required && (value === undefined || value === '')) {
-        setError(`Le champ "${field.label}" est obligatoire`);
+        setError(t('common.fieldRequired', { label: field.label }));
         return;
       }
     }
@@ -96,7 +98,7 @@ export function DynamicForm({
       ))}
       {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
       <button onClick={submit} disabled={busy} className="btn-primary">
-        {busy ? 'Envoi…' : submitLabel}
+        {busy ? t('common.sending') : submitLabel}
       </button>
     </div>
   );
