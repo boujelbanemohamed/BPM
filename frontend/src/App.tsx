@@ -21,6 +21,7 @@ import { DocumentsPage } from './pages/DocumentsPage';
 import { DocumentFolderPage } from './pages/DocumentFolderPage';
 import { FieldsRegistryPage } from './pages/FieldsRegistryPage';
 import { DatabaseSchemaPage } from './pages/DatabaseSchemaPage';
+import { ProcessDiffPage } from './pages/ProcessDiffPage';
 import { AdminNotificationsPage } from './pages/AdminNotificationsPage';
 import { RolesPage } from './pages/RolesPage';
 
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/processes" element={<ProcessesPage />} />
         <Route path="/processes/trash" element={<ProcessTrashPage />} />
         <Route path="/processes/:id" element={<ProcessDesignerPage />} />
+        <Route path="/processes/:id/compare" element={<ProcessDiffPage />} />
         <Route
           path="/processes/:id/permissions"
           element={

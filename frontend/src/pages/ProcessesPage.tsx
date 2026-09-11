@@ -8,6 +8,7 @@ import {
   FileText,
   FileUp,
   Folder,
+  GitCompare,
   Plus,
   Settings,
   Play,
@@ -353,6 +354,15 @@ export function ProcessesPage() {
                       {p.status === 'DRAFT' && canDesign ? <PencilLine size={14} /> : <Settings size={14} />}
                       {p.status === 'DRAFT' && canDesign ? 'Modifier' : 'Voir'}
                     </button>
+                    {p.status === 'PUBLISHED' &&
+                      processes.some((other) => other.process_key === p.process_key && other.id !== p.id && other.status === 'PUBLISHED') && (
+                        <button
+                          onClick={() => navigate(`/processes/${p.id}/compare`)}
+                          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                        >
+                          <GitCompare size={14} /> Comparer
+                        </button>
+                      )}
                     {canSeePermissions && (
                       <button
                         onClick={() => navigate(`/processes/${p.id}/permissions`)}
