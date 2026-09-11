@@ -3,6 +3,7 @@ import { pool } from '../db/pool';
 import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
+import { paginationClause, paginationQuerySchema } from '../lib/pagination';
 import { NotificationRow } from '../types';
 
 export const notificationsRouter = Router();
@@ -11,11 +12,20 @@ notificationsRouter.use(requireAuth);
 notificationsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
+    const pagination = paginationQuerySchema.parse(req.query);
+    const params: unknown[] = [req.user!.id];
+
     const { rows } = await pool.query<NotificationRow>(
-      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 100`,
+      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC ${paginationClause(params, pagination)}`,
+      params
+    );
+
+    const { rows: countRows } = await pool.query<{ count: string }>(
+      `SELECT count(*)::text FROM notifications WHERE user_id = $1`,
       [req.user!.id]
     );
-    res.json({ notifications: rows });
+
+    res.json({ notifications: rows, total: Number(countRows[0].count) });
   })
 );
 

@@ -29,7 +29,12 @@
     },
     "sending": "Sending…",
     "language": "Language",
-    "fieldRequired": "Field \"{{label}}\" is required"
+    "fieldRequired": "Field \"{{label}}\" is required",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "range": "{{from}}–{{to}} / {{total}}"
+    }
   },
   "processes": {
     "title": "Processes",
@@ -92,5 +97,57 @@
       "title": "Start: {{name}}",
       "submit": "Start instance"
     }
+  },
+  "instances": {
+    "title": "Instances",
+    "table": {
+      "process": "Process",
+      "status": "Status",
+      "currentStep": "Current step",
+      "startedBy": "Started by",
+      "startedAt": "On"
+    },
+    "view": "View",
+    "empty": "No instances yet."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "open": "Open",
+    "markRead": "Mark read",
+    "empty": "No notifications."
+  },
+  "clients": {
+    "title": "Clients",
+    "new": "New client",
+    "namePlaceholder": "Name *",
+    "emailPlaceholder": "Email",
+    "phonePlaceholder": "Phone",
+    "create": "Create",
+    "nameRequired": "Name is required",
+    "searchPlaceholder": "Search for a client…",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "folders": "Folders"
+    },
+    "view": "View",
+    "empty": "No clients."
+  },
+  "audit": {
+    "title": "Audit trail",
+    "filterPlaceholder": "Filter by action (e.g. TASK_COMPLETED)",
+    "filter": "Filter",
+    "eventCount": "{{count}} event(s)",
+    "table": {
+      "date": "Date",
+      "actor": "Actor",
+      "action": "Action",
+      "entity": "Entity",
+      "details": "Details",
+      "ip": "IP"
+    },
+    "empty": "No events."
   }
 }

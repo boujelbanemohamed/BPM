@@ -1,20 +1,29 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { BellRing, CheckCheck, Circle } from 'lucide-react';
 import { api } from '../api/client';
 import { NotificationItem } from '../types';
+import { Pagination } from '../components/Pagination';
+
+const LIMIT = 25;
 
 export function NotificationsPage() {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
 
   async function refresh() {
-    const { notifications } = await api.listNotifications();
+    const { notifications, total } = await api.listNotifications({ limit: LIMIT, offset });
     setNotifications(notifications);
+    setTotal(total);
   }
 
   useEffect(() => {
     refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offset]);
 
   async function markRead(id: string) {
     await api.markNotificationRead(id);
@@ -30,10 +39,10 @@ export function NotificationsPage() {
     <div className="mx-auto max-w-3xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
-          <BellRing size={22} /> Notifications
+          <BellRing size={22} /> {t('notifications.title')}
         </h1>
         <button onClick={markAllRead} className="btn-secondary">
-          <CheckCheck size={16} /> Tout marquer comme lu
+          <CheckCheck size={16} /> {t('notifications.markAllRead')}
         </button>
       </div>
 
@@ -54,19 +63,20 @@ export function NotificationsPage() {
             <div className="flex items-center gap-2">
               {n.link && (
                 <Link to={n.link} className="text-xs font-semibold text-brand-600 hover:underline">
-                  Ouvrir
+                  {t('notifications.open')}
                 </Link>
               )}
               {!n.is_read && (
                 <button onClick={() => markRead(n.id)} className="text-xs font-semibold text-slate-500 hover:underline">
-                  Marquer lu
+                  {t('notifications.markRead')}
                 </button>
               )}
             </div>
           </div>
         ))}
-        {notifications.length === 0 && <div className="card text-center text-slate-400">Aucune notification.</div>}
+        {notifications.length === 0 && <div className="card text-center text-slate-400">{t('notifications.empty')}</div>}
       </div>
+      <Pagination offset={offset} limit={LIMIT} total={total} onOffsetChange={setOffset} />
     </div>
   );
 }

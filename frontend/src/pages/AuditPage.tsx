@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollText, Search } from 'lucide-react';
 import { api } from '../api/client';
 import { AuditLogEntry } from '../types';
+import { Pagination } from '../components/Pagination';
+
+const LIMIT = 50;
 
 export function AuditPage() {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [actionFilter, setActionFilter] = useState('');
   const [offset, setOffset] = useState(0);
-  const limit = 50;
 
   async function refresh() {
     const { logs, total } = await api.listAuditLogs({
       action: actionFilter || undefined,
-      limit,
+      limit: LIMIT,
       offset,
     });
     setLogs(logs);
@@ -34,32 +38,32 @@ export function AuditPage() {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 flex items-center gap-2 text-2xl font-bold text-slate-800">
-        <ScrollText size={22} /> Audit trail
+        <ScrollText size={22} /> {t('audit.title')}
       </h1>
 
       <form onSubmit={applyFilter} className="mb-4 flex items-center gap-2">
         <input
           className="input max-w-xs"
-          placeholder="Filtrer par action (ex: TASK_COMPLETED)"
+          placeholder={t('audit.filterPlaceholder')}
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
         />
         <button type="submit" className="btn-secondary">
-          <Search size={14} /> Filtrer
+          <Search size={14} /> {t('audit.filter')}
         </button>
-        <span className="text-sm text-slate-400">{total} événement(s)</span>
+        <span className="text-sm text-slate-400">{t('audit.eventCount', { count: total })}</span>
       </form>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Acteur</th>
-              <th className="px-4 py-3">Action</th>
-              <th className="px-4 py-3">Entité</th>
-              <th className="px-4 py-3">Détails</th>
-              <th className="px-4 py-3">IP</th>
+              <th className="px-4 py-3">{t('audit.table.date')}</th>
+              <th className="px-4 py-3">{t('audit.table.actor')}</th>
+              <th className="px-4 py-3">{t('audit.table.action')}</th>
+              <th className="px-4 py-3">{t('audit.table.entity')}</th>
+              <th className="px-4 py-3">{t('audit.table.details')}</th>
+              <th className="px-4 py-3">{t('audit.table.ip')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -81,7 +85,7 @@ export function AuditPage() {
             {logs.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                  Aucun événement.
+                  {t('audit.empty')}
                 </td>
               </tr>
             )}
@@ -89,17 +93,7 @@ export function AuditPage() {
         </table>
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
-        <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))} className="btn-secondary disabled:opacity-40">
-          Précédent
-        </button>
-        <span>
-          {offset + 1}–{Math.min(offset + limit, total)} / {total}
-        </span>
-        <button disabled={offset + limit >= total} onClick={() => setOffset(offset + limit)} className="btn-secondary disabled:opacity-40">
-          Suivant
-        </button>
-      </div>
+      <Pagination offset={offset} limit={LIMIT} total={total} onOffsetChange={setOffset} />
     </div>
   );
 }

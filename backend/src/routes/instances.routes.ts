@@ -10,6 +10,7 @@ import { isInstanceParticipant, loadInstanceContext } from '../services/instance
 import { addComment, listComments } from '../services/commentService';
 import { notifyNewComment } from '../services/notificationService';
 import { writeAuditLog } from '../lib/audit';
+import { paginationClause, paginationQuerySchema } from '../lib/pagination';
 import { AuditLogRow, ProcessInstanceRow, ProcessRow, TaskRow } from '../types';
 
 export const instancesRouter = Router();
@@ -49,6 +50,7 @@ instancesRouter.post(
 instancesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
+    const pagination = paginationQuerySchema.parse(req.query);
     const isAdmin = req.user!.roles.includes('ADMIN');
     const params: unknown[] = [];
     let where = '';
@@ -59,6 +61,7 @@ instancesRouter.get(
       )`;
       params.push(req.user!.id, req.user!.roleIds);
     }
+    const filterParamCount = params.length;
 
     const { rows } = await pool.query<ProcessInstanceRow & { process_name: string; started_by_name: string }>(
       `SELECT pi.*, p.name AS process_name, u.full_name AS started_by_name
@@ -66,9 +69,18 @@ instancesRouter.get(
        JOIN processes p ON p.id = pi.process_id
        JOIN users u ON u.id = pi.started_by
        ${where}
-       ORDER BY pi.started_at DESC`,
+       ORDER BY pi.started_at DESC
+       ${paginationClause(params, pagination)}`,
       params
     );
+
+    const { rows: countRows } = await pool.query<{ count: string }>(
+      `SELECT count(*)::text
+       FROM process_instances pi
+       ${where}`,
+      params.slice(0, filterParamCount)
+    );
+    const total = Number(countRows[0].count);
 
     const instances = await Promise.all(
       rows.map(async (row) => {
@@ -78,7 +90,7 @@ instancesRouter.get(
       })
     );
 
-    res.json({ instances });
+    res.json({ instances, total });
   })
 );
 

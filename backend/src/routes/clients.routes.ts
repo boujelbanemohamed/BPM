@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { writeAuditLog } from '../lib/audit';
+import { paginationClause, paginationQuerySchema } from '../lib/pagination';
 import { ClientRow, ProcessInstanceRow } from '../types';
 
 export const clientsRouter = Router();
@@ -13,7 +14,10 @@ clientsRouter.use(requireAuth);
 clientsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
+    const pagination = paginationQuerySchema.parse(req.query);
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const params: unknown[] = [q];
+
     const { rows } = await pool.query<ClientRow & { instance_count: string }>(
       `SELECT c.*, count(pi.id)::text AS instance_count
        FROM clients c
@@ -21,10 +25,16 @@ clientsRouter.get(
        WHERE $1 = '' OR c.name ILIKE '%' || $1 || '%'
        GROUP BY c.id
        ORDER BY c.name ASC
-       LIMIT 200`,
+       ${paginationClause(params, pagination)}`,
+      params
+    );
+
+    const { rows: countRows } = await pool.query<{ count: string }>(
+      `SELECT count(*)::text FROM clients c WHERE $1 = '' OR c.name ILIKE '%' || $1 || '%'`,
       [q]
     );
-    res.json({ clients: rows });
+
+    res.json({ clients: rows, total: Number(countRows[0].count) });
   })
 );
 

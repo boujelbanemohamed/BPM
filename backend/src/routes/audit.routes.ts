@@ -4,17 +4,16 @@ import { pool } from '../db/pool';
 import { requireAuth } from '../middleware/auth';
 import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
+import { paginationClause, paginationQuerySchema } from '../lib/pagination';
 import { AuditLogRow } from '../types';
 
 export const auditRouter = Router();
 auditRouter.use(requireAuth, requirePageAccess('AUDIT', 'VIEW'));
 
-const querySchema = z.object({
+const querySchema = paginationQuerySchema.extend({
   userId: z.string().uuid().optional(),
   action: z.string().optional(),
   entityType: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(100),
-  offset: z.coerce.number().int().min(0).default(0),
 });
 
 auditRouter.get(
@@ -38,11 +37,7 @@ auditRouter.get(
       conditions.push(`al.entity_type = $${params.length}`);
     }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-    params.push(q.limit);
-    const limitParam = params.length;
-    params.push(q.offset);
-    const offsetParam = params.length;
+    const filterParamCount = params.length;
 
     const { rows } = await pool.query<AuditLogRow & { actor_name: string | null }>(
       `SELECT al.*, u.full_name AS actor_name
@@ -50,13 +45,13 @@ auditRouter.get(
        LEFT JOIN users u ON u.id = al.user_id
        ${where}
        ORDER BY al.created_at DESC
-       LIMIT $${limitParam} OFFSET $${offsetParam}`,
+       ${paginationClause(params, q)}`,
       params
     );
 
     const { rows: countRows } = await pool.query<{ count: string }>(
       `SELECT count(*)::text FROM audit_logs al ${where}`,
-      params.slice(0, conditions.length)
+      params.slice(0, filterParamCount)
     );
 
     res.json({ logs: rows, total: Number(countRows[0].count) });

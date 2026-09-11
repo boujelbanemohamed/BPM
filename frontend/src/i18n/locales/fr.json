@@ -29,7 +29,12 @@
     },
     "sending": "Envoi…",
     "language": "Langue",
-    "fieldRequired": "Le champ \"{{label}}\" est obligatoire"
+    "fieldRequired": "Le champ \"{{label}}\" est obligatoire",
+    "pagination": {
+      "previous": "Précédent",
+      "next": "Suivant",
+      "range": "{{from}}–{{to}} / {{total}}"
+    }
   },
   "processes": {
     "title": "Processus",
@@ -92,5 +97,57 @@
       "title": "Démarrer : {{name}}",
       "submit": "Démarrer l'instance"
     }
+  },
+  "instances": {
+    "title": "Instances",
+    "table": {
+      "process": "Processus",
+      "status": "Statut",
+      "currentStep": "Étape actuelle",
+      "startedBy": "Démarrée par",
+      "startedAt": "Le"
+    },
+    "view": "Voir",
+    "empty": "Aucune instance pour l'instant."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Tout marquer comme lu",
+    "open": "Ouvrir",
+    "markRead": "Marquer lu",
+    "empty": "Aucune notification."
+  },
+  "clients": {
+    "title": "Clients",
+    "new": "Nouveau client",
+    "namePlaceholder": "Nom *",
+    "emailPlaceholder": "Email",
+    "phonePlaceholder": "Téléphone",
+    "create": "Créer",
+    "nameRequired": "Le nom est obligatoire",
+    "searchPlaceholder": "Rechercher un client…",
+    "table": {
+      "name": "Nom",
+      "email": "Email",
+      "phone": "Téléphone",
+      "folders": "Dossiers"
+    },
+    "view": "Voir",
+    "empty": "Aucun client."
+  },
+  "audit": {
+    "title": "Audit trail",
+    "filterPlaceholder": "Filtrer par action (ex: TASK_COMPLETED)",
+    "filter": "Filtrer",
+    "eventCount": "{{count}} événement(s)",
+    "table": {
+      "date": "Date",
+      "actor": "Acteur",
+      "action": "Action",
+      "entity": "Entité",
+      "details": "Détails",
+      "ip": "IP"
+    },
+    "empty": "Aucun événement."
   }
 }

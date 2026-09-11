@@ -346,7 +346,13 @@ export const api = {
       method: 'POST',
       body: { formData },
     }),
-  listInstances: () => request<{ instances: ProcessInstance[] }>('/instances'),
+  listInstances: (params: { limit?: number; offset?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.offset !== undefined) query.set('offset', String(params.offset));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request<{ instances: ProcessInstance[]; total: number }>(`/instances${suffix}`);
+  },
   getInstance: (id: string) =>
     request<{ instance: ProcessInstance; tasks: TaskItem[]; events: AuditLogEntry[] }>(`/instances/${id}`),
 
@@ -463,7 +469,13 @@ export const api = {
     }
   },
 
-  listNotifications: () => request<{ notifications: NotificationItem[] }>('/notifications'),
+  listNotifications: (params: { limit?: number; offset?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.offset !== undefined) query.set('offset', String(params.offset));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request<{ notifications: NotificationItem[]; total: number }>(`/notifications${suffix}`);
+  },
   unreadCount: () => request<{ count: number }>('/notifications/unread-count'),
   markNotificationRead: (id: string) => request<{ notification: NotificationItem }>(`/notifications/${id}/read`, { method: 'POST' }),
   markAllNotificationsRead: () => request<{ ok: true }>('/notifications/read-all', { method: 'POST' }),
@@ -477,7 +489,14 @@ export const api = {
     return request<{ logs: AuditLogEntry[]; total: number }>(`/audit${suffix}`);
   },
 
-  listClients: (q = '') => request<{ clients: ClientItem[] }>(`/clients${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  listClients: (q = '', params: { limit?: number; offset?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (q) query.set('q', q);
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.offset !== undefined) query.set('offset', String(params.offset));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request<{ clients: ClientItem[]; total: number }>(`/clients${suffix}`);
+  },
   search: (q: string) => request<SearchResults>(`/search?q=${encodeURIComponent(q)}`),
   getClient: (id: string) => request<{ client: ClientItem; instances: ProcessInstance[] }>(`/clients/${id}`),
   createClient: (payload: { name: string; email?: string; phone?: string; address?: string; notes?: string }) =>
