@@ -1,0 +1,531 @@
+{
+  "common": {
+    "appName": "BPM Platform",
+    "nav": {
+      "processes": "Processes",
+      "myTasks": "My tasks",
+      "instances": "Instances",
+      "clients": "Clients",
+      "documents": "Documents",
+      "fields": "Fields",
+      "configuration": "Configuration",
+      "notifications": "Notifications",
+      "database": "Database",
+      "audit": "Audit",
+      "roles": "Roles",
+      "users": "Users",
+      "logout": "Log out"
+    },
+    "search": {
+      "placeholder": "Search...",
+      "ariaLabel": "Search",
+      "close": "Close search",
+      "clear": "Clear",
+      "loading": "Searching...",
+      "noResults": "No results for « {{query}} »",
+      "processes": "Processes",
+      "instances": "Instances",
+      "documents": "Documents"
+    },
+    "sending": "Sending…",
+    "language": "Language",
+    "fieldRequired": "Field \"{{label}}\" is required",
+    "yes": "Yes",
+    "no": "No",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "range": "{{from}}–{{to}} / {{total}}"
+    }
+  },
+  "processes": {
+    "title": "Processes",
+    "trash": "Trash",
+    "downloadTemplate": "XML template",
+    "importing": "Importing…",
+    "import": "Import XML",
+    "new": "New process",
+    "importResultTitle": "XML import result",
+    "importCreated": "{{count}} process(es) created",
+    "importErrors": "{{count}} error(s)",
+    "table": {
+      "reference": "Reference",
+      "name": "Name",
+      "version": "Version",
+      "status": "Status",
+      "attachment": "Attachment",
+      "createdBy": "Created by",
+      "actions": "Actions"
+    },
+    "empty": "No processes yet.",
+    "view": "View",
+    "edit": "Edit",
+    "compare": "Compare",
+    "permissions": "Permissions",
+    "publish": "Publish",
+    "start": "Start",
+    "archive": "Archive",
+    "duplicate": "Duplicate",
+    "duplicating": "Duplicating…",
+    "delete": "Delete",
+    "visualize": "View",
+    "confirmPublish": "Publish this process? It can no longer be modified afterwards.",
+    "confirmArchive": "Archive this process? It can no longer be started, but instances already running will continue normally.",
+    "confirmDelete": "Delete process \"{{name}}\" (v{{version}})? It will be moved to the trash.",
+    "nameRequired": "Name is required",
+    "versionInvalid": "Version must be an integer greater than or equal to 1",
+    "selectFolder": "Select a folder to attach",
+    "selectDocument": "Select a document to attach",
+    "createModal": {
+      "title": "New process",
+      "name": "Process name",
+      "version": "Version",
+      "attachment": "Attachment (optional)",
+      "none": "— none —",
+      "folderOption": "A folder from the Documents library",
+      "documentOption": "A document from the Documents library",
+      "attachFolder": "Folder to attach",
+      "chooseFolder": "— choose a folder —",
+      "noFolders": "No folders available yet.",
+      "attachDocument": "Document to attach",
+      "chooseDocument": "— choose a document —",
+      "noDocuments": "No documents available yet.",
+      "creating": "Creating…",
+      "submit": "Create process",
+      "documentCount_one": "{{count}} document",
+      "documentCount_other": "{{count}} documents"
+    },
+    "startModal": {
+      "title": "Start: {{name}}",
+      "submit": "Start instance"
+    }
+  },
+  "profile": {
+    "title": "My profile",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "myInfo": {
+      "heading": "My information",
+      "changePhotoTitle": "Change profile picture",
+      "uploading": "Uploading photo…",
+      "photoHint": "PNG, JPEG or WebP, 5 MB max.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "phone": "Phone",
+      "email": "Email",
+      "emailNotifications": "Receive workflow notifications by email (tasks, completed processes, deactivated account)"
+    },
+    "delegation": {
+      "heading": "My delegation & leave",
+      "description": "If your account is deactivated or you are on leave during the period below, your pending tasks will be automatically reassigned to Backup 1, then to Backup 2 if they are also unavailable.",
+      "delegate1": "Backup 1 (priority)",
+      "delegate2": "Backup 2 (secondary)",
+      "none": "— none —",
+      "absenceStart": "Leave start",
+      "absenceEnd": "Leave end"
+    },
+    "password": {
+      "heading": "Change my password",
+      "current": "Current password",
+      "new": "New password (8 characters min.)",
+      "update": "Update",
+      "changed": "Password changed"
+    },
+    "twoFactor": {
+      "heading": "Two-factor authentication (2FA)",
+      "enabledNote": "2FA enabled. Write down these backup codes somewhere safe: they won't be shown again.",
+      "notedCodes": "I've saved my codes",
+      "enabledSimple": "2FA is enabled on your account.",
+      "disable": "Disable 2FA",
+      "confirmWithPassword": "Confirm with your password",
+      "disabling": "Disabling…",
+      "confirmDisable": "Confirm disabling",
+      "setupDescription": "Add an extra verification step at login via an authenticator app (Google Authenticator, Authy...).",
+      "enable": "Enable 2FA",
+      "scanQr": "Scan this QR code with your authenticator app, then enter the generated 6-digit code to confirm.",
+      "sixDigitCode": "6-digit code",
+      "verifying": "Verifying…",
+      "confirm": "Confirm"
+    }
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "login": "Log in",
+    "loggingIn": "Logging in…",
+    "demoAccounts": "Demo accounts (password Admin123!): admin@bpm.local · validator@bpm.local · operator@bpm.local",
+    "twoFactorTitle": "Two-factor verification",
+    "twoFactorInstructions": "Enter the 6-digit code from your authenticator app, or one of your backup codes.",
+    "code": "Code",
+    "verify": "Verify",
+    "verifying": "Verifying…",
+    "back": "Back",
+    "forgotTitle": "Email sent",
+    "forgotSentMessage": "If an account exists with this address, an email with a reset link has just been sent to you.",
+    "backToLogin": "Back to login",
+    "forgotInstructions": "Enter your email address: we'll send you a link to choose a new password.",
+    "sendLink": "Send link",
+    "passwordMismatch": "The two passwords do not match",
+    "invalidResetLink": "Invalid reset link: the token is missing from the URL.",
+    "passwordChanged": "Password changed",
+    "passwordChangedMessage": "You can now log in with your new password.",
+    "goToLogin": "Go to login",
+    "chooseNewPassword": "Choose a new password.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "saving": "Saving…",
+    "chooseThisPassword": "Choose this password"
+  },
+  "tasks": {
+    "title": "My tasks",
+    "delegated": "Received via delegation",
+    "pool": "Pool {{role}}",
+    "process": "Process: {{name}}",
+    "close": "Close",
+    "handle": "Handle",
+    "submit": "Complete task",
+    "empty": "No pending tasks."
+  },
+  "instances": {
+    "title": "Instances",
+    "table": {
+      "process": "Process",
+      "status": "Status",
+      "currentStep": "Current step",
+      "startedBy": "Started by",
+      "startedAt": "On"
+    },
+    "view": "View",
+    "empty": "No instances yet."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "open": "Open",
+    "markRead": "Mark read",
+    "empty": "No notifications."
+  },
+  "clients": {
+    "title": "Clients",
+    "new": "New client",
+    "namePlaceholder": "Name *",
+    "emailPlaceholder": "Email",
+    "phonePlaceholder": "Phone",
+    "create": "Create",
+    "nameRequired": "Name is required",
+    "searchPlaceholder": "Search for a client…",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "folders": "Folders"
+    },
+    "view": "View",
+    "empty": "No clients.",
+    "detail": {
+      "backToClients": "Back to clients",
+      "contactInfo": "Contact info",
+      "name": "Name",
+      "address": "Address",
+      "notes": "Notes",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "relatedProcesses": "Related processes ({{count}})",
+      "table": {
+        "process": "Process",
+        "status": "Status",
+        "currentStep": "Current step",
+        "startedAt": "Started on"
+      },
+      "view": "View",
+      "empty": "No records for this client."
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "newFolder": "New folder",
+    "folderCount_one": "{{count}} document",
+    "folderCount_other": "{{count}} documents",
+    "empty": "No folders yet.",
+    "createModal": {
+      "title": "New folder",
+      "name": "Folder name",
+      "creating": "Creating…",
+      "submit": "Create folder"
+    },
+    "nameRequired": "Name is required",
+    "backToDocuments": "Back to documents",
+    "uploadFile": "Upload a file",
+    "view": "View",
+    "download": "Download",
+    "loading": "Loading…",
+    "emptyFiles": "No documents."
+  },
+  "audit": {
+    "title": "Audit trail",
+    "filterPlaceholder": "Filter by action (e.g. TASK_COMPLETED)",
+    "filter": "Filter",
+    "eventCount": "{{count}} event(s)",
+    "table": {
+      "date": "Date",
+      "actor": "Actor",
+      "action": "Action",
+      "entity": "Entity",
+      "details": "Details",
+      "ip": "IP"
+    },
+    "empty": "No events."
+  },
+  "adminUsers": {
+    "title": "User administration",
+    "twoFactorCount": "{{count}} / {{total}} user(s) with 2FA enabled",
+    "downloadTemplate": "CSV template",
+    "importing": "Importing…",
+    "import": "Import CSV",
+    "new": "New user",
+    "importResultTitle": "CSV import result",
+    "created": "{{count}} created",
+    "updated": "{{count}} updated",
+    "errors": "{{count}} error(s)",
+    "row": "Row {{row}}",
+    "editTitle": "Edit user",
+    "passwordEditHint": "Password (8 characters min., leave blank to keep unchanged)",
+    "passwordNewHint": "Initial password (8 characters min.)",
+    "roles": "Roles",
+    "delegate1": "Backup 1",
+    "delegate2": "Backup 2",
+    "createAccount": "Create account",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "roles": "Roles",
+      "status": "Status",
+      "twoFactor": "2FA",
+      "delegates": "Backups",
+      "actions": "Actions"
+    },
+    "active": "Active",
+    "inactive": "Deactivated",
+    "twoFactorEnabled": "Enabled",
+    "edit": "Edit",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate",
+    "confirmDeactivate": "Deactivate {{name}}'s account? Their pending tasks will be reassigned to their backup chain.",
+    "deactivatedInfo": "Account deactivated. {{count}} task(s) reassigned."
+  },
+  "roles": {
+    "title": "Roles",
+    "new": "New role",
+    "description": "A role defines who a BPMN task can be assigned to, and serves as a key in a process's permission matrix. A role's name cannot be changed once created, since it is referenced as-is in processes already designed.",
+    "createForm": {
+      "title": "New role",
+      "namePattern": "Name (letters, digits, underscores — e.g. LAWYER)",
+      "description": "Description",
+      "submit": "Create role"
+    },
+    "userCount_one": "{{count}} user",
+    "userCount_other": "{{count}} users",
+    "editDescriptionPlaceholder": "Role description",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "noDescription": "No description",
+    "users": "Users",
+    "noUsers": "No user has this role.",
+    "access": "Access",
+    "adminExclusive": "Exclusive to ADMIN",
+    "standardAccess": "Standard access (any logged-in user)",
+    "assignedTasks": "BPMN tasks assigned to this role",
+    "noAssignedTasks": "No task assigned to this role yet.",
+    "permissionRules": "Defined permission rules",
+    "noPermissionRules": "No specific rule: default access to the fields and documents of its step.",
+    "fieldCount_one": "{{count}} field configured",
+    "fieldCount_other": "{{count}} fields configured",
+    "documentsUpload": "upload allowed",
+    "documentsView": "view only",
+    "documentsNone": "no access",
+    "configurePageAccess": "Configure page access (granted by the superadmin)",
+    "saveAccess": "Save access",
+    "loading": "Loading…",
+    "pageLabels": {
+      "PROCESSES_DESIGN": "Process design",
+      "PERMISSIONS_MATRIX": "Permission matrix",
+      "USERS": "Users",
+      "AUDIT": "Audit",
+      "DATABASE": "Database",
+      "FIELDS_REGISTRY": "Fields",
+      "NOTIFICATIONS_CONFIG": "Notifications (SMTP + email templates)",
+      "ROLES": "Roles",
+      "DOCUMENTS": "Documents (folder/file library)"
+    },
+    "levelLabels": {
+      "NONE": "No access",
+      "VIEW": "View only",
+      "FULL": "Full access"
+    },
+    "adminAccess": {
+      "users": { "label": "User management", "detail": "create/edit/deactivate accounts, reset a password" },
+      "processDesign": { "label": "Process design", "detail": "create a process, edit its BPMN, publish it" },
+      "permissionsMatrix": { "label": "Permission matrix", "detail": "define who sees/edits which field at which step" },
+      "configMenu": { "label": "The entire Configuration menu", "detail": "Notifications (SMTP + email templates), Database, Audit, Roles, Users" },
+      "fieldsTab": { "label": "The Fields tab", "detail": "registry of all form fields" }
+    },
+    "standardAccessItems": {
+      "startProcess": "Start a process and handle tasks assigned to them",
+      "viewInstances": "View the list of process instances",
+      "manageClients": "Manage the Clients module (create, view, edit)",
+      "manageProfile": "Manage their own profile: name, phone, avatar, password, email notification preference, backups"
+    }
+  },
+  "designer": {
+    "backToProcesses": "Back to processes",
+    "loading": "Loading…",
+    "noAttachment": "No attachment",
+    "edit": "Edit",
+    "printPdf": "Print PDF",
+    "permissionsMatrix": "Permission matrix",
+    "readOnlyNotice": "This process is published: read-only. Create a new process for a new version.",
+    "attachEditor": {
+      "none": "— no attachment —",
+      "folder": "A folder",
+      "document": "A document"
+    },
+    "pdfExport": {
+      "titleSuffix": "{{name}} — PDF export",
+      "printButton": "Print / Save as PDF",
+      "exportedOn": "Exported on {{date}}",
+      "popupBlocked": "Could not open the print tab (blocked by the browser)"
+    }
+  },
+  "trash": {
+    "title": "Trash",
+    "table": {
+      "reference": "Reference",
+      "name": "Name",
+      "version": "Version",
+      "deletedBy": "Deleted by",
+      "deletedAt": "Deleted on",
+      "actions": "Actions"
+    },
+    "restore": "Restore",
+    "deletePermanently": "Delete permanently",
+    "confirmDeletePermanently": "Permanently delete process \"{{name}}\" (v{{version}})? This action is irreversible.",
+    "empty": "The trash is empty."
+  },
+  "matrix": {
+    "backToProcess": "Back to process",
+    "title": "Permission matrix — {{name}}",
+    "save": "Save matrix",
+    "noUserTasks": "No user task in this process.",
+    "table": {
+      "role": "Role",
+      "viewDocuments": "View documents",
+      "uploadDocuments": "Upload documents",
+      "read": "R",
+      "write": "W"
+    }
+  },
+  "fields": {
+    "title": "Fields registry",
+    "description": "Overview of all form fields defined across every process (Start event and user tasks), to avoid key duplication or inconsistencies.",
+    "searchPlaceholder": "Filter by key, label, process, step…",
+    "table": {
+      "step": "Step",
+      "type": "Type",
+      "key": "Key",
+      "label": "Label",
+      "fieldType": "Field type",
+      "required": "Required"
+    },
+    "stepTypes": {
+      "startEvent": "Start",
+      "userTask": "Task",
+      "exclusiveGateway": "Gateway",
+      "endEvent": "End"
+    },
+    "empty": "No field found."
+  },
+  "database": {
+    "title": "Database",
+    "description_one": "Current PostgreSQL schema structure ({{count}} table) — read-only.",
+    "description_other": "Current PostgreSQL schema structure ({{count}} tables) — read-only.",
+    "rowCount_one": "{{count}} row",
+    "rowCount_other": "{{count}} rows",
+    "table": {
+      "column": "Column",
+      "type": "Type",
+      "nullable": "Null",
+      "default": "Default"
+    },
+    "nullableYes": "yes",
+    "nullableNo": "no",
+    "loading": "Loading…"
+  },
+  "adminNotifications": {
+    "title": "Notifications",
+    "tabs": {
+      "smtp": "SMTP settings",
+      "templates": "Email templates"
+    },
+    "templateLabels": {
+      "WELCOME": "Welcome (account creation)",
+      "PASSWORD_CHANGED_SELF": "Password changed (by the user)",
+      "PASSWORD_CHANGED_BY_ADMIN": "Password reset (by an admin)",
+      "PASSWORD_RESET_REQUESTED": "Reset request (forgot password)",
+      "TASK_ASSIGNED": "Task assigned",
+      "TASK_DELEGATED": "Task delegated (backup)",
+      "ACCOUNT_DEACTIVATED": "Account deactivated",
+      "PROCESS_COMPLETED": "Process completed"
+    },
+    "smtp": {
+      "loading": "Loading…",
+      "envHint": "If the \"Server\" field below is empty, the platform uses the configuration from the file",
+      "envHintMiddle": "(variables",
+      "envHintEnd": ").",
+      "host": "SMTP server",
+      "port": "Port",
+      "secureLabel": "Implicit TLS connection (enable for port 465, disable for port 587 using STARTTLS)",
+      "username": "Username",
+      "passwordLabel": "Password",
+      "passwordKeepHint": "(leave blank to keep unchanged)",
+      "fromAddress": "From address",
+      "save": "Save",
+      "sendTest": "Send a test email",
+      "sending": "Sending…",
+      "testHint": "Sent to your own email address, using the configuration saved above.",
+      "testSuccess": "Test email sent — check your inbox."
+    },
+    "templates": {
+      "reset": "Reset",
+      "confirmReset": "Reset this template to its default content?",
+      "heading": "Title shown in the email",
+      "subject": "Email subject",
+      "bodyHtml": "Message body (HTML)",
+      "save": "Save",
+      "preview": "Preview",
+      "generating": "Generating…",
+      "previewSubject": "Subject:",
+      "previewTitle": "Email preview"
+    }
+  },
+  "diff": {
+    "backToProcess": "Back to process",
+    "title": "Compare versions — {{name}}",
+    "needTwoVersions": "You need at least two published versions of this process to compare them.",
+    "oldVersion": "Old version",
+    "newVersion": "New version",
+    "sameVersion": "Choose two different versions to see their differences.",
+    "loadError": "Could not load the BPMN diagram: {{message}}",
+    "computeError": "Could not compute the differences: {{message}}",
+    "added_one": "{{count}} added",
+    "added_other": "{{count}} added",
+    "removed_one": "{{count}} removed",
+    "removed_other": "{{count}} removed",
+    "changed_one": "{{count}} changed",
+    "changed_other": "{{count}} changed"
+  }
+}
