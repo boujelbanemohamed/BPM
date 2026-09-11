@@ -1,10 +1,15 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { pool, withTransaction } from '../db/pool';
 import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { parseGraph, startProcessInstance } from '../services/workflowEngine';
 import { filterFormDataForUser, getPermissionRows } from '../services/permissionService';
+import { isInstanceParticipant, loadInstanceContext } from '../services/instanceAccess';
+import { addComment, listComments } from '../services/commentService';
+import { notifyNewComment } from '../services/notificationService';
+import { writeAuditLog } from '../lib/audit';
 import { AuditLogRow, ProcessInstanceRow, ProcessRow, TaskRow } from '../types';
 
 export const instancesRouter = Router();
@@ -105,11 +110,7 @@ instancesRouter.get(
     );
 
     const isAdmin = req.user!.roles.includes('ADMIN');
-    const isParticipant =
-      isAdmin ||
-      instance.started_by === req.user!.id ||
-      tasks.some((t) => t.effective_assignee_id === req.user!.id || (t.assignee_role_id && req.user!.roleIds.includes(t.assignee_role_id)));
-    if (!isParticipant) throw new HttpError(403, "Vous n'avez pas accès à cette instance");
+    if (!isInstanceParticipant(instance, tasks, req.user!)) throw new HttpError(403, "Vous n'avez pas accès à cette instance");
 
     let visibleFormData = instance.form_data;
     if (!isAdmin && instance.current_step_name) {
@@ -129,5 +130,75 @@ instancesRouter.get(
     );
 
     res.json({ instance: { ...instance, form_data: visibleFormData }, tasks, events });
+  })
+);
+
+const addCommentSchema = z.object({
+  body: z.string().trim().min(1, 'Le commentaire ne peut pas être vide').max(4000),
+  taskId: z.string().uuid().optional(),
+});
+
+instancesRouter.get(
+  '/:id/comments',
+  asyncHandler(async (req, res) => {
+    const { instance, tasks } = await loadInstanceContext(pool, req.params.id);
+    if (!isInstanceParticipant(instance, tasks, req.user!)) throw new HttpError(403, "Vous n'avez pas accès à cette instance");
+
+    const comments = await listComments(pool, instance.id);
+    res.json({ comments });
+  })
+);
+
+instancesRouter.post(
+  '/:id/comments',
+  asyncHandler(async (req, res) => {
+    const { body, taskId } = addCommentSchema.parse(req.body);
+    const { instance, tasks } = await loadInstanceContext(pool, req.params.id);
+    if (!isInstanceParticipant(instance, tasks, req.user!)) throw new HttpError(403, "Vous n'avez pas accès à cette instance");
+
+    if (taskId && !tasks.some((t) => t.id === taskId)) {
+      throw new HttpError(400, "Cette tâche n'appartient pas à cette instance");
+    }
+
+    const comment = await addComment(pool, {
+      instanceId: instance.id,
+      taskId: taskId ?? null,
+      authorId: req.user!.id,
+      body,
+    });
+
+    await writeAuditLog({
+      userId: req.user!.id,
+      action: 'COMMENT_ADDED',
+      entityType: 'process_instance',
+      entityId: instance.id,
+      details: { commentId: comment.id, taskId: comment.task_id },
+      ipAddress: req.ip,
+    });
+
+    const { rows: procRows } = await pool.query<{ name: string }>('SELECT name FROM processes WHERE id = $1', [
+      instance.process_id,
+    ]);
+    const processName = procRows[0]?.name ?? 'Processus';
+
+    const recipientIds = new Set<string>();
+    if (instance.started_by !== req.user!.id) recipientIds.add(instance.started_by);
+    for (const t of tasks) {
+      if (t.effective_assignee_id && t.effective_assignee_id !== req.user!.id) recipientIds.add(t.effective_assignee_id);
+    }
+
+    await withTransaction(async (client) => {
+      for (const recipientId of recipientIds) {
+        await notifyNewComment(client, {
+          userId: recipientId,
+          authorName: req.user!.fullName,
+          processName,
+          instanceId: instance.id,
+        });
+      }
+    });
+
+    const taskStepName = taskId ? tasks.find((t) => t.id === taskId)?.step_name ?? null : null;
+    res.status(201).json({ comment: { ...comment, author_name: req.user!.fullName, task_step_name: taskStepName } });
   })
 );

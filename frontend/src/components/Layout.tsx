@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 import { PageAccessLevel, PageKey } from '../types';
+import { SearchBox } from './SearchBox';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -141,6 +142,7 @@ export function Layout() {
           </nav>
         </div>
         <div className="flex items-center gap-4">
+          <SearchBox />
           <NavLink to="/notifications" className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100">
             <Bell size={20} />
             {unread > 0 && (

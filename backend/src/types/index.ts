@@ -184,6 +184,15 @@ export interface DocumentRow {
   uploaded_at: string;
 }
 
+export interface CommentRow {
+  id: string;
+  instance_id: string;
+  task_id: string | null;
+  author_id: string;
+  body: string;
+  created_at: string;
+}
+
 export interface DocumentFolderRow {
   id: string;
   name: string;

@@ -10,7 +10,8 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { writeAuditLog } from '../lib/audit';
 import { canUploadDocuments, canViewDocuments } from '../services/permissionService';
-import { DocumentRow, ProcessInstanceRow, TaskRow } from '../types';
+import { isInstanceParticipant, loadInstanceContext } from '../services/instanceAccess';
+import { DocumentRow } from '../types';
 
 export const documentsRouter = Router();
 documentsRouter.use(requireAuth);
@@ -45,34 +46,11 @@ const upload = multer({
   },
 });
 
-async function loadInstanceContext(instanceId: string) {
-  const { rows: instRows } = await pool.query<ProcessInstanceRow>('SELECT * FROM process_instances WHERE id = $1', [
-    instanceId,
-  ]);
-  const instance = instRows[0];
-  if (!instance) throw new HttpError(404, 'Instance introuvable');
-
-  const { rows: tasks } = await pool.query<TaskRow>('SELECT * FROM tasks WHERE instance_id = $1', [instanceId]);
-  return { instance, tasks };
-}
-
-function isInstanceParticipant(
-  instance: ProcessInstanceRow,
-  tasks: TaskRow[],
-  user: { id: string; roleIds: number[]; roles: string[] }
-): boolean {
-  if (user.roles.includes('ADMIN')) return true;
-  if (instance.started_by === user.id) return true;
-  return tasks.some(
-    (t) => t.effective_assignee_id === user.id || (t.assignee_role_id && user.roleIds.includes(t.assignee_role_id))
-  );
-}
-
 documentsRouter.post(
   '/instances/:instanceId/documents',
   upload.single('file'),
   asyncHandler(async (req, res) => {
-    const { instance, tasks } = await loadInstanceContext(req.params.instanceId);
+    const { instance, tasks } = await loadInstanceContext(pool, req.params.instanceId);
     if (!isInstanceParticipant(instance, tasks, req.user!)) {
       throw new HttpError(403, "Vous n'avez pas accès à cette instance");
     }
@@ -109,7 +87,7 @@ documentsRouter.post(
 documentsRouter.get(
   '/instances/:instanceId/documents',
   asyncHandler(async (req, res) => {
-    const { instance, tasks } = await loadInstanceContext(req.params.instanceId);
+    const { instance, tasks } = await loadInstanceContext(pool, req.params.instanceId);
     if (!isInstanceParticipant(instance, tasks, req.user!)) {
       throw new HttpError(403, "Vous n'avez pas accès à cette instance");
     }
@@ -137,7 +115,7 @@ documentsRouter.get(
     const document = rows[0];
     if (!document) throw new HttpError(404, 'Document introuvable');
 
-    const { instance, tasks } = await loadInstanceContext(document.instance_id);
+    const { instance, tasks } = await loadInstanceContext(pool, document.instance_id);
     const isAdmin = req.user!.roles.includes('ADMIN');
     const isUploader = document.uploaded_by === req.user!.id;
 

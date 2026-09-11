@@ -114,6 +114,19 @@ export async function notifyProcessCompleted(
   }
 }
 
+export async function notifyNewComment(
+  client: PoolClient,
+  params: { userId: string; authorName: string; processName: string; instanceId: string }
+): Promise<void> {
+  await createNotification(client, {
+    userId: params.userId,
+    type: 'GENERIC',
+    title: `Nouveau commentaire : ${params.processName}`,
+    message: `${params.authorName} a ajouté un commentaire sur le dossier "${params.processName}".`,
+    link: `/instances/${params.instanceId}`,
+  });
+}
+
 export async function notifyWelcome(
   client: Executor,
   params: { userId: string; email: string; fullName: string; temporaryPassword: string }

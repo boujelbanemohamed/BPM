@@ -1,6 +1,7 @@
 import {
   AuditLogEntry,
   ClientItem,
+  CommentItem,
   DatabaseTable,
   DocumentFolder,
   DocumentItem,
@@ -17,6 +18,7 @@ import {
   PublicUser,
   Role,
   RoleWithUsers,
+  SearchResults,
   SmtpSettings,
   TaskItem,
 } from '../types';
@@ -352,6 +354,10 @@ export const api = {
   completeTask: (id: string, formData: Record<string, unknown>) =>
     request<{ instance: ProcessInstance }>(`/tasks/${id}/complete`, { method: 'POST', body: { formData } }),
 
+  listComments: (instanceId: string) => request<{ comments: CommentItem[] }>(`/instances/${instanceId}/comments`),
+  addComment: (instanceId: string, body: string, taskId?: string) =>
+    request<{ comment: CommentItem }>(`/instances/${instanceId}/comments`, { method: 'POST', body: { body, taskId } }),
+
   listDocuments: (instanceId: string) => request<{ documents: DocumentItem[] }>(`/documents/instances/${instanceId}/documents`),
   uploadDocument: async (instanceId: string, file: File, taskId?: string): Promise<{ document: DocumentItem }> => {
     const formData = new FormData();
@@ -472,6 +478,7 @@ export const api = {
   },
 
   listClients: (q = '') => request<{ clients: ClientItem[] }>(`/clients${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  search: (q: string) => request<SearchResults>(`/search?q=${encodeURIComponent(q)}`),
   getClient: (id: string) => request<{ client: ClientItem; instances: ProcessInstance[] }>(`/clients/${id}`),
   createClient: (payload: { name: string; email?: string; phone?: string; address?: string; notes?: string }) =>
     request<{ client: ClientItem }>('/clients', { method: 'POST', body: payload }),

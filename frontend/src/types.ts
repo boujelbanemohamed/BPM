@@ -203,6 +203,42 @@ export interface LibraryDocumentItem {
   folder_name?: string;
 }
 
+export interface CommentItem {
+  id: string;
+  instance_id: string;
+  task_id: string | null;
+  author_id: string;
+  author_name: string;
+  task_step_name: string | null;
+  body: string;
+  created_at: string;
+}
+
+export interface SearchProcessResult {
+  id: string;
+  reference: string;
+  name: string;
+  status: string;
+}
+
+export interface SearchInstanceResult {
+  id: string;
+  status: string;
+  currentStepName: string | null;
+  processName: string;
+  clientName: string | null;
+}
+
+export type SearchDocumentResult =
+  | { type: 'folder'; id: string; label: string }
+  | { type: 'document'; id: string; label: string; folderId: string; folderName: string };
+
+export interface SearchResults {
+  processes: SearchProcessResult[];
+  instances: SearchInstanceResult[];
+  documents: SearchDocumentResult[];
+}
+
 export interface PermissionMatrixRow {
   id: string;
   process_id: string;

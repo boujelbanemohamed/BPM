@@ -1,8 +1,8 @@
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, Eye, FileText, Paperclip, UploadCloud, Users } from 'lucide-react';
+import { ArrowLeft, Download, Eye, FileText, MessageSquare, Paperclip, Send, UploadCloud, Users } from 'lucide-react';
 import { api } from '../api/client';
-import { AuditLogEntry, DocumentItem, ProcessInstance, TaskItem } from '../types';
+import { AuditLogEntry, CommentItem, DocumentItem, ProcessInstance, TaskItem } from '../types';
 
 const EVENT_LABELS: Record<string, string> = {
   INSTANCE_STARTED: 'Instance démarrée',
@@ -14,6 +14,7 @@ const EVENT_LABELS: Record<string, string> = {
   TASK_REASSIGNED: 'Tâche réassignée (suppléance)',
   DOCUMENT_UPLOADED: 'Document déposé',
   DOCUMENT_DOWNLOADED: 'Document consulté',
+  COMMENT_ADDED: 'Commentaire ajouté',
 };
 
 const statusBadge: Record<string, string> = {
@@ -37,14 +38,24 @@ export function InstanceDetailPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [commentBody, setCommentBody] = useState('');
+  const [commentTaskId, setCommentTaskId] = useState('');
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [postingComment, setPostingComment] = useState(false);
 
   async function refresh() {
     if (!id) return;
-    const [detail, docs] = await Promise.all([api.getInstance(id), api.listDocuments(id).catch(() => ({ documents: [] }))]);
+    const [detail, docs, commentsRes] = await Promise.all([
+      api.getInstance(id),
+      api.listDocuments(id).catch(() => ({ documents: [] })),
+      api.listComments(id).catch(() => ({ comments: [] })),
+    ]);
     setInstance(detail.instance);
     setTasks(detail.tasks);
     setEvents(detail.events);
     setDocuments(docs.documents);
+    setComments(commentsRes.comments);
   }
 
   useEffect(() => {
@@ -62,6 +73,23 @@ export function InstanceDetailPage() {
       setUploadError((err as Error).message);
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function onSubmitComment(e: FormEvent) {
+    e.preventDefault();
+    if (!id || !commentBody.trim()) return;
+    setCommentError(null);
+    setPostingComment(true);
+    try {
+      await api.addComment(id, commentBody.trim(), commentTaskId || undefined);
+      setCommentBody('');
+      setCommentTaskId('');
+      refresh();
+    } catch (err) {
+      setCommentError((err as Error).message);
+    } finally {
+      setPostingComment(false);
     }
   }
 
@@ -165,6 +193,61 @@ export function InstanceDetailPage() {
           ))}
           {documents.length === 0 && <li className="py-2 text-slate-400">Aucun document.</li>}
         </ul>
+      </div>
+
+      <div className="mb-4 card">
+        <h2 className="mb-2 flex items-center gap-2 font-semibold text-slate-700">
+          <MessageSquare size={16} /> Discussion
+        </h2>
+        <ul className="mb-3 space-y-2">
+          {comments.map((c) => (
+            <li key={c.id} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">{c.author_name}</span>
+                {c.task_step_name && (
+                  <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-700">
+                    {c.task_step_name}
+                  </span>
+                )}
+                <span className="text-xs text-slate-400">{new Date(c.created_at).toLocaleString('fr-FR')}</span>
+              </div>
+              <p className="mt-1 whitespace-pre-wrap text-slate-700">{c.body}</p>
+            </li>
+          ))}
+          {comments.length === 0 && <li className="py-1 text-sm text-slate-400">Aucun commentaire pour l'instant.</li>}
+        </ul>
+        {commentError && <p className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{commentError}</p>}
+        <form onSubmit={onSubmitComment} className="space-y-2">
+          <textarea
+            value={commentBody}
+            onChange={(e) => setCommentBody(e.target.value)}
+            placeholder="Écrire un commentaire…"
+            rows={2}
+            maxLength={4000}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+          />
+          <div className="flex items-center justify-between gap-2">
+            {tasks.length > 0 ? (
+              <select
+                value={commentTaskId}
+                onChange={(e) => setCommentTaskId(e.target.value)}
+                className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-600"
+              >
+                <option value="">Commentaire général</option>
+                {tasks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    Sur la tâche : {t.step_name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span />
+            )}
+            <button type="submit" disabled={postingComment || !commentBody.trim()} className="btn-primary">
+              <Send size={14} /> Envoyer
+            </button>
+          </div>
+        </form>
       </div>
 
       <div className="card">

@@ -241,6 +241,22 @@ CREATE INDEX idx_tasks_original_assignee ON tasks(original_assignee_id, status);
 CREATE INDEX idx_tasks_role ON tasks(assignee_role_id, status);
 
 -- ---------------------------------------------------------------------
+-- gateway_arrivals — synchronisation des passerelles parallèles (fork/join) :
+-- un token arrivant sur une passerelle ayant plusieurs flux entrants y
+-- enregistre son arrivée ; l'exécution ne reprend que lorsque tous les
+-- flux entrants ont livré un token.
+-- ---------------------------------------------------------------------
+CREATE TABLE gateway_arrivals (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  instance_id        UUID NOT NULL REFERENCES process_instances(id) ON DELETE CASCADE,
+  gateway_element_id VARCHAR(255) NOT NULL,
+  incoming_flow_id   VARCHAR(255) NOT NULL,
+  arrived_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (instance_id, gateway_element_id, incoming_flow_id)
+);
+CREATE INDEX idx_gateway_arrivals_instance_gateway ON gateway_arrivals(instance_id, gateway_element_id);
+
+-- ---------------------------------------------------------------------
 -- documents — pièces jointes, téléchargement contrôlé par RBAC
 -- ---------------------------------------------------------------------
 CREATE TABLE documents (
@@ -257,6 +273,22 @@ CREATE TABLE documents (
 
 CREATE INDEX idx_documents_instance ON documents(instance_id);
 CREATE INDEX idx_documents_task ON documents(task_id);
+
+-- ---------------------------------------------------------------------
+-- comments — fil de discussion sur une instance, avec référence optionnelle
+-- à une tâche précise (même schéma que documents : instance_id obligatoire,
+-- task_id nullable)
+-- ---------------------------------------------------------------------
+CREATE TABLE comments (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  instance_id UUID NOT NULL REFERENCES process_instances(id) ON DELETE CASCADE,
+  task_id     UUID REFERENCES tasks(id) ON DELETE SET NULL,
+  author_id   UUID NOT NULL REFERENCES users(id),
+  body        TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_comments_instance ON comments(instance_id, created_at);
+CREATE INDEX idx_comments_task ON comments(task_id);
 
 -- ---------------------------------------------------------------------
 -- document_folders / library_documents — bibliothèque de documents
