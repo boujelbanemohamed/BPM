@@ -277,5 +277,106 @@
       "ip": "IP"
     },
     "empty": "No events."
+  },
+  "adminUsers": {
+    "title": "User administration",
+    "twoFactorCount": "{{count}} / {{total}} user(s) with 2FA enabled",
+    "downloadTemplate": "CSV template",
+    "importing": "Importing…",
+    "import": "Import CSV",
+    "new": "New user",
+    "importResultTitle": "CSV import result",
+    "created": "{{count}} created",
+    "updated": "{{count}} updated",
+    "errors": "{{count}} error(s)",
+    "row": "Row {{row}}",
+    "editTitle": "Edit user",
+    "passwordEditHint": "Password (8 characters min., leave blank to keep unchanged)",
+    "passwordNewHint": "Initial password (8 characters min.)",
+    "roles": "Roles",
+    "delegate1": "Backup 1",
+    "delegate2": "Backup 2",
+    "createAccount": "Create account",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "roles": "Roles",
+      "status": "Status",
+      "twoFactor": "2FA",
+      "delegates": "Backups",
+      "actions": "Actions"
+    },
+    "active": "Active",
+    "inactive": "Deactivated",
+    "twoFactorEnabled": "Enabled",
+    "edit": "Edit",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate",
+    "confirmDeactivate": "Deactivate {{name}}'s account? Their pending tasks will be reassigned to their backup chain.",
+    "deactivatedInfo": "Account deactivated. {{count}} task(s) reassigned."
+  },
+  "roles": {
+    "title": "Roles",
+    "new": "New role",
+    "description": "A role defines who a BPMN task can be assigned to, and serves as a key in a process's permission matrix. A role's name cannot be changed once created, since it is referenced as-is in processes already designed.",
+    "createForm": {
+      "title": "New role",
+      "namePattern": "Name (letters, digits, underscores — e.g. LAWYER)",
+      "description": "Description",
+      "submit": "Create role"
+    },
+    "userCount_one": "{{count}} user",
+    "userCount_other": "{{count}} users",
+    "editDescriptionPlaceholder": "Role description",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "noDescription": "No description",
+    "users": "Users",
+    "noUsers": "No user has this role.",
+    "access": "Access",
+    "adminExclusive": "Exclusive to ADMIN",
+    "standardAccess": "Standard access (any logged-in user)",
+    "assignedTasks": "BPMN tasks assigned to this role",
+    "noAssignedTasks": "No task assigned to this role yet.",
+    "permissionRules": "Defined permission rules",
+    "noPermissionRules": "No specific rule: default access to the fields and documents of its step.",
+    "fieldCount_one": "{{count}} field configured",
+    "fieldCount_other": "{{count}} fields configured",
+    "documentsUpload": "upload allowed",
+    "documentsView": "view only",
+    "documentsNone": "no access",
+    "configurePageAccess": "Configure page access (granted by the superadmin)",
+    "saveAccess": "Save access",
+    "loading": "Loading…",
+    "pageLabels": {
+      "PROCESSES_DESIGN": "Process design",
+      "PERMISSIONS_MATRIX": "Permission matrix",
+      "USERS": "Users",
+      "AUDIT": "Audit",
+      "DATABASE": "Database",
+      "FIELDS_REGISTRY": "Fields",
+      "NOTIFICATIONS_CONFIG": "Notifications (SMTP + email templates)",
+      "ROLES": "Roles",
+      "DOCUMENTS": "Documents (folder/file library)"
+    },
+    "levelLabels": {
+      "NONE": "No access",
+      "VIEW": "View only",
+      "FULL": "Full access"
+    },
+    "adminAccess": {
+      "users": { "label": "User management", "detail": "create/edit/deactivate accounts, reset a password" },
+      "processDesign": { "label": "Process design", "detail": "create a process, edit its BPMN, publish it" },
+      "permissionsMatrix": { "label": "Permission matrix", "detail": "define who sees/edits which field at which step" },
+      "configMenu": { "label": "The entire Configuration menu", "detail": "Notifications (SMTP + email templates), Database, Audit, Roles, Users" },
+      "fieldsTab": { "label": "The Fields tab", "detail": "registry of all form fields" }
+    },
+    "standardAccessItems": {
+      "startProcess": "Start a process and handle tasks assigned to them",
+      "viewInstances": "View the list of process instances",
+      "manageClients": "Manage the Clients module (create, view, edit)",
+      "manageProfile": "Manage their own profile: name, phone, avatar, password, email notification preference, backups"
+    }
   }
 }

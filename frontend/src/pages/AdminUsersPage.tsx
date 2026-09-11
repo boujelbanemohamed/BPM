@@ -1,4 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, FileUp, PlusCircle, PowerOff, Power, PencilLine, ShieldCheck, ShieldOff, X } from 'lucide-react';
 import { api } from '../api/client';
 import { PublicUser, Role } from '../types';
@@ -40,6 +41,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export function AdminUsersPage() {
+  const { t } = useTranslation();
   const { hasAccess } = useAuth();
   const canEdit = hasAccess('USERS', 'FULL');
   const [users, setUsers] = useState<PublicUser[]>([]);
@@ -127,11 +129,10 @@ export function AdminUsersPage() {
   }
 
   async function deactivate(u: PublicUser) {
-    if (!window.confirm(`Désactiver le compte de ${u.fullName} ? Ses tâches en attente seront réassignées à sa chaîne de suppléance.`))
-      return;
+    if (!window.confirm(t('adminUsers.confirmDeactivate', { name: u.fullName }))) return;
     try {
       const { reassignedTasks } = await api.adminDeactivateUser(u.id);
-      setInfo(`Compte désactivé. ${reassignedTasks} tâche(s) réassignée(s).`);
+      setInfo(t('adminUsers.deactivatedInfo', { count: reassignedTasks }));
       setTimeout(() => setInfo(null), 3000);
       refresh();
     } catch (err) {
@@ -180,23 +181,23 @@ export function AdminUsersPage() {
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Administration des utilisateurs</h1>
+          <h1 className="text-2xl font-bold text-slate-800">{t('adminUsers.title')}</h1>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
             <ShieldCheck size={14} className="text-emerald-600" />
-            {twoFactorCount} / {users.length} utilisateur{users.length > 1 ? 's' : ''} avec la 2FA activée
+            {t('adminUsers.twoFactorCount', { count: twoFactorCount, total: users.length })}
           </p>
         </div>
         {canEdit && (
           <div className="flex items-center gap-2">
             <button onClick={downloadTemplate} className="btn-secondary">
-              <Download size={14} /> Modèle CSV
+              <Download size={14} /> {t('adminUsers.downloadTemplate')}
             </button>
             <button onClick={() => csvInputRef.current?.click()} disabled={importing} className="btn-secondary">
-              <FileUp size={14} /> {importing ? 'Import en cours…' : 'Importer CSV'}
+              <FileUp size={14} /> {importing ? t('adminUsers.importing') : t('adminUsers.import')}
             </button>
             <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onCsvSelected} />
             <button onClick={openCreate} className="btn-primary">
-              <PlusCircle size={16} /> Nouvel utilisateur
+              <PlusCircle size={16} /> {t('adminUsers.new')}
             </button>
           </div>
         )}
@@ -207,18 +208,18 @@ export function AdminUsersPage() {
       {importResult && (
         <div className="card mb-6">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-700">Résultat de l'import CSV</h2>
+            <h2 className="font-semibold text-slate-700">{t('adminUsers.importResultTitle')}</h2>
             <button onClick={() => setImportResult(null)}>
               <X size={16} className="text-slate-400" />
             </button>
           </div>
           <p className="mb-2 text-sm text-slate-600">
-            <span className="font-semibold text-emerald-700">{importResult.created} créé(s)</span> ·{' '}
-            <span className="font-semibold text-brand-700">{importResult.updated} mis à jour</span>
+            <span className="font-semibold text-emerald-700">{t('adminUsers.created', { count: importResult.created })}</span> ·{' '}
+            <span className="font-semibold text-brand-700">{t('adminUsers.updated', { count: importResult.updated })}</span>
             {importResult.errors.length > 0 && (
               <>
                 {' '}
-                · <span className="font-semibold text-rose-700">{importResult.errors.length} erreur(s)</span>
+                · <span className="font-semibold text-rose-700">{t('adminUsers.errors', { count: importResult.errors.length })}</span>
               </>
             )}
           </p>
@@ -226,7 +227,7 @@ export function AdminUsersPage() {
             <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg bg-rose-50 p-3 text-xs text-rose-700">
               {importResult.errors.map((e, idx) => (
                 <li key={idx}>
-                  Ligne {e.row}
+                  {t('adminUsers.row', { row: e.row })}
                   {e.email ? ` (${e.email})` : ''} : {e.message}
                 </li>
               ))}
@@ -238,7 +239,7 @@ export function AdminUsersPage() {
       {form && (
         <form onSubmit={submit} className="card mb-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-700">{form.id ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}</h2>
+            <h2 className="font-semibold text-slate-700">{form.id ? t('adminUsers.editTitle') : t('adminUsers.new')}</h2>
             <button type="button" onClick={() => setForm(null)}>
               <X size={18} className="text-slate-400" />
             </button>
@@ -246,7 +247,7 @@ export function AdminUsersPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Prénom</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.myInfo.firstName')}</span>
               <input
                 required
                 className="input"
@@ -255,7 +256,7 @@ export function AdminUsersPage() {
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Nom</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.myInfo.lastName')}</span>
               <input
                 required
                 className="input"
@@ -267,7 +268,7 @@ export function AdminUsersPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Téléphone</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.myInfo.phone')}</span>
               <input
                 type="tel"
                 className="input"
@@ -277,7 +278,7 @@ export function AdminUsersPage() {
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Email</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.myInfo.email')}</span>
               <input
                 type="email"
                 required
@@ -290,7 +291,7 @@ export function AdminUsersPage() {
 
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-500">
-              {form.id ? 'Mot de passe (8 caractères min., laisser vide pour ne pas le modifier)' : 'Mot de passe initial (8 caractères min.)'}
+              {form.id ? t('adminUsers.passwordEditHint') : t('adminUsers.passwordNewHint')}
             </span>
             <input
               type="password"
@@ -303,7 +304,7 @@ export function AdminUsersPage() {
           </label>
 
           <div>
-            <span className="mb-1 block text-xs font-medium text-slate-500">Rôles</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500">{t('adminUsers.roles')}</span>
             <div className="flex gap-4">
               {roles.map((r) => (
                 <label key={r.id} className="flex items-center gap-1.5 text-sm">
@@ -316,9 +317,9 @@ export function AdminUsersPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Suppléant 1</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('adminUsers.delegate1')}</span>
               <select className="input" value={form.delegateUser1Id} onChange={(e) => setForm({ ...form, delegateUser1Id: e.target.value })}>
-                <option value="">— aucun —</option>
+                <option value="">{t('profile.delegation.none')}</option>
                 {otherUsers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.fullName}
@@ -327,9 +328,9 @@ export function AdminUsersPage() {
               </select>
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Suppléant 2</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('adminUsers.delegate2')}</span>
               <select className="input" value={form.delegateUser2Id} onChange={(e) => setForm({ ...form, delegateUser2Id: e.target.value })}>
-                <option value="">— aucun —</option>
+                <option value="">{t('profile.delegation.none')}</option>
                 {otherUsers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.fullName}
@@ -341,18 +342,18 @@ export function AdminUsersPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Début de congé</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.delegation.absenceStart')}</span>
               <input type="date" className="input" value={form.absenceStart} onChange={(e) => setForm({ ...form, absenceStart: e.target.value })} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Fin de congé</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.delegation.absenceEnd')}</span>
               <input type="date" className="input" value={form.absenceEnd} onChange={(e) => setForm({ ...form, absenceEnd: e.target.value })} />
             </label>
           </div>
 
           {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
           <button type="submit" className="btn-primary">
-            {form.id ? 'Enregistrer' : 'Créer le compte'}
+            {form.id ? t('profile.save') : t('adminUsers.createAccount')}
           </button>
         </form>
       )}
@@ -361,13 +362,13 @@ export function AdminUsersPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-3">Nom</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Rôles</th>
-              <th className="px-4 py-3">Statut</th>
-              <th className="px-4 py-3">2FA</th>
-              <th className="px-4 py-3">Suppléants</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th className="px-4 py-3">{t('adminUsers.table.name')}</th>
+              <th className="px-4 py-3">{t('adminUsers.table.email')}</th>
+              <th className="px-4 py-3">{t('adminUsers.table.roles')}</th>
+              <th className="px-4 py-3">{t('adminUsers.table.status')}</th>
+              <th className="px-4 py-3">{t('adminUsers.table.twoFactor')}</th>
+              <th className="px-4 py-3">{t('adminUsers.table.delegates')}</th>
+              <th className="px-4 py-3 text-right">{t('adminUsers.table.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -382,13 +383,13 @@ export function AdminUsersPage() {
                       u.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
                     }`}
                   >
-                    {u.isActive ? 'Actif' : 'Désactivé'}
+                    {u.isActive ? t('adminUsers.active') : t('adminUsers.inactive')}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   {u.twoFactorEnabled ? (
                     <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
-                      <ShieldCheck size={14} /> Activée
+                      <ShieldCheck size={14} /> {t('adminUsers.twoFactorEnabled')}
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 text-xs text-slate-400">
@@ -404,21 +405,21 @@ export function AdminUsersPage() {
                   {canEdit && (
                     <div className="flex items-center justify-end gap-2">
                       <button onClick={() => openEdit(u)} className="btn-secondary">
-                        <PencilLine size={14} /> Modifier
+                        <PencilLine size={14} /> {t('adminUsers.edit')}
                       </button>
                       {u.isActive ? (
                         <button
                           onClick={() => deactivate(u)}
                           className="flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
                         >
-                          <PowerOff size={14} /> Désactiver
+                          <PowerOff size={14} /> {t('adminUsers.deactivate')}
                         </button>
                       ) : (
                         <button
                           onClick={() => activate(u)}
                           className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                         >
-                          <Power size={14} /> Réactiver
+                          <Power size={14} /> {t('adminUsers.reactivate')}
                         </button>
                       )}
                     </div>

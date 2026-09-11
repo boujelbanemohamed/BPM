@@ -1,64 +1,36 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ClipboardList, KeyRound, Lock, PencilLine, PlusCircle, Save, Shield, Users, X } from 'lucide-react';
 import { api } from '../api/client';
 import { PAGE_KEYS, PageAccessLevel, PageKey, RoleWithUsers } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { processStatusLabel } from '../lib/processStatus';
 
-const PAGE_LABELS: Record<PageKey, { label: string; levels: PageAccessLevel[] }> = {
-  PROCESSES_DESIGN: { label: 'Conception des processus', levels: ['NONE', 'VIEW', 'FULL'] },
-  PERMISSIONS_MATRIX: { label: 'Matrice de droits', levels: ['NONE', 'VIEW', 'FULL'] },
-  USERS: { label: 'Utilisateurs', levels: ['NONE', 'VIEW', 'FULL'] },
-  AUDIT: { label: 'Audit', levels: ['NONE', 'VIEW'] },
-  DATABASE: { label: 'Base de données', levels: ['NONE', 'VIEW'] },
-  FIELDS_REGISTRY: { label: 'Champs', levels: ['NONE', 'VIEW'] },
-  NOTIFICATIONS_CONFIG: { label: 'Notifications (SMTP + modèles email)', levels: ['NONE', 'VIEW', 'FULL'] },
-  ROLES: { label: 'Rôles', levels: ['NONE', 'VIEW', 'FULL'] },
-  DOCUMENTS: { label: 'Documents (bibliothèque de dossiers/fichiers)', levels: ['NONE', 'VIEW', 'FULL'] },
+const PAGE_LEVELS: Record<PageKey, PageAccessLevel[]> = {
+  PROCESSES_DESIGN: ['NONE', 'VIEW', 'FULL'],
+  PERMISSIONS_MATRIX: ['NONE', 'VIEW', 'FULL'],
+  USERS: ['NONE', 'VIEW', 'FULL'],
+  AUDIT: ['NONE', 'VIEW'],
+  DATABASE: ['NONE', 'VIEW'],
+  FIELDS_REGISTRY: ['NONE', 'VIEW'],
+  NOTIFICATIONS_CONFIG: ['NONE', 'VIEW', 'FULL'],
+  ROLES: ['NONE', 'VIEW', 'FULL'],
+  DOCUMENTS: ['NONE', 'VIEW', 'FULL'],
 };
 
-const LEVEL_LABELS: Record<PageAccessLevel, string> = {
-  NONE: 'Aucun accès',
-  VIEW: 'Consultation',
-  FULL: 'Accès complet',
+const ADMIN_ACCESS_KEYS = ['users', 'processDesign', 'permissionsMatrix', 'configMenu', 'fieldsTab'] as const;
+const ADMIN_ACCESS_PATHS: Record<(typeof ADMIN_ACCESS_KEYS)[number], string | null> = {
+  users: '/admin/users',
+  processDesign: '/processes',
+  permissionsMatrix: '/processes/:id/permissions',
+  configMenu: null,
+  fieldsTab: '/admin/fields',
 };
 
-const ADMIN_ACCESS = [
-  {
-    label: 'Gestion des utilisateurs',
-    detail: 'créer/modifier/désactiver des comptes, réinitialiser un mot de passe',
-    path: '/admin/users',
-  },
-  {
-    label: 'Conception des processus',
-    detail: 'créer un processus, éditer son BPMN, le publier',
-    path: '/processes',
-  },
-  {
-    label: 'Matrice de droits',
-    detail: 'définir qui voit/modifie quel champ à quelle étape',
-    path: '/processes/:id/permissions',
-  },
-  {
-    label: 'Le menu Configuration en entier',
-    detail: 'Notifications (SMTP + modèles email), Base de données, Audit, Rôles, Utilisateurs',
-    path: null,
-  },
-  {
-    label: "L'onglet Champs",
-    detail: 'registre de tous les champs de formulaire',
-    path: '/admin/fields',
-  },
-];
-
-const STANDARD_ACCESS = [
-  'Démarrer un processus et traiter les tâches qui lui sont assignées',
-  'Consulter la liste des instances de processus',
-  'Gérer le module Clients (créer, consulter, modifier)',
-  'Gérer son propre profil : nom, téléphone, avatar, mot de passe, préférence de notifications email, suppléants',
-];
+const STANDARD_ACCESS_KEYS = ['startProcess', 'viewInstances', 'manageClients', 'manageProfile'] as const;
 
 export function RolesPage() {
+  const { t } = useTranslation();
   const { hasAccess } = useAuth();
   const canManage = hasAccess('ROLES', 'FULL');
   const [roles, setRoles] = useState<RoleWithUsers[]>([]);
@@ -125,10 +97,10 @@ export function RolesPage() {
 
   async function saveAccess(role: RoleWithUsers) {
     setAccessError((prev) => ({ ...prev, [role.id]: null }));
-    setAccessStatus((prev) => ({ ...prev, [role.id]: 'Enregistrement…' }));
+    setAccessStatus((prev) => ({ ...prev, [role.id]: t('profile.saving') }));
     try {
       await api.updateRolePageAccess(role.id, getAccessDraft(role));
-      setAccessStatus((prev) => ({ ...prev, [role.id]: 'Enregistré' }));
+      setAccessStatus((prev) => ({ ...prev, [role.id]: t('profile.saved') }));
       load();
       setTimeout(() => setAccessStatus((prev) => ({ ...prev, [role.id]: null })), 1500);
     } catch (err) {
@@ -141,42 +113,36 @@ export function RolesPage() {
     <div className="mx-auto max-w-4xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
-          <Shield size={22} /> Rôles
+          <Shield size={22} /> {t('roles.title')}
         </h1>
         {canManage && (
           <button onClick={() => setCreating(true)} className="btn-primary">
-            <PlusCircle size={16} /> Nouveau rôle
+            <PlusCircle size={16} /> {t('roles.new')}
           </button>
         )}
       </div>
 
-      <p className="mb-6 text-sm text-slate-500">
-        Un rôle définit à qui une tâche BPMN peut être assignée et sert de clé dans la matrice de droits d'un
-        processus. Le nom d'un rôle n'est pas modifiable une fois créé, car il est référencé tel quel dans les
-        processus déjà conçus.
-      </p>
+      <p className="mb-6 text-sm text-slate-500">{t('roles.description')}</p>
 
       {creating && canManage && (
         <form onSubmit={createRole} className="card mb-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-700">Nouveau rôle</h2>
+            <h2 className="font-semibold text-slate-700">{t('roles.createForm.title')}</h2>
             <button type="button" onClick={() => setCreating(false)}>
               <X size={18} className="text-slate-400" />
             </button>
           </div>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
-              Nom (lettres, chiffres, underscores — ex. JURISTE)
-            </span>
+            <span className="mb-1 block text-xs font-medium text-slate-500">{t('roles.createForm.namePattern')}</span>
             <input required className="input" value={newName} onChange={(e) => setNewName(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Description</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500">{t('roles.createForm.description')}</span>
             <input className="input" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} />
           </label>
           {createError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{createError}</p>}
           <button type="submit" className="btn-primary">
-            Créer le rôle
+            {t('roles.createForm.submit')}
           </button>
         </form>
       )}
@@ -191,7 +157,7 @@ export function RolesPage() {
                     {role.name}
                   </span>
                   <span className="text-xs text-slate-400">
-                    {role.users.length} utilisateur{role.users.length > 1 ? 's' : ''}
+                    {t('roles.userCount', { count: role.users.length })}
                   </span>
                 </div>
                 {editingId === role.id && canManage ? (
@@ -200,35 +166,37 @@ export function RolesPage() {
                       className="input"
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
-                      placeholder="Description du rôle"
+                      placeholder={t('roles.editDescriptionPlaceholder') as string}
                     />
                     {editError && <p className="text-sm text-rose-600">{editError}</p>}
                     <div className="flex items-center gap-2">
                       <button onClick={() => saveEdit(role.id)} className="btn-primary">
-                        Enregistrer
+                        {t('roles.save')}
                       </button>
                       <button onClick={() => setEditingId(null)} className="btn-secondary">
-                        Annuler
+                        {t('roles.cancel')}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-1.5 text-sm text-slate-500">{role.description || <em>Aucune description</em>}</p>
+                  <p className="mt-1.5 text-sm text-slate-500">
+                    {role.description || <em>{t('roles.noDescription')}</em>}
+                  </p>
                 )}
               </div>
               {editingId !== role.id && canManage && (
                 <button onClick={() => startEdit(role)} className="btn-secondary">
-                  <PencilLine size={14} /> Modifier
+                  <PencilLine size={14} /> {t('roles.edit')}
                 </button>
               )}
             </div>
 
             <div className="border-t border-slate-100 pt-3">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-400">
-                <Users size={13} /> Utilisateurs
+                <Users size={13} /> {t('roles.users')}
               </p>
               {role.users.length === 0 ? (
-                <p className="text-sm text-slate-400">Aucun utilisateur n'a ce rôle.</p>
+                <p className="text-sm text-slate-400">{t('roles.noUsers')}</p>
               ) : (
                 <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3">
                   {role.users.map((u) => (
@@ -243,18 +211,21 @@ export function RolesPage() {
 
             <div className="mt-3 border-t border-slate-100 pt-3">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-400">
-                <KeyRound size={13} /> Accès
+                <KeyRound size={13} /> {t('roles.access')}
               </p>
 
               {role.name === 'ADMIN' && (
                 <div className="mb-3">
-                  <p className="mb-1 text-xs font-medium text-slate-400">Exclusif à ADMIN</p>
+                  <p className="mb-1 text-xs font-medium text-slate-400">{t('roles.adminExclusive')}</p>
                   <ul className="space-y-1.5">
-                    {ADMIN_ACCESS.map((item) => (
-                      <li key={item.label} className="text-sm text-slate-600">
-                        <span className="font-medium text-slate-700">{item.label}</span> : {item.detail}
-                        {item.path && (
-                          <code className="ml-1.5 rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-400">{item.path}</code>
+                    {ADMIN_ACCESS_KEYS.map((key) => (
+                      <li key={key} className="text-sm text-slate-600">
+                        <span className="font-medium text-slate-700">{t(`roles.adminAccess.${key}.label`)}</span> :{' '}
+                        {t(`roles.adminAccess.${key}.detail`)}
+                        {ADMIN_ACCESS_PATHS[key] && (
+                          <code className="ml-1.5 rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-400">
+                            {ADMIN_ACCESS_PATHS[key]}
+                          </code>
                         )}
                       </li>
                     ))}
@@ -263,11 +234,11 @@ export function RolesPage() {
               )}
 
               <div className="mb-3">
-                <p className="mb-1 text-xs font-medium text-slate-400">Accès standard (tout utilisateur connecté)</p>
+                <p className="mb-1 text-xs font-medium text-slate-400">{t('roles.standardAccess')}</p>
                 <ul className="space-y-1.5">
-                  {STANDARD_ACCESS.map((item) => (
-                    <li key={item} className="text-sm text-slate-600">
-                      {item}
+                  {STANDARD_ACCESS_KEYS.map((key) => (
+                    <li key={key} className="text-sm text-slate-600">
+                      {t(`roles.standardAccessItems.${key}`)}
                     </li>
                   ))}
                 </ul>
@@ -276,17 +247,19 @@ export function RolesPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                    <ClipboardList size={13} /> Tâches BPMN assignées à ce rôle
+                    <ClipboardList size={13} /> {t('roles.assignedTasks')}
                   </p>
                   {role.assignedTasks.length === 0 ? (
-                    <p className="text-xs text-slate-400">Aucune tâche assignée à ce rôle pour l'instant.</p>
+                    <p className="text-xs text-slate-400">{t('roles.noAssignedTasks')}</p>
                   ) : (
                     <ul className="space-y-1">
-                      {role.assignedTasks.map((t, i) => (
+                      {role.assignedTasks.map((task, i) => (
                         <li key={i} className="text-xs text-slate-600">
-                          <span className="font-medium">{t.processName}</span> → {t.stepName}
-                          {t.processStatus !== 'PUBLISHED' && (
-                            <span className="ml-1 text-slate-400">({processStatusLabel(t.processStatus).toLowerCase()})</span>
+                          <span className="font-medium">{task.processName}</span> → {task.stepName}
+                          {task.processStatus !== 'PUBLISHED' && (
+                            <span className="ml-1 text-slate-400">
+                              ({processStatusLabel(task.processStatus).toLowerCase()})
+                            </span>
                           )}
                         </li>
                       ))}
@@ -296,19 +269,21 @@ export function RolesPage() {
 
                 <div>
                   <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                    <Lock size={13} /> Règles de droits définies
+                    <Lock size={13} /> {t('roles.permissionRules')}
                   </p>
                   {role.permissionRules.length === 0 ? (
-                    <p className="text-xs text-slate-400">
-                      Aucune règle spécifique : accès par défaut aux champs et documents de son étape.
-                    </p>
+                    <p className="text-xs text-slate-400">{t('roles.noPermissionRules')}</p>
                   ) : (
                     <ul className="space-y-1">
                       {role.permissionRules.map((r, i) => (
                         <li key={i} className="text-xs text-slate-600">
-                          <span className="font-medium">{r.processName}</span> → {r.stepName} — {r.fieldCount} champ
-                          {r.fieldCount > 1 ? 's' : ''} configuré{r.fieldCount > 1 ? 's' : ''}, documents :{' '}
-                          {r.canUploadDocuments ? 'dépôt autorisé' : r.canViewDocuments ? 'consultation' : 'aucun accès'}
+                          <span className="font-medium">{r.processName}</span> → {r.stepName} —{' '}
+                          {t('roles.fieldCount', { count: r.fieldCount })}, documents :{' '}
+                          {r.canUploadDocuments
+                            ? t('roles.documentsUpload')
+                            : r.canViewDocuments
+                              ? t('roles.documentsView')
+                              : t('roles.documentsNone')}
                         </li>
                       ))}
                     </ul>
@@ -318,21 +293,19 @@ export function RolesPage() {
 
               {role.name !== 'ADMIN' && canManage && (
                 <div className="mt-4 border-t border-slate-100 pt-3">
-                  <p className="mb-1 text-xs font-medium text-slate-400">
-                    Configurer l'accès aux pages (octroyé par le superadmin)
-                  </p>
+                  <p className="mb-1 text-xs font-medium text-slate-400">{t('roles.configurePageAccess')}</p>
                   <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
                     {PAGE_KEYS.map((key) => (
                       <label key={key} className="flex items-center justify-between gap-3 text-sm">
-                        <span className="text-slate-600">{PAGE_LABELS[key].label}</span>
+                        <span className="text-slate-600">{t(`roles.pageLabels.${key}`)}</span>
                         <select
                           className="input w-auto py-1 text-xs"
                           value={getAccessDraft(role)[key]}
                           onChange={(e) => setAccessLevel(role, key, e.target.value as PageAccessLevel)}
                         >
-                          {PAGE_LABELS[key].levels.map((lvl) => (
+                          {PAGE_LEVELS[key].map((lvl) => (
                             <option key={lvl} value={lvl}>
-                              {LEVEL_LABELS[lvl]}
+                              {t(`roles.levelLabels.${lvl}`)}
                             </option>
                           ))}
                         </select>
@@ -342,7 +315,7 @@ export function RolesPage() {
                   {accessError[role.id] && <p className="mt-2 text-sm text-rose-600">{accessError[role.id]}</p>}
                   <div className="mt-3 flex items-center gap-3">
                     <button onClick={() => saveAccess(role)} className="btn-primary">
-                      <Save size={16} /> Enregistrer les accès
+                      <Save size={16} /> {t('roles.saveAccess')}
                     </button>
                     {accessStatus[role.id] && <span className="text-sm text-slate-400">{accessStatus[role.id]}</span>}
                   </div>
@@ -351,7 +324,7 @@ export function RolesPage() {
             </div>
           </div>
         ))}
-        {roles.length === 0 && <div className="card text-center text-slate-400">Chargement…</div>}
+        {roles.length === 0 && <div className="card text-center text-slate-400">{t('roles.loading')}</div>}
       </div>
     </div>
   );
