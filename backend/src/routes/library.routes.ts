@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { pool } from '../db/pool';
 import { env } from '../config/env';
 import { requireAuth } from '../middleware/auth';
+import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { writeAuditLog } from '../lib/audit';
@@ -49,6 +50,7 @@ const createFolderSchema = z.object({ name: z.string().trim().min(1, 'Le nom du 
 
 libraryRouter.get(
   '/folders',
+  requirePageAccess('DOCUMENTS', 'VIEW'),
   asyncHandler(async (_req, res) => {
     const { rows } = await pool.query<DocumentFolderRow & { created_by_name: string; document_count: number }>(
       `SELECT f.*, u.full_name AS created_by_name,
@@ -63,6 +65,7 @@ libraryRouter.get(
 
 libraryRouter.post(
   '/folders',
+  requirePageAccess('DOCUMENTS', 'FULL'),
   asyncHandler(async (req, res) => {
     const body = createFolderSchema.parse(req.body);
 
@@ -86,6 +89,7 @@ libraryRouter.post(
 
 libraryRouter.get(
   '/documents',
+  requirePageAccess('DOCUMENTS', 'VIEW'),
   asyncHandler(async (_req, res) => {
     const { rows } = await pool.query<LibraryDocumentRow & { folder_name: string }>(
       `SELECT d.*, f.name AS folder_name
@@ -99,6 +103,7 @@ libraryRouter.get(
 
 libraryRouter.get(
   '/folders/:id',
+  requirePageAccess('DOCUMENTS', 'VIEW'),
   asyncHandler(async (req, res) => {
     const { rows: folderRows } = await pool.query<DocumentFolderRow & { created_by_name: string }>(
       `SELECT f.*, u.full_name AS created_by_name FROM document_folders f
@@ -121,6 +126,7 @@ libraryRouter.get(
 
 libraryRouter.post(
   '/folders/:id/documents',
+  requirePageAccess('DOCUMENTS', 'FULL'),
   upload.single('file'),
   asyncHandler(async (req, res) => {
     const { rows: folderRows } = await pool.query<DocumentFolderRow>('SELECT * FROM document_folders WHERE id = $1', [
@@ -151,6 +157,7 @@ libraryRouter.post(
 
 libraryRouter.get(
   '/documents/:id',
+  requirePageAccess('DOCUMENTS', 'VIEW'),
   asyncHandler(async (req, res) => {
     const { rows } = await pool.query<LibraryDocumentRow>('SELECT * FROM library_documents WHERE id = $1', [
       req.params.id,

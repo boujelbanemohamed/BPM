@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Download, Eye, FileText, Folder, UploadCloud } from 'lucide-react';
 import { api } from '../api/client';
 import { DocumentFolder, LibraryDocumentItem } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -11,6 +12,8 @@ function formatBytes(bytes: number): string {
 }
 
 export function DocumentFolderPage() {
+  const { hasAccess } = useAuth();
+  const canManage = hasAccess('DOCUMENTS', 'FULL');
   const { id } = useParams<{ id: string }>();
   const [folder, setFolder] = useState<DocumentFolder | null>(null);
   const [documents, setDocuments] = useState<LibraryDocumentItem[]>([]);
@@ -56,10 +59,14 @@ export function DocumentFolderPage() {
       <div className="card">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="font-semibold text-slate-700">Documents</h2>
-          <button onClick={() => fileInputRef.current?.click()} className="btn-secondary">
-            <UploadCloud size={14} /> Déposer un fichier
-          </button>
-          <input ref={fileInputRef} type="file" className="hidden" onChange={onFileSelected} />
+          {canManage && (
+            <>
+              <button onClick={() => fileInputRef.current?.click()} className="btn-secondary">
+                <UploadCloud size={14} /> Déposer un fichier
+              </button>
+              <input ref={fileInputRef} type="file" className="hidden" onChange={onFileSelected} />
+            </>
+          )}
         </div>
         {uploadError && <p className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{uploadError}</p>}
         <ul className="divide-y divide-slate-100 text-sm">

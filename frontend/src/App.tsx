@@ -50,8 +50,22 @@ export default function App() {
         <Route path="/instances/:id" element={<InstanceDetailPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/clients/:id" element={<ClientDetailPage />} />
-        <Route path="/documents" element={<DocumentsPage />} />
-        <Route path="/documents/:id" element={<DocumentFolderPage />} />
+        <Route
+          path="/documents"
+          element={
+            <RequirePageAccess pageKey="DOCUMENTS" minLevel="VIEW">
+              <DocumentsPage />
+            </RequirePageAccess>
+          }
+        />
+        <Route
+          path="/documents/:id"
+          element={
+            <RequirePageAccess pageKey="DOCUMENTS" minLevel="VIEW">
+              <DocumentFolderPage />
+            </RequirePageAccess>
+          }
+        />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route

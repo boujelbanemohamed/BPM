@@ -20,6 +20,7 @@ export const PAGE_KEYS = [
   'FIELDS_REGISTRY',
   'NOTIFICATIONS_CONFIG',
   'ROLES',
+  'DOCUMENTS',
 ] as const;
 
 export type PageKey = (typeof PAGE_KEYS)[number];

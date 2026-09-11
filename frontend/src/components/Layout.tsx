@@ -127,9 +127,11 @@ export function Layout() {
             <NavLink to="/clients" className={navLinkClass}>
               <Users size={16} /> Clients
             </NavLink>
-            <NavLink to="/documents" className={navLinkClass}>
-              <FolderOpen size={16} /> Documents
-            </NavLink>
+            {hasAccess('DOCUMENTS', 'VIEW') && (
+              <NavLink to="/documents" className={navLinkClass}>
+                <FolderOpen size={16} /> Documents
+              </NavLink>
+            )}
             {hasAccess('FIELDS_REGISTRY', 'VIEW') && (
               <NavLink to="/admin/fields" className={navLinkClass}>
                 <ListTree size={16} /> Champs

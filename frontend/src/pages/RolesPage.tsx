@@ -14,6 +14,7 @@ const PAGE_LABELS: Record<PageKey, { label: string; levels: PageAccessLevel[] }>
   FIELDS_REGISTRY: { label: 'Champs', levels: ['NONE', 'VIEW'] },
   NOTIFICATIONS_CONFIG: { label: 'Notifications (SMTP + modèles email)', levels: ['NONE', 'VIEW', 'FULL'] },
   ROLES: { label: 'Rôles', levels: ['NONE', 'VIEW', 'FULL'] },
+  DOCUMENTS: { label: 'Documents (bibliothèque de dossiers/fichiers)', levels: ['NONE', 'VIEW', 'FULL'] },
 };
 
 const LEVEL_LABELS: Record<PageAccessLevel, string> = {

@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom';
 import { Folder, FolderPlus, X } from 'lucide-react';
 import { api } from '../api/client';
 import { DocumentFolder } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 export function DocumentsPage() {
+  const { hasAccess } = useAuth();
+  const canManage = hasAccess('DOCUMENTS', 'FULL');
   const [folders, setFolders] = useState<DocumentFolder[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -55,12 +58,14 @@ export function DocumentsPage() {
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Documents</h1>
-        <button
-          onClick={openCreateModal}
-          className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-        >
-          <FolderPlus size={16} /> Nouveau dossier
-        </button>
+        {canManage && (
+          <button
+            onClick={openCreateModal}
+            className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            <FolderPlus size={16} /> Nouveau dossier
+          </button>
+        )}
       </div>
 
       {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}

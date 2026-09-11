@@ -428,13 +428,16 @@ INSERT INTO roles (name, description) VALUES
   ('VALIDATOR', 'Validateur de workflow'),
   ('OPERATOR',  'Opérateur / utilisateur standard');
 
--- Accès par défaut des rôles non-admin : consultation des processus
--- (comportement déjà existant avant l'introduction de cette permission,
--- préservé pour ne pas régresser). Tout le reste (Utilisateurs, Audit,
--- Base de données, Champs, Notifications, Rôles, Matrice de droits)
--- reste à NONE tant qu'un administrateur ne l'octroie pas explicitement.
+-- Accès par défaut des rôles non-admin : consultation des processus, et
+-- gestion complète de la bibliothèque de documents (comportement déjà
+-- existant avant l'introduction de ces permissions, préservé pour ne pas
+-- régresser). Tout le reste (Utilisateurs, Audit, Base de données, Champs,
+-- Notifications, Rôles, Matrice de droits) reste à NONE tant qu'un
+-- administrateur ne l'octroie pas explicitement.
 INSERT INTO role_page_permissions (role_id, page_key, access_level)
   SELECT id, 'PROCESSES_DESIGN', 'VIEW' FROM roles WHERE name <> 'ADMIN';
+INSERT INTO role_page_permissions (role_id, page_key, access_level)
+  SELECT id, 'DOCUMENTS', 'FULL' FROM roles WHERE name <> 'ADMIN';
 
 -- Mot de passe de tous les comptes de démo : Admin123!
 INSERT INTO users (id, email, password_hash, full_name, first_name, last_name, is_active) VALUES
