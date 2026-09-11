@@ -1,5 +1,6 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Download, Eye, FileText, Folder, UploadCloud } from 'lucide-react';
 import { api } from '../api/client';
 import { DocumentFolder, LibraryDocumentItem } from '../types';
@@ -12,6 +13,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function DocumentFolderPage() {
+  const { t } = useTranslation();
   const { hasAccess } = useAuth();
   const canManage = hasAccess('DOCUMENTS', 'FULL');
   const { id } = useParams<{ id: string }>();
@@ -45,12 +47,12 @@ export function DocumentFolderPage() {
     }
   }
 
-  if (!folder) return <div className="p-6 text-slate-400">Chargement…</div>;
+  if (!folder) return <div className="p-6 text-slate-400">{t('documents.loading')}</div>;
 
   return (
     <div className="mx-auto max-w-4xl p-6">
       <Link to="/documents" className="mb-1 flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600">
-        <ArrowLeft size={14} /> Retour aux documents
+        <ArrowLeft size={14} /> {t('documents.backToDocuments')}
       </Link>
       <h1 className="mb-6 flex items-center gap-2 text-xl font-bold text-slate-800">
         <Folder size={20} className="text-brand-600" /> {folder.name}
@@ -58,11 +60,11 @@ export function DocumentFolderPage() {
 
       <div className="card">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-semibold text-slate-700">Documents</h2>
+          <h2 className="font-semibold text-slate-700">{t('documents.title')}</h2>
           {canManage && (
             <>
               <button onClick={() => fileInputRef.current?.click()} className="btn-secondary">
-                <UploadCloud size={14} /> Déposer un fichier
+                <UploadCloud size={14} /> {t('documents.uploadFile')}
               </button>
               <input ref={fileInputRef} type="file" className="hidden" onChange={onFileSelected} />
             </>
@@ -83,18 +85,18 @@ export function DocumentFolderPage() {
                   onClick={() => api.viewLibraryDocument(d.id).catch((err) => window.alert((err as Error).message))}
                   className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
                 >
-                  <Eye size={14} /> Visualiser
+                  <Eye size={14} /> {t('documents.view')}
                 </button>
                 <button
                   onClick={() => api.downloadLibraryDocument(d.id, d.filename)}
                   className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
                 >
-                  <Download size={14} /> Télécharger
+                  <Download size={14} /> {t('documents.download')}
                 </button>
               </span>
             </li>
           ))}
-          {documents.length === 0 && <li className="py-2 text-slate-400">Aucun document.</li>}
+          {documents.length === 0 && <li className="py-2 text-slate-400">{t('documents.emptyFiles')}</li>}
         </ul>
       </div>
     </div>

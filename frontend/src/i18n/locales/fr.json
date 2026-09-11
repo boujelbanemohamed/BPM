@@ -172,7 +172,46 @@
       "folders": "Dossiers"
     },
     "view": "Voir",
-    "empty": "Aucun client."
+    "empty": "Aucun client.",
+    "detail": {
+      "backToClients": "Retour aux clients",
+      "contactInfo": "Coordonnées",
+      "name": "Nom",
+      "address": "Adresse",
+      "notes": "Notes",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "relatedProcesses": "Processus liés ({{count}})",
+      "table": {
+        "process": "Processus",
+        "status": "Statut",
+        "currentStep": "Étape actuelle",
+        "startedAt": "Démarré le"
+      },
+      "view": "Voir",
+      "empty": "Aucun dossier pour ce client."
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "newFolder": "Nouveau dossier",
+    "folderCount_one": "{{count}} document",
+    "folderCount_other": "{{count}} documents",
+    "empty": "Aucun dossier pour l'instant.",
+    "createModal": {
+      "title": "Nouveau dossier",
+      "name": "Nom du dossier",
+      "creating": "Création…",
+      "submit": "Créer le dossier"
+    },
+    "nameRequired": "Le nom est requis",
+    "backToDocuments": "Retour aux documents",
+    "uploadFile": "Déposer un fichier",
+    "view": "Visualiser",
+    "download": "Télécharger",
+    "loading": "Chargement…",
+    "emptyFiles": "Aucun document."
   },
   "audit": {
     "title": "Audit trail",

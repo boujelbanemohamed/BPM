@@ -172,7 +172,46 @@
       "folders": "Folders"
     },
     "view": "View",
-    "empty": "No clients."
+    "empty": "No clients.",
+    "detail": {
+      "backToClients": "Back to clients",
+      "contactInfo": "Contact info",
+      "name": "Name",
+      "address": "Address",
+      "notes": "Notes",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "relatedProcesses": "Related processes ({{count}})",
+      "table": {
+        "process": "Process",
+        "status": "Status",
+        "currentStep": "Current step",
+        "startedAt": "Started on"
+      },
+      "view": "View",
+      "empty": "No records for this client."
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "newFolder": "New folder",
+    "folderCount_one": "{{count}} document",
+    "folderCount_other": "{{count}} documents",
+    "empty": "No folders yet.",
+    "createModal": {
+      "title": "New folder",
+      "name": "Folder name",
+      "creating": "Creating…",
+      "submit": "Create folder"
+    },
+    "nameRequired": "Name is required",
+    "backToDocuments": "Back to documents",
+    "uploadFile": "Upload a file",
+    "view": "View",
+    "download": "Download",
+    "loading": "Loading…",
+    "emptyFiles": "No documents."
   },
   "audit": {
     "title": "Audit trail",
