@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 import NavigatedViewer from 'bpmn-js/lib/NavigatedViewer';
 import { Plus, Trash2 } from 'lucide-react';
@@ -41,6 +42,7 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
   { initialXml, readOnly, roles, users },
   ref
 ) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const modelerRef = useRef<any>(null);
   const [selected, setSelected] = useState<any>(null);
@@ -80,7 +82,7 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
         canvas.zoom('fit-viewport');
       })
       .catch((err: Error) => {
-        if (!cancelled) setError(`Impossible de charger le diagramme BPMN : ${err.message}`);
+        if (!cancelled) setError(t('diff.loadError', { message: err.message }));
       });
 
     if (!readOnly) {
@@ -127,14 +129,12 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
       <div className="flex flex-1 flex-col">
         {!readOnly && (
           <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
-            <ToolbarButton onClick={() => addElement('bpmn:UserTask', 'Nouvelle tâche')}>+ Tâche utilisateur</ToolbarButton>
-            <ToolbarButton onClick={() => addElement('bpmn:ExclusiveGateway', 'Décision')}>+ Passerelle exclusive</ToolbarButton>
-            <ToolbarButton onClick={() => addElement('bpmn:ParallelGateway', 'Parallèle')}>+ Passerelle parallèle</ToolbarButton>
-            <ToolbarButton onClick={() => addElement('bpmn:InclusiveGateway', 'Inclusive')}>+ Passerelle inclusive</ToolbarButton>
-            <ToolbarButton onClick={() => addElement('bpmn:EndEvent', 'Fin')}>+ Événement de fin</ToolbarButton>
-            <span className="ml-2 self-center text-xs text-slate-400">
-              Utilisez la palette à gauche du canevas pour dessiner les transitions entre les éléments.
-            </span>
+            <ToolbarButton onClick={() => addElement('bpmn:UserTask', 'Nouvelle tâche')}>{t('bpmnDesigner.toolbar.addUserTask')}</ToolbarButton>
+            <ToolbarButton onClick={() => addElement('bpmn:ExclusiveGateway', 'Décision')}>{t('bpmnDesigner.toolbar.addExclusiveGateway')}</ToolbarButton>
+            <ToolbarButton onClick={() => addElement('bpmn:ParallelGateway', 'Parallèle')}>{t('bpmnDesigner.toolbar.addParallelGateway')}</ToolbarButton>
+            <ToolbarButton onClick={() => addElement('bpmn:InclusiveGateway', 'Inclusive')}>{t('bpmnDesigner.toolbar.addInclusiveGateway')}</ToolbarButton>
+            <ToolbarButton onClick={() => addElement('bpmn:EndEvent', 'Fin')}>{t('bpmnDesigner.toolbar.addEndEvent')}</ToolbarButton>
+            <span className="ml-2 self-center text-xs text-slate-400">{t('bpmnDesigner.toolbar.paletteHint')}</span>
           </div>
         )}
         {error && <p className="bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
@@ -142,7 +142,7 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
       </div>
       {!readOnly && (
         <div className="w-80 overflow-y-auto border-l border-slate-200 bg-white p-4">
-          {!selected && <p className="text-sm text-slate-400">Sélectionnez un élément du diagramme pour le configurer.</p>}
+          {!selected && <p className="text-sm text-slate-400">{t('bpmnDesigner.noSelection')}</p>}
           {selected && (
             <ElementPanel key={selected.id} element={selected} modelerRef={modelerRef} roles={roles} users={users} />
           )}
@@ -175,6 +175,7 @@ function ElementPanel({
   roles: Role[];
   users: MinimalUser[];
 }) {
+  const { t } = useTranslation();
   const bo = element.businessObject;
   const type = element.type as string;
 
@@ -194,10 +195,10 @@ function ElementPanel({
   if (type === 'bpmn:Task') {
     return (
       <div className="text-sm text-slate-600">
-        <p className="mb-2 font-semibold">Tâche générique</p>
+        <p className="mb-2 font-semibold">{t('bpmnDesigner.genericTaskTitle')}</p>
         <p>
-          Utilisez le menu contextuel (icône clé à molette) sur l'élément sélectionné dans le canevas pour la
-          transformer en <strong>Tâche utilisateur</strong>, puis configurez son assignation ici.
+          {t('bpmnDesigner.genericTaskHintBefore')} <strong>{t('bpmnDesigner.userTaskTitle')}</strong>
+          {t('bpmnDesigner.genericTaskHintAfter')}
         </p>
       </div>
     );
@@ -211,9 +212,9 @@ function ElementPanel({
     return (
       <div>
         <p className="mb-2 text-xs font-semibold uppercase text-slate-400">
-          {type === 'bpmn:EndEvent' ? 'Événement de fin' : 'Passerelle exclusive'}
+          {type === 'bpmn:EndEvent' ? t('bpmnDesigner.endEventTitle') : t('bpmnDesigner.exclusiveGatewayTitle')}
         </p>
-        <Field label="Libellé">
+        <Field label={t('bpmnDesigner.fieldLabel')}>
           <input
             className="input"
             defaultValue={bo.name ?? ''}
@@ -229,8 +230,8 @@ function ElementPanel({
     const outgoingCount = element.outgoing?.length ?? 0;
     return (
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase text-slate-400">Passerelle parallèle</p>
-        <Field label="Libellé">
+        <p className="mb-2 text-xs font-semibold uppercase text-slate-400">{t('bpmnDesigner.parallelGatewayTitle')}</p>
+        <Field label={t('bpmnDesigner.fieldLabel')}>
           <input
             className="input"
             defaultValue={bo.name ?? ''}
@@ -238,11 +239,9 @@ function ElementPanel({
           />
         </Field>
         <p className="mt-3 text-xs text-slate-500">
-          {outgoingCount > 1 &&
-            `Fork : dès qu'un token l'atteint, les ${outgoingCount} transitions sortantes sont lancées simultanément (une tâche par branche).`}
-          {incomingCount > 1 &&
-            ` Jointure : elle attend qu'un token arrive par chacune des ${incomingCount} transitions entrantes avant de continuer.`}
-          {incomingCount <= 1 && outgoingCount <= 1 && "Reliez plusieurs transitions entrantes et/ou sortantes pour créer un embranchement ou une jointure parallèle."}
+          {outgoingCount > 1 && t('bpmnDesigner.parallelForkText', { count: outgoingCount })}
+          {incomingCount > 1 && t('bpmnDesigner.parallelJoinText', { count: incomingCount })}
+          {incomingCount <= 1 && outgoingCount <= 1 && t('bpmnDesigner.parallelNeitherText')}
         </p>
       </div>
     );
@@ -251,25 +250,20 @@ function ElementPanel({
   if (type === 'bpmn:InclusiveGateway') {
     return (
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase text-slate-400">Passerelle inclusive</p>
-        <Field label="Libellé">
+        <p className="mb-2 text-xs font-semibold uppercase text-slate-400">{t('bpmnDesigner.inclusiveGatewayTitle')}</p>
+        <Field label={t('bpmnDesigner.fieldLabel')}>
           <input
             className="input"
             defaultValue={bo.name ?? ''}
             onBlur={(e) => updateProps({ name: e.target.value })}
           />
         </Field>
-        <p className="mt-3 text-xs text-slate-500">
-          À la différence de la passerelle parallèle, seules les transitions sortantes dont la condition est vraie
-          sont empruntées (une, plusieurs, ou toutes à la fois selon les conditions — configurez-les sur chaque
-          transition sortante). En jointure, elle n'attend que les branches réellement activées, pas forcément
-          toutes les transitions entrantes dessinées dans le diagramme.
-        </p>
+        <p className="mt-3 text-xs text-slate-500">{t('bpmnDesigner.inclusiveGatewayHint')}</p>
       </div>
     );
   }
 
-  return <p className="text-sm text-slate-400">Type d'élément non configurable : {type}</p>;
+  return <p className="text-sm text-slate-400">{t('bpmnDesigner.unconfigurableType', { type })}</p>;
 }
 
 function UserTaskPanel({
@@ -283,6 +277,7 @@ function UserTaskPanel({
   roles: Role[];
   users: MinimalUser[];
 }) {
+  const { t } = useTranslation();
   const [fields, setFields] = useState<FormField[]>(parseFormFields(bo.formFields));
 
   function commitFields(next: FormField[]) {
@@ -292,17 +287,17 @@ function UserTaskPanel({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-semibold uppercase text-slate-400">Tâche utilisateur</p>
-      <Field label="Libellé">
+      <p className="text-xs font-semibold uppercase text-slate-400">{t('bpmnDesigner.userTaskTitle')}</p>
+      <Field label={t('bpmnDesigner.fieldLabel')}>
         <input className="input" defaultValue={bo.name ?? ''} onBlur={(e) => onChange({ name: e.target.value })} />
       </Field>
-      <Field label="Rôle assigné (pool de traitement)">
+      <Field label={t('bpmnDesigner.assignedRole')}>
         <select
           className="input"
           defaultValue={bo.assigneeRole ?? ''}
           onChange={(e) => onChange({ assigneeRole: e.target.value || undefined })}
         >
-          <option value="">— aucun —</option>
+          <option value="">{t('bpmnDesigner.noneOption')}</option>
           {roles.map((r) => (
             <option key={r.id} value={r.name}>
               {r.name}
@@ -310,13 +305,13 @@ function UserTaskPanel({
           ))}
         </select>
       </Field>
-      <Field label="Assigné nominatif (suppléance à 2 niveaux si absent)">
+      <Field label={t('bpmnDesigner.assignedUser')}>
         <select
           className="input"
           defaultValue={bo.assigneeUserId ?? ''}
           onChange={(e) => onChange({ assigneeUserId: e.target.value || undefined })}
         >
-          <option value="">— aucun (pool de rôle uniquement) —</option>
+          <option value="">{t('bpmnDesigner.noneRoleOnlyOption')}</option>
           {users.map((u) => (
             <option key={u.id} value={u.id}>
               {u.fullName} ({u.roles.join(', ')})
@@ -325,12 +320,13 @@ function UserTaskPanel({
         </select>
       </Field>
 
-      <FormFieldsEditor fields={fields} onChange={commitFields} label="Formulaire de la tâche" />
+      <FormFieldsEditor fields={fields} onChange={commitFields} label={t('bpmnDesigner.taskFormLabel')} />
     </div>
   );
 }
 
 function StartEventPanel({ bo, onChange }: { bo: any; onChange: (props: Record<string, unknown>) => void }) {
+  const { t } = useTranslation();
   const [fields, setFields] = useState<FormField[]>(parseFormFields(bo.formFields));
 
   function commitFields(next: FormField[]) {
@@ -340,15 +336,12 @@ function StartEventPanel({ bo, onChange }: { bo: any; onChange: (props: Record<s
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-semibold uppercase text-slate-400">Événement de début</p>
-      <Field label="Libellé">
+      <p className="text-xs font-semibold uppercase text-slate-400">{t('bpmnDesigner.startEventTitle')}</p>
+      <Field label={t('bpmnDesigner.fieldLabel')}>
         <input className="input" defaultValue={bo.name ?? ''} onBlur={(e) => onChange({ name: e.target.value })} />
       </Field>
-      <p className="text-xs text-slate-500">
-        Ces champs sont demandés à la personne qui démarre une instance (ex : nom du client, référence dossier). Ils
-        apparaîtront ensuite dans "Mes tâches" et la liste des instances pour identifier le dossier.
-      </p>
-      <FormFieldsEditor fields={fields} onChange={commitFields} label="Formulaire de démarrage" />
+      <p className="text-xs text-slate-500">{t('bpmnDesigner.startEventHint')}</p>
+      <FormFieldsEditor fields={fields} onChange={commitFields} label={t('bpmnDesigner.startFormLabel')} />
     </div>
   );
 }
@@ -362,6 +355,7 @@ function FormFieldsEditor({
   onChange: (next: FormField[]) => void;
   label: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div>
       <div className="mb-1 flex items-center justify-between">
@@ -371,7 +365,7 @@ function FormFieldsEditor({
           onClick={() => onChange([...fields, { key: '', label: '', type: 'text', required: false }])}
           className="text-xs font-semibold text-brand-600 hover:underline"
         >
-          + Champ
+          {t('bpmnDesigner.addFieldButton')}
         </button>
       </div>
       <div className="space-y-2">
@@ -379,13 +373,13 @@ function FormFieldsEditor({
           <div key={i} className="flex items-center gap-1 rounded-lg border border-slate-200 p-1.5">
             <input
               className="input min-w-0 flex-1 text-xs"
-              placeholder="clé"
+              placeholder={t('bpmnDesigner.fieldKeyPlaceholder') as string}
               value={f.key}
               onChange={(e) => onChange(fields.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))}
             />
             <input
               className="input min-w-0 flex-1 text-xs"
-              placeholder="libellé"
+              placeholder={t('bpmnDesigner.fieldLabelPlaceholder') as string}
               value={f.label}
               onChange={(e) => onChange(fields.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
             />
@@ -396,16 +390,16 @@ function FormFieldsEditor({
                 onChange(fields.map((x, j) => (j === i ? { ...x, type: e.target.value as FormField['type'] } : x)))
               }
             >
-              <option value="text">texte</option>
-              <option value="number">nombre</option>
-              <option value="boolean">oui/non</option>
-              <option value="date">date</option>
-              <option value="textarea">zone texte</option>
-              <option value="client">client</option>
+              <option value="text">{t('bpmnDesigner.fieldTypes.text')}</option>
+              <option value="number">{t('bpmnDesigner.fieldTypes.number')}</option>
+              <option value="boolean">{t('bpmnDesigner.fieldTypes.boolean')}</option>
+              <option value="date">{t('bpmnDesigner.fieldTypes.date')}</option>
+              <option value="textarea">{t('bpmnDesigner.fieldTypes.textarea')}</option>
+              <option value="client">{t('bpmnDesigner.fieldTypes.client')}</option>
             </select>
             <input
               type="checkbox"
-              title="obligatoire"
+              title={t('bpmnDesigner.requiredTitle') as string}
               checked={f.required}
               onChange={(e) => onChange(fields.map((x, j) => (j === i ? { ...x, required: e.target.checked } : x)))}
             />
@@ -414,13 +408,14 @@ function FormFieldsEditor({
             </button>
           </div>
         ))}
-        {fields.length === 0 && <p className="text-xs text-slate-400">Aucun champ défini.</p>}
+        {fields.length === 0 && <p className="text-xs text-slate-400">{t('bpmnDesigner.noFieldsDefined')}</p>}
       </div>
     </div>
   );
 }
 
 function SequenceFlowPanel({ element, modelerRef }: { element: any; modelerRef: React.MutableRefObject<any> }) {
+  const { t } = useTranslation();
   const bo = element.businessObject;
   const existingCondition: string | undefined = bo.conditionExpression?.body;
   const [hasCondition, setHasCondition] = useState(Boolean(existingCondition));
@@ -457,16 +452,13 @@ function SequenceFlowPanel({ element, modelerRef }: { element: any; modelerRef: 
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-semibold uppercase text-slate-400">Transition</p>
+      <p className="text-xs font-semibold uppercase text-slate-400">{t('bpmnDesigner.transitionTitle')}</p>
       <p className="text-xs text-slate-500">
         {source?.businessObject?.name ?? source?.id} → {element.target?.businessObject?.name ?? element.target?.id}
       </p>
 
       {isFromParallelGateway ? (
-        <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-          Issue d'une passerelle parallèle : cette transition est toujours empruntée (pas de condition possible), en
-          simultané avec les autres transitions sortantes de la passerelle.
-        </p>
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">{t('bpmnDesigner.parallelTransitionHint')}</p>
       ) : (
         <>
           <label className="flex items-center gap-2 text-sm">
@@ -478,23 +470,20 @@ function SequenceFlowPanel({ element, modelerRef }: { element: any; modelerRef: 
                 applyCondition(expression, e.target.checked);
               }}
             />
-            A une condition (sinon transition par défaut)
+            {t('bpmnDesigner.hasConditionLabel')}
           </label>
           {isFromInclusiveGateway && hasCondition && (
-            <p className="text-xs text-slate-400">
-              Passerelle inclusive : si plusieurs transitions sortantes ont une condition vraie, toutes sont
-              empruntées à la fois.
-            </p>
+            <p className="text-xs text-slate-400">{t('bpmnDesigner.inclusiveConditionHint')}</p>
           )}
 
           {hasCondition && (
-            <Field label="Expression (ex : approved == true)">
+            <Field label={t('bpmnDesigner.expressionLabel')}>
               <input
                 className="input"
                 value={expression}
                 onChange={(e) => setExpression(e.target.value)}
                 onBlur={() => applyCondition(expression, true)}
-                placeholder="champ == valeur"
+                placeholder={t('bpmnDesigner.expressionPlaceholder') as string}
               />
             </Field>
           )}
@@ -504,7 +493,7 @@ function SequenceFlowPanel({ element, modelerRef }: { element: any; modelerRef: 
       {isFromConditionalGateway && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={isDefault} onChange={(e) => toggleDefault(e.target.checked)} />
-          Flux par défaut de la passerelle
+          {t('bpmnDesigner.defaultFlowLabel')}
         </label>
       )}
     </div>

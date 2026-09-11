@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { ClientItem } from '../types';
 
 export function ClientPicker({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [open, setOpen] = useState(false);
@@ -65,7 +67,7 @@ export function ClientPicker({ value, onChange }: { value: unknown; onChange: (v
     <div className="relative" ref={containerRef}>
       <input
         className="input"
-        placeholder="Rechercher un client…"
+        placeholder={t('clients.searchPlaceholder') as string}
         value={open ? query : selectedLabel}
         onFocus={() => {
           setOpen(true);
@@ -73,7 +75,7 @@ export function ClientPicker({ value, onChange }: { value: unknown; onChange: (v
         }}
         onChange={(e) => setQuery(e.target.value)}
       />
-      {!value && !open && <p className="mt-1 text-xs text-amber-600">Aucun client sélectionné</p>}
+      {!value && !open && <p className="mt-1 text-xs text-amber-600">{t('clientPicker.noneSelected')}</p>}
 
       {open && (
         <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
@@ -88,7 +90,7 @@ export function ClientPicker({ value, onChange }: { value: unknown; onChange: (v
               {c.email && <span className="ml-2 text-xs text-slate-400">{c.email}</span>}
             </button>
           ))}
-          {clients.length === 0 && !creating && <p className="px-3 py-2 text-xs text-slate-400">Aucun client trouvé.</p>}
+          {clients.length === 0 && !creating && <p className="px-3 py-2 text-xs text-slate-400">{t('clientPicker.noClientsFound')}</p>}
 
           {!creating && (
             <button
@@ -99,22 +101,22 @@ export function ClientPicker({ value, onChange }: { value: unknown; onChange: (v
               }}
               className="block w-full border-t border-slate-100 px-3 py-2 text-left text-xs font-semibold text-brand-600 hover:bg-slate-50"
             >
-              + Nouveau client{query ? ` « ${query} »` : ''}
+              {query ? t('clientPicker.newClientWithQuery', { query }) : t('clientPicker.newClient')}
             </button>
           )}
 
           {creating && (
             <div className="space-y-2 border-t border-slate-100 p-3">
-              <input className="input text-sm" placeholder="Nom *" value={newName} onChange={(e) => setNewName(e.target.value)} />
-              <input className="input text-sm" placeholder="Email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-              <input className="input text-sm" placeholder="Téléphone" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+              <input className="input text-sm" placeholder={t('clients.namePlaceholder') as string} value={newName} onChange={(e) => setNewName(e.target.value)} />
+              <input className="input text-sm" placeholder={t('clients.emailPlaceholder') as string} value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+              <input className="input text-sm" placeholder={t('clients.phonePlaceholder') as string} value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
               <button
                 type="button"
                 onClick={createNew}
                 disabled={busy || !newName.trim()}
                 className="btn-primary w-full text-xs"
               >
-                {busy ? 'Création…' : 'Créer et sélectionner'}
+                {busy ? t('clientPicker.creating') : t('clientPicker.createAndSelect')}
               </button>
             </div>
           )}
