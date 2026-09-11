@@ -1,6 +1,64 @@
 import { describe, expect, it } from 'vitest';
 import { findNode, incomingFlows, outgoingFlows, parseBpmnXml } from './bpmnParser';
 
+const ERROR_TIMER_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   id="Definitions_errtimer" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_errtimer" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:intermediateCatchEvent id="Timer1" name="Attendre 30 min">
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration>PT30M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="End_Error" name="Rejeté">
+      <bpmn:errorEventDefinition />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Normal" name="Fin" />
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Timer1" />
+    <bpmn:sequenceFlow id="Flow_timer" sourceRef="Timer1" targetRef="End_Normal" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+describe('parseBpmnXml — error end event', () => {
+  it('marks an endEvent with a nested errorEventDefinition as isError', () => {
+    const graph = parseBpmnXml(ERROR_TIMER_XML);
+    expect(findNode(graph, 'End_Error').isError).toBe(true);
+  });
+
+  it('leaves a plain endEvent as isError: false', () => {
+    const graph = parseBpmnXml(ERROR_TIMER_XML);
+    expect(findNode(graph, 'End_Normal').isError).toBe(false);
+  });
+});
+
+describe('parseBpmnXml — timer catch event', () => {
+  it('parses an intermediateCatchEvent with a timerEventDefinition as type "timerCatchEvent"', () => {
+    const graph = parseBpmnXml(ERROR_TIMER_XML);
+    const timer = findNode(graph, 'Timer1');
+    expect(timer.type).toBe('timerCatchEvent');
+    expect(timer.name).toBe('Attendre 30 min');
+  });
+
+  it('converts the ISO-8601 timeDuration to milliseconds', () => {
+    const graph = parseBpmnXml(ERROR_TIMER_XML);
+    expect(findNode(graph, 'Timer1').timerDurationMs).toBe(30 * 60 * 1000);
+  });
+
+  it('rejects a timer with no timeDuration', () => {
+    const xml = ERROR_TIMER_XML.replace(
+      '<bpmn:timerEventDefinition>\n        <bpmn:timeDuration>PT30M</bpmn:timeDuration>\n      </bpmn:timerEventDefinition>',
+      '<bpmn:timerEventDefinition />'
+    );
+    expect(() => parseBpmnXml(xml)).toThrow(/doit avoir une durée/);
+  });
+
+  it('rejects a timer with a malformed timeDuration', () => {
+    const xml = ERROR_TIMER_XML.replace('PT30M', 'not-a-duration');
+    expect(() => parseBpmnXml(xml)).toThrow(/Minuteur "Timer1"/);
+  });
+});
+
 const FORK_JOIN_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                    xmlns:bpm="http://bpm-platform.local/schema/1.0"

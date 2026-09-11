@@ -257,6 +257,22 @@ CREATE TABLE gateway_arrivals (
 CREATE INDEX idx_gateway_arrivals_instance_gateway ON gateway_arrivals(instance_id, gateway_element_id);
 
 -- ---------------------------------------------------------------------
+-- scheduled_timers — minuteurs BPMN (intermediateCatchEvent +
+-- timerEventDefinition) : une instance qui atteint un tel nœud s'y arrête
+-- et attend d'être relancée par le poller interne une fois le délai
+-- écoulé, sans requête HTTP.
+-- ---------------------------------------------------------------------
+CREATE TABLE scheduled_timers (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  instance_id UUID NOT NULL REFERENCES process_instances(id) ON DELETE CASCADE,
+  element_id  VARCHAR(255) NOT NULL,
+  fire_at     TIMESTAMPTZ NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (instance_id, element_id)
+);
+CREATE INDEX idx_scheduled_timers_fire_at ON scheduled_timers(fire_at);
+
+-- ---------------------------------------------------------------------
 -- documents — pièces jointes, téléchargement contrôlé par RBAC
 -- ---------------------------------------------------------------------
 CREATE TABLE documents (

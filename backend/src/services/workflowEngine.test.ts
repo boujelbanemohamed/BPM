@@ -1,7 +1,7 @@
 import { Pool, PoolClient } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 import { pool, withTransaction } from '../db/pool';
-import { completeTaskAndAdvance, startProcessInstance } from './workflowEngine';
+import { completeTaskAndAdvance, fireDueTimer, startProcessInstance } from './workflowEngine';
 import { createTestProcess, seedUserId, withRollback } from '../test/dbTestHelpers';
 import { TaskRow } from '../types';
 
@@ -499,6 +499,148 @@ describe('workflowEngine — error/cancel end event', () => {
         [instance.id]
       );
       expect(taskARows[0]?.status).toBe('CANCELLED');
+    });
+  });
+});
+
+// Start -> Timer (PT30M) -> End : sert à vérifier que l'instance s'arrête
+// au minuteur sans avancer plus loin, puis reprend correctement une fois
+// fireDueTimer appelé.
+const TIMER_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   id="Definitions_timer" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_timer" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:intermediateCatchEvent id="Timer1" name="Attendre 30 min">
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration>PT30M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="End" name="Fin" />
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Timer1" />
+    <bpmn:sequenceFlow id="Flow_timer" sourceRef="Timer1" targetRef="End" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+// Fork parallèle où une branche passe par un minuteur et l'autre crée une
+// tâche : vérifie que programmer un minuteur n'affecte pas une branche
+// sœur toujours en attente.
+const FORK_THEN_TIMER_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_forktimer" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_forktimer" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:parallelGateway id="Fork" name="Fork" />
+    <bpmn:userTask id="Task_A" name="Tâche A" bpm:assigneeRole="OPERATOR" />
+    <bpmn:intermediateCatchEvent id="Timer1" name="Attendre">
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration>PT1H</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Fork" />
+    <bpmn:sequenceFlow id="Flow_A" sourceRef="Fork" targetRef="Task_A" />
+    <bpmn:sequenceFlow id="Flow_timer" sourceRef="Fork" targetRef="Timer1" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+async function markTimerDue(client: Pool | PoolClient, instanceId: string, elementId: string): Promise<void> {
+  await client.query(
+    `UPDATE scheduled_timers SET fire_at = now() - interval '1 second' WHERE instance_id = $1 AND element_id = $2`,
+    [instanceId, elementId]
+  );
+}
+
+describe('workflowEngine — timer catch event', () => {
+  it('stops the instance at the timer (does not advance further) and schedules it in scheduled_timers', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, TIMER_XML, adminId);
+
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      expect(instance.status).toBe('RUNNING');
+      expect(instance.current_step_name).toBe('Attendre 30 min');
+      expect(instance.current_element_id).toBe('Timer1');
+
+      const { rows: timerRows } = await client.query<{ fire_at: Date }>(
+        `SELECT fire_at FROM scheduled_timers WHERE instance_id = $1 AND element_id = 'Timer1'`,
+        [instance.id]
+      );
+      expect(timerRows).toHaveLength(1);
+      const expectedFireAt = Date.now() + 30 * 60 * 1000;
+      expect(new Date(timerRows[0].fire_at).getTime()).toBeGreaterThan(Date.now());
+      expect(Math.abs(new Date(timerRows[0].fire_at).getTime() - expectedFireAt)).toBeLessThan(5000);
+
+      const { rows: auditRows } = await client.query<{ action: string }>(
+        `SELECT action FROM audit_logs WHERE entity_type = 'process_instance' AND entity_id = $1 ORDER BY created_at`,
+        [instance.id]
+      );
+      expect(auditRows.map((r) => r.action)).toContain('TIMER_SCHEDULED');
+    });
+  });
+
+  it('fireDueTimer advances the instance past the timer once its delay is due', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, TIMER_XML, adminId);
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      await markTimerDue(client, instance.id, 'Timer1');
+
+      const updated = await fireDueTimer(client, { instanceId: instance.id, elementId: 'Timer1' });
+
+      expect(updated?.status).toBe('COMPLETED');
+      expect(updated?.current_step_name).toBe('Fin');
+
+      const { rows: timerRows } = await client.query(
+        `SELECT * FROM scheduled_timers WHERE instance_id = $1 AND element_id = 'Timer1'`,
+        [instance.id]
+      );
+      expect(timerRows).toHaveLength(0);
+
+      const { rows: auditRows } = await client.query<{ action: string }>(
+        `SELECT action FROM audit_logs WHERE entity_type = 'process_instance' AND entity_id = $1 ORDER BY created_at`,
+        [instance.id]
+      );
+      expect(auditRows.map((r) => r.action)).toContain('TIMER_FIRED');
+    });
+  });
+
+  it('fireDueTimer is a no-op (returns null) if the timer is not actually due yet', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, TIMER_XML, adminId);
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      // Le minuteur programmé par startProcessInstance déclenche dans 30
+      // minutes : pas encore dû, on ne le force pas ici.
+      const result = await fireDueTimer(client, { instanceId: instance.id, elementId: 'Timer1' });
+      expect(result).toBeNull();
+
+      const { rows: instRows } = await client.query(`SELECT status FROM process_instances WHERE id = $1`, [
+        instance.id,
+      ]);
+      expect(instRows[0].status).toBe('RUNNING');
+    });
+  });
+
+  it('a timer on one parallel branch does not affect a sibling branch still awaiting task completion', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, FORK_THEN_TIMER_XML, adminId);
+
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      expect(instance.status).toBe('RUNNING');
+      const pending = await pendingTasks(client, instance.id);
+      expect(pending.map((t) => t.step_name)).toEqual(['Tâche A']);
+
+      const { rows: timerRows } = await client.query(
+        `SELECT * FROM scheduled_timers WHERE instance_id = $1 AND element_id = 'Timer1'`,
+        [instance.id]
+      );
+      expect(timerRows).toHaveLength(1);
     });
   });
 });

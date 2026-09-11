@@ -1,6 +1,7 @@
 import { XMLParser } from 'fast-xml-parser';
 import { FormField } from '../types';
 import { HttpError } from '../middleware/errorHandler';
+import { parseIsoDurationMs } from './isoDuration';
 
 export type BpmnNodeType =
   | 'startEvent'
@@ -8,7 +9,8 @@ export type BpmnNodeType =
   | 'exclusiveGateway'
   | 'parallelGateway'
   | 'inclusiveGateway'
-  | 'endEvent';
+  | 'endEvent'
+  | 'timerCatchEvent';
 
 export interface BpmnNode {
   id: string;
@@ -20,6 +22,8 @@ export interface BpmnNode {
   defaultFlowId?: string;
   /** Uniquement pour un endEvent portant un <bpmn:errorEventDefinition> : termine l'instance en erreur/annulation plutôt qu'en succès. */
   isError?: boolean;
+  /** Uniquement pour un timerCatchEvent : délai en millisecondes avant relance automatique par le poller. */
+  timerDurationMs?: number;
 }
 
 export interface BpmnFlow {
@@ -147,7 +151,28 @@ export function parseBpmnXml(xml: string): BpmnGraph {
       type: 'endEvent',
       name: el['@_name'] ?? 'Fin',
       formFields: [],
-      isError: Boolean(el.errorEventDefinition),
+      isError: 'errorEventDefinition' in el,
+    });
+  }
+
+  for (const el of asArray(process.intermediateCatchEvent)) {
+    if (!('timerEventDefinition' in el)) continue; // seul le minuteur est pris en charge pour l'instant
+    const durationRaw = textContent(el.timerEventDefinition?.timeDuration);
+    if (!durationRaw) {
+      throw new HttpError(400, `Le minuteur "${el['@_id']}" doit avoir une durée (bpmn:timeDuration, ex. PT30M)`);
+    }
+    let timerDurationMs: number;
+    try {
+      timerDurationMs = parseIsoDurationMs(durationRaw);
+    } catch (err) {
+      throw new HttpError(400, `Minuteur "${el['@_id']}" : ${(err as Error).message}`);
+    }
+    nodes.push({
+      id: el['@_id'],
+      type: 'timerCatchEvent',
+      name: el['@_name'] ?? 'Minuteur',
+      formFields: [],
+      timerDurationMs,
     });
   }
 

@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { logger } from './lib/logger';
 import { pool } from './db/pool';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { startTimerPoller, stopTimerPoller } from './services/timerPoller';
 import { authRouter } from './routes/auth.routes';
 import { usersRouter } from './routes/users.routes';
 import { adminUsersRouter } from './routes/admin.routes';
@@ -81,9 +82,11 @@ async function main(): Promise<void> {
   const server = app.listen(env.PORT, () => {
     logger.info(`BPM backend listening on :${env.PORT}`);
   });
+  startTimerPoller();
 
   const shutdown = (signal: string) => {
     logger.info(`Received ${signal}, shutting down gracefully`);
+    stopTimerPoller();
     server.close(() => {
       pool.end().finally(() => process.exit(0));
     });

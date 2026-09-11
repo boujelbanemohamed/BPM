@@ -133,6 +133,15 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
     });
   }
 
+  function addTimerCatchEvent() {
+    const modeler = modelerRef.current;
+    if (!modeler) return;
+    const bpmnFactory = modeler.get('bpmnFactory');
+    addElement('bpmn:IntermediateCatchEvent', 'Minuteur', {
+      eventDefinitions: [bpmnFactory.create('bpmn:TimerEventDefinition', {})],
+    });
+  }
+
   return (
     <div className="flex h-[calc(100vh-190px)] overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-1 flex-col">
@@ -144,6 +153,7 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
             <ToolbarButton onClick={() => addElement('bpmn:InclusiveGateway', 'Inclusive')}>{t('bpmnDesigner.toolbar.addInclusiveGateway')}</ToolbarButton>
             <ToolbarButton onClick={() => addElement('bpmn:EndEvent', 'Fin')}>{t('bpmnDesigner.toolbar.addEndEvent')}</ToolbarButton>
             <ToolbarButton onClick={addErrorEndEvent}>{t('bpmnDesigner.toolbar.addErrorEndEvent')}</ToolbarButton>
+            <ToolbarButton onClick={addTimerCatchEvent}>{t('bpmnDesigner.toolbar.addTimerCatchEvent')}</ToolbarButton>
             <span className="ml-2 self-center text-xs text-slate-400">{t('bpmnDesigner.toolbar.paletteHint')}</span>
           </div>
         )}
@@ -216,6 +226,10 @@ function ElementPanel({
 
   if (type === 'bpmn:StartEvent') {
     return <StartEventPanel bo={bo} onChange={updateProps} />;
+  }
+
+  if (type === 'bpmn:IntermediateCatchEvent') {
+    return <TimerCatchEventPanel element={element} modelerRef={modelerRef} bo={bo} onChange={updateProps} />;
   }
 
   if (type === 'bpmn:EndEvent' || type === 'bpmn:ExclusiveGateway') {
@@ -361,6 +375,51 @@ function StartEventPanel({ bo, onChange }: { bo: any; onChange: (props: Record<s
       </Field>
       <p className="text-xs text-slate-500">{t('bpmnDesigner.startEventHint')}</p>
       <FormFieldsEditor fields={fields} onChange={commitFields} label={t('bpmnDesigner.startFormLabel')} />
+    </div>
+  );
+}
+
+function TimerCatchEventPanel({
+  element,
+  modelerRef,
+  bo,
+  onChange,
+}: {
+  element: any;
+  modelerRef: React.MutableRefObject<any>;
+  bo: any;
+  onChange: (props: Record<string, unknown>) => void;
+}) {
+  const { t } = useTranslation();
+  const timerDef = bo.eventDefinitions?.[0];
+  const [duration, setDuration] = useState<string>(timerDef?.timeDuration?.body ?? '');
+
+  function applyDuration(value: string) {
+    if (!timerDef) return;
+    const modeler = modelerRef.current;
+    const modeling = modeler.get('modeling');
+    const bpmnFactory = modeler.get('bpmnFactory');
+    modeling.updateModdleProperties(element, timerDef, {
+      timeDuration: value.trim() ? bpmnFactory.create('bpmn:FormalExpression', { body: value.trim() }) : undefined,
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs font-semibold uppercase text-slate-400">{t('bpmnDesigner.timerCatchEventTitle')}</p>
+      <Field label={t('bpmnDesigner.fieldLabel')}>
+        <input className="input" defaultValue={bo.name ?? ''} onBlur={(e) => onChange({ name: e.target.value })} />
+      </Field>
+      <Field label={t('bpmnDesigner.timerDurationLabel')}>
+        <input
+          className="input font-mono"
+          value={duration}
+          onChange={(e) => setDuration(e.target.value)}
+          onBlur={() => applyDuration(duration)}
+          placeholder="PT30M"
+        />
+      </Field>
+      <p className="text-xs text-slate-500">{t('bpmnDesigner.timerDurationHint')}</p>
     </div>
   );
 }

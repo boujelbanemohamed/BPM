@@ -115,6 +115,44 @@ function expectedIncomingFlows(graph: BpmnGraph, joinNode: BpmnNode, context: Re
 }
 
 /**
+ * Programme la relance de l'instance à ce minuteur : insère (ou met à
+ * jour, si déjà programmé) une ligne dans scheduled_timers avec la date
+ * de déclenchement, puis s'arrête là — contrairement aux autres types de
+ * nœud, aucun appel récursif à advanceViaFlow ici. C'est le poller
+ * (timerPoller.ts, via fireDueTimer ci-dessous) qui reprendra le flux une
+ * fois le délai écoulé, en dehors de toute requête HTTP.
+ */
+async function scheduleTimer(
+  client: PoolClient,
+  instance: ProcessInstanceRow,
+  targetNode: BpmnNode
+): Promise<ProcessInstanceRow> {
+  const fireAt = new Date(Date.now() + targetNode.timerDurationMs!);
+
+  await client.query(
+    `INSERT INTO scheduled_timers (instance_id, element_id, fire_at)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (instance_id, element_id) DO UPDATE SET fire_at = EXCLUDED.fire_at`,
+    [instance.id, targetNode.id, fireAt]
+  );
+
+  const { rows } = await client.query<ProcessInstanceRow>(
+    `UPDATE process_instances SET current_step_name = $1, current_element_id = $2 WHERE id = $3 RETURNING *`,
+    [targetNode.name, targetNode.id, instance.id]
+  );
+
+  await writeAuditLogTx(client, {
+    userId: null,
+    action: 'TIMER_SCHEDULED',
+    entityType: 'process_instance',
+    entityId: instance.id,
+    details: { elementId: targetNode.id, fireAt: fireAt.toISOString() },
+  });
+
+  return rows[0];
+}
+
+/**
  * Fait progresser un unique token le long de `flow` jusqu'à son nœud
  * cible, et traite ce nœud. Une passerelle parallèle "diverge" (fan-out)
  * en appelant cette fonction une fois par flux sortant ; elle "converge"
@@ -160,6 +198,7 @@ async function advanceViaFlow(
       await client.query(`UPDATE tasks SET status = 'CANCELLED' WHERE instance_id = $1 AND status = 'PENDING'`, [
         instance.id,
       ]);
+      await client.query(`DELETE FROM scheduled_timers WHERE instance_id = $1`, [instance.id]);
     }
 
     await writeAuditLogTx(client, {
@@ -188,6 +227,10 @@ async function advanceViaFlow(
     }
 
     return updated;
+  }
+
+  if (targetNode.type === 'timerCatchEvent') {
+    return scheduleTimer(client, instance, targetNode);
   }
 
   if (targetNode.type === 'exclusiveGateway') {
@@ -522,6 +565,55 @@ export async function completeTaskAndAdvance(
   });
 
   return advance(client, graph, process, updatedInstance, task.element_id);
+}
+
+/**
+ * Relance une instance depuis le minuteur (`elementId`) dont le délai est
+ * écoulé, en dehors de toute requête HTTP : appelée par le poller
+ * (timerPoller.ts) une fois par minuteur dû, chacune dans sa propre
+ * transaction. Verrouille l'instance comme `completeTaskAndAdvance`, pour
+ * rester cohérente avec une complétion de tâche concurrente sur une autre
+ * branche de la même instance. Vérifie elle-même que le délai est
+ * effectivement écoulé (indépendamment du filtre du poller), pour rester
+ * sûre même appelée directement. Retourne `null` (sans erreur) si
+ * l'instance n'est plus RUNNING, si le minuteur n'est pas encore dû, ou
+ * s'il a déjà été traité — cas normal en cas de concurrence entre deux
+ * exécutions du poller, pas une anomalie à remonter.
+ */
+export async function fireDueTimer(
+  client: PoolClient,
+  params: { instanceId: string; elementId: string }
+): Promise<ProcessInstanceRow | null> {
+  const { rows: lockedRows } = await client.query<ProcessInstanceRow>(
+    `SELECT * FROM process_instances WHERE id = $1 FOR UPDATE`,
+    [params.instanceId]
+  );
+  const instance = lockedRows[0];
+  if (!instance || instance.status !== 'RUNNING') return null;
+
+  const { rowCount } = await client.query(
+    `DELETE FROM scheduled_timers WHERE instance_id = $1 AND element_id = $2 AND fire_at <= now()`,
+    [params.instanceId, params.elementId]
+  );
+  if (rowCount === 0) return null;
+
+  const { rows: procRows } = await client.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
+    instance.process_id,
+  ]);
+  const process = procRows[0];
+  if (!process) return null;
+
+  const graph = parseBpmnXml(process.bpmn_xml);
+
+  await writeAuditLogTx(client, {
+    userId: null,
+    action: 'TIMER_FIRED',
+    entityType: 'process_instance',
+    entityId: instance.id,
+    details: { elementId: params.elementId },
+  });
+
+  return advance(client, graph, process, instance, params.elementId);
 }
 
 export function parseGraph(bpmnXml: string): BpmnGraph {
