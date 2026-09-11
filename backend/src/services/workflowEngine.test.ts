@@ -53,6 +53,36 @@ const EXCLUSIVE_ONLY_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </bpmn:process>
 </bpmn:definitions>`;
 
+// Passerelle inclusive (OR) : Gateway_Inc active Flow_toA si montant > 100,
+// Flow_toB si urgent == true — potentiellement les deux à la fois, ou une
+// seule. Join_Inc doit attendre exactement les branches activées, pas
+// forcément les deux flux entrants dessinés dans le diagramme.
+const INCLUSIVE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_inc" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_inc" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:inclusiveGateway id="Gateway_Inc" name="Fork inclusif" />
+    <bpmn:userTask id="Task_A" name="Tâche A" bpm:assigneeRole="OPERATOR" />
+    <bpmn:userTask id="Task_B" name="Tâche B" bpm:assigneeRole="VALIDATOR" />
+    <bpmn:inclusiveGateway id="Join_Inc" name="Join inclusif" />
+    <bpmn:userTask id="Task_C" name="Tâche C" bpm:assigneeRole="ADMIN" />
+    <bpmn:endEvent id="End" name="Fin" />
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Gateway_Inc" />
+    <bpmn:sequenceFlow id="Flow_toA" sourceRef="Gateway_Inc" targetRef="Task_A">
+      <bpmn:conditionExpression>montant &gt; 100</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_toB" sourceRef="Gateway_Inc" targetRef="Task_B">
+      <bpmn:conditionExpression>urgent == true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_A2" sourceRef="Task_A" targetRef="Join_Inc" />
+    <bpmn:sequenceFlow id="Flow_B2" sourceRef="Task_B" targetRef="Join_Inc" />
+    <bpmn:sequenceFlow id="Flow_C" sourceRef="Join_Inc" targetRef="Task_C" />
+    <bpmn:sequenceFlow id="Flow_end" sourceRef="Task_C" targetRef="End" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
 async function pendingTasks(client: Pool | PoolClient, instanceId: string): Promise<TaskRow[]> {
   const { rows } = await client.query<TaskRow>(
     `SELECT * FROM tasks WHERE instance_id = $1 AND status = 'PENDING' ORDER BY step_name`,
@@ -261,5 +291,137 @@ describe('workflowEngine — parallel join under real concurrency', () => {
     const { rows: finalTasks } = await pool.query<TaskRow>(`SELECT * FROM tasks WHERE instance_id = $1`, [instance.id]);
     const taskCCount = finalTasks.filter((t) => t.step_name === 'Tâche C').length;
     expect(taskCCount).toBe(1);
+  });
+});
+
+describe('workflowEngine — inclusive gateway (OR fork/join)', () => {
+  it('activates only the branches whose condition is true (single branch)', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, INCLUSIVE_XML, adminId);
+
+      // montant > 100 → Flow_toA vrai ; urgent absent (falsy) → Flow_toB faux.
+      const instance = await startProcessInstance(client, {
+        process,
+        startedById: adminId,
+        initialFormData: { montant: 500 },
+      });
+
+      const pending = await pendingTasks(client, instance.id);
+      expect(pending.map((t) => t.step_name)).toEqual(['Tâche A']);
+    });
+  });
+
+  it('activates both branches when both conditions are true', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, INCLUSIVE_XML, adminId);
+
+      const instance = await startProcessInstance(client, {
+        process,
+        startedById: adminId,
+        initialFormData: { montant: 500, urgent: true },
+      });
+
+      const pending = await pendingTasks(client, instance.id);
+      expect(pending.map((t) => t.step_name).sort()).toEqual(['Tâche A', 'Tâche B']);
+    });
+  });
+
+  it('join fires immediately when only one branch was activated (does not wait for the untaken branch)', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, INCLUSIVE_XML, adminId);
+      let instance = await startProcessInstance(client, {
+        process,
+        startedById: adminId,
+        initialFormData: { montant: 500 }, // seule Tâche A est activée
+      });
+
+      let pending = await pendingTasks(client, instance.id);
+      expect(pending.map((t) => t.step_name)).toEqual(['Tâche A']);
+
+      instance = await completeTaskAndAdvance(client, {
+        task: pending[0],
+        instance,
+        process,
+        completedById: adminId,
+        formData: {},
+      });
+
+      // La jointure ne doit PAS attendre Tâche B (jamais activée) : elle
+      // franchit aussitôt et Tâche C doit déjà exister.
+      pending = await pendingTasks(client, instance.id);
+      expect(pending.map((t) => t.step_name)).toEqual(['Tâche C']);
+
+      const { rows: firedAudit } = await client.query<{ action: string }>(
+        `SELECT action FROM audit_logs WHERE entity_id = $1 AND action = 'INCLUSIVE_GATEWAY_JOINED'`,
+        [instance.id]
+      );
+      expect(firedAudit.length).toBe(1);
+      const { rows: waitingAudit } = await client.query<{ action: string }>(
+        `SELECT action FROM audit_logs WHERE entity_id = $1 AND action = 'INCLUSIVE_GATEWAY_WAITING'`,
+        [instance.id]
+      );
+      expect(waitingAudit.length).toBe(0);
+    });
+  });
+
+  it('join waits for both branches when both were activated, then fires once the second arrives', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, INCLUSIVE_XML, adminId);
+      let instance = await startProcessInstance(client, {
+        process,
+        startedById: adminId,
+        initialFormData: { montant: 500, urgent: true },
+      });
+
+      let pending = await pendingTasks(client, instance.id);
+      const taskA = pending.find((t) => t.step_name === 'Tâche A')!;
+      instance = await completeTaskAndAdvance(client, { task: taskA, instance, process, completedById: adminId, formData: {} });
+
+      pending = await pendingTasks(client, instance.id);
+      // Tâche B toujours en attente ; Tâche C ne doit pas exister tant que
+      // Tâche B (activée elle aussi) n'a pas été complétée.
+      expect(pending.map((t) => t.step_name)).toEqual(['Tâche B']);
+
+      const taskB = pending[0];
+      instance = await completeTaskAndAdvance(client, { task: taskB, instance, process, completedById: adminId, formData: {} });
+
+      pending = await pendingTasks(client, instance.id);
+      expect(pending.map((t) => t.step_name)).toEqual(['Tâche C']);
+    });
+  });
+
+  it('falls back to the default flow when no condition matches', async () => {
+    const DEFAULT_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   id="Definitions_incdef" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_incdef" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:inclusiveGateway id="Gateway" name="Fork" default="Flow_default" />
+    <bpmn:userTask id="Task_Cond" name="Conditionnelle" />
+    <bpmn:userTask id="Task_Default" name="Défaut" />
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Gateway" />
+    <bpmn:sequenceFlow id="Flow_cond" sourceRef="Gateway" targetRef="Task_Cond">
+      <bpmn:conditionExpression>montant &gt; 100</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_default" sourceRef="Gateway" targetRef="Task_Default" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, DEFAULT_XML, adminId);
+      const instance = await startProcessInstance(client, {
+        process,
+        startedById: adminId,
+        initialFormData: { montant: 10 }, // condition fausse → repli sur le flux par défaut
+      });
+
+      const pending = await pendingTasks(client, instance.id);
+      expect(pending.map((t) => t.step_name)).toEqual(['Défaut']);
+    });
   });
 });

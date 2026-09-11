@@ -80,6 +80,20 @@ const PROCESS_IMPORT_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
         Syntaxe : "nomDuChamp OPERATEUR valeur" (ex: "montant > 1000",
         "urgent == true", "motif contains \"remboursement\"")
       - Convergence de plusieurs branches vers un même bpmn:endEvent
+      - bpmn:parallelGateway (non illustré dans cet exemple, voir la doc) :
+        un flux entrant unique en fait un fork qui lance TOUTES ses transitions
+        sortantes en simultané (une tâche par branche) ; plusieurs flux
+        entrants en font une jointure qui attend qu'un token arrive par
+        chacun d'eux avant de continuer (les conditions sur ses transitions
+        sortantes sont ignorées, elles sont toutes empruntées)
+      - bpmn:inclusiveGateway (non illustré, voir la doc) : comme la
+        parallèle, mais sélective — seules les transitions sortantes dont la
+        condition est vraie sont empruntées (une, plusieurs, ou repli sur le
+        flux "default" si aucune ne l'est) ; en jointure, elle n'attend que
+        les branches réellement activées, pas forcément toutes les
+        transitions entrantes dessinées (limite : suppose que chaque branche
+        mène directement, sans repasser par une autre passerelle divergente,
+        à sa jointure)
     Un attribut bpm:formFields est une liste JSON de champs, chaque champ ayant
     key, label, type et required. Ce fichier peut être importé tel quel (il crée
     un processus fonctionnel en brouillon), ou servir de base à dupliquer/adapter.

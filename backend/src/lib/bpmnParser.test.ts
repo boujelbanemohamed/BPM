@@ -57,3 +57,36 @@ describe('parseBpmnXml — parallelGateway', () => {
     expect(outgoingFlows(graph, 'End')).toEqual([]);
   });
 });
+
+const INCLUSIVE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_inc" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_inc" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:inclusiveGateway id="Gateway_Inc" name="Fork inclusif" default="Flow_default" />
+    <bpmn:userTask id="Task_A" name="Tâche A" />
+    <bpmn:userTask id="Task_Default" name="Défaut" />
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Gateway_Inc" />
+    <bpmn:sequenceFlow id="Flow_toA" sourceRef="Gateway_Inc" targetRef="Task_A">
+      <bpmn:conditionExpression>montant &gt; 100</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_default" sourceRef="Gateway_Inc" targetRef="Task_Default" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+describe('parseBpmnXml — inclusiveGateway', () => {
+  it('parses inclusiveGateway elements as nodes of type "inclusiveGateway", with their default flow', () => {
+    const graph = parseBpmnXml(INCLUSIVE_XML);
+    const gateway = findNode(graph, 'Gateway_Inc');
+    expect(gateway.type).toBe('inclusiveGateway');
+    expect(gateway.name).toBe('Fork inclusif');
+    expect(gateway.defaultFlowId).toBe('Flow_default');
+  });
+
+  it('outgoingFlows returns both the conditional and the default branch', () => {
+    const graph = parseBpmnXml(INCLUSIVE_XML);
+    const flows = outgoingFlows(graph, 'Gateway_Inc');
+    expect(flows.map((f) => f.id).sort()).toEqual(['Flow_default', 'Flow_toA']);
+  });
+});

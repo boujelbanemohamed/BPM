@@ -129,6 +129,8 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
           <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
             <ToolbarButton onClick={() => addElement('bpmn:UserTask', 'Nouvelle tâche')}>+ Tâche utilisateur</ToolbarButton>
             <ToolbarButton onClick={() => addElement('bpmn:ExclusiveGateway', 'Décision')}>+ Passerelle exclusive</ToolbarButton>
+            <ToolbarButton onClick={() => addElement('bpmn:ParallelGateway', 'Parallèle')}>+ Passerelle parallèle</ToolbarButton>
+            <ToolbarButton onClick={() => addElement('bpmn:InclusiveGateway', 'Inclusive')}>+ Passerelle inclusive</ToolbarButton>
             <ToolbarButton onClick={() => addElement('bpmn:EndEvent', 'Fin')}>+ Événement de fin</ToolbarButton>
             <span className="ml-2 self-center text-xs text-slate-400">
               Utilisez la palette à gauche du canevas pour dessiner les transitions entre les éléments.
@@ -218,6 +220,51 @@ function ElementPanel({
             onBlur={(e) => updateProps({ name: e.target.value })}
           />
         </Field>
+      </div>
+    );
+  }
+
+  if (type === 'bpmn:ParallelGateway') {
+    const incomingCount = element.incoming?.length ?? 0;
+    const outgoingCount = element.outgoing?.length ?? 0;
+    return (
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase text-slate-400">Passerelle parallèle</p>
+        <Field label="Libellé">
+          <input
+            className="input"
+            defaultValue={bo.name ?? ''}
+            onBlur={(e) => updateProps({ name: e.target.value })}
+          />
+        </Field>
+        <p className="mt-3 text-xs text-slate-500">
+          {outgoingCount > 1 &&
+            `Fork : dès qu'un token l'atteint, les ${outgoingCount} transitions sortantes sont lancées simultanément (une tâche par branche).`}
+          {incomingCount > 1 &&
+            ` Jointure : elle attend qu'un token arrive par chacune des ${incomingCount} transitions entrantes avant de continuer.`}
+          {incomingCount <= 1 && outgoingCount <= 1 && "Reliez plusieurs transitions entrantes et/ou sortantes pour créer un embranchement ou une jointure parallèle."}
+        </p>
+      </div>
+    );
+  }
+
+  if (type === 'bpmn:InclusiveGateway') {
+    return (
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase text-slate-400">Passerelle inclusive</p>
+        <Field label="Libellé">
+          <input
+            className="input"
+            defaultValue={bo.name ?? ''}
+            onBlur={(e) => updateProps({ name: e.target.value })}
+          />
+        </Field>
+        <p className="mt-3 text-xs text-slate-500">
+          À la différence de la passerelle parallèle, seules les transitions sortantes dont la condition est vraie
+          sont empruntées (une, plusieurs, ou toutes à la fois selon les conditions — configurez-les sur chaque
+          transition sortante). En jointure, elle n'attend que les branches réellement activées, pas forcément
+          toutes les transitions entrantes dessinées dans le diagramme.
+        </p>
       </div>
     );
   }
@@ -380,8 +427,14 @@ function SequenceFlowPanel({ element, modelerRef }: { element: any; modelerRef: 
   const [expression, setExpression] = useState(existingCondition ?? '');
 
   const source = element.source;
-  const isFromGateway = source?.type === 'bpmn:ExclusiveGateway';
-  const isDefault = isFromGateway && source.businessObject.default === bo;
+  const isFromExclusiveGateway = source?.type === 'bpmn:ExclusiveGateway';
+  const isFromInclusiveGateway = source?.type === 'bpmn:InclusiveGateway';
+  const isFromParallelGateway = source?.type === 'bpmn:ParallelGateway';
+  // L'exclusive ET l'inclusive évaluent des conditions sur leurs transitions
+  // sortantes (l'inclusive peut juste en activer plusieurs à la fois) ; la
+  // parallèle, elle, les emprunte toutes sans condition (cf. ci-dessous).
+  const isFromConditionalGateway = isFromExclusiveGateway || isFromInclusiveGateway;
+  const isDefault = isFromConditionalGateway && source.businessObject.default === bo;
 
   function applyCondition(next: string, enabled: boolean) {
     const modeler = modelerRef.current;
@@ -409,31 +462,46 @@ function SequenceFlowPanel({ element, modelerRef }: { element: any; modelerRef: 
         {source?.businessObject?.name ?? source?.id} → {element.target?.businessObject?.name ?? element.target?.id}
       </p>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={hasCondition}
-          onChange={(e) => {
-            setHasCondition(e.target.checked);
-            applyCondition(expression, e.target.checked);
-          }}
-        />
-        A une condition (sinon transition par défaut)
-      </label>
+      {isFromParallelGateway ? (
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+          Issue d'une passerelle parallèle : cette transition est toujours empruntée (pas de condition possible), en
+          simultané avec les autres transitions sortantes de la passerelle.
+        </p>
+      ) : (
+        <>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={hasCondition}
+              onChange={(e) => {
+                setHasCondition(e.target.checked);
+                applyCondition(expression, e.target.checked);
+              }}
+            />
+            A une condition (sinon transition par défaut)
+          </label>
+          {isFromInclusiveGateway && hasCondition && (
+            <p className="text-xs text-slate-400">
+              Passerelle inclusive : si plusieurs transitions sortantes ont une condition vraie, toutes sont
+              empruntées à la fois.
+            </p>
+          )}
 
-      {hasCondition && (
-        <Field label="Expression (ex : approved == true)">
-          <input
-            className="input"
-            value={expression}
-            onChange={(e) => setExpression(e.target.value)}
-            onBlur={() => applyCondition(expression, true)}
-            placeholder="champ == valeur"
-          />
-        </Field>
+          {hasCondition && (
+            <Field label="Expression (ex : approved == true)">
+              <input
+                className="input"
+                value={expression}
+                onChange={(e) => setExpression(e.target.value)}
+                onBlur={() => applyCondition(expression, true)}
+                placeholder="champ == valeur"
+              />
+            </Field>
+          )}
+        </>
       )}
 
-      {isFromGateway && (
+      {isFromConditionalGateway && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={isDefault} onChange={(e) => toggleDefault(e.target.checked)} />
           Flux par défaut de la passerelle

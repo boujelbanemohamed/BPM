@@ -2,7 +2,13 @@ import { XMLParser } from 'fast-xml-parser';
 import { FormField } from '../types';
 import { HttpError } from '../middleware/errorHandler';
 
-export type BpmnNodeType = 'startEvent' | 'userTask' | 'exclusiveGateway' | 'endEvent';
+export type BpmnNodeType =
+  | 'startEvent'
+  | 'userTask'
+  | 'exclusiveGateway'
+  | 'parallelGateway'
+  | 'inclusiveGateway'
+  | 'endEvent';
 
 export interface BpmnNode {
   id: string;
@@ -34,6 +40,10 @@ const parser = new XMLParser({
   trimValues: true,
   parseAttributeValue: false,
   parseTagValue: false,
+  // bpmn-js sérialise ses attributs avec des guillemets doubles et échappe donc
+  // tout `"` interne (ex. dans le JSON de bpm:formFields) en entité XML `&#34;` /
+  // `&quot;`. Sans décodage explicite des entités, fast-xml-parser laisse ces
+  // entités telles quelles au lieu de restituer les guillemets d'origine.
   processEntities: true,
   htmlEntities: true,
 });
@@ -110,6 +120,25 @@ export function parseBpmnXml(xml: string): BpmnGraph {
     });
   }
 
+  for (const el of asArray(process.parallelGateway)) {
+    nodes.push({
+      id: el['@_id'],
+      type: 'parallelGateway',
+      name: el['@_name'] ?? el['@_id'],
+      formFields: [],
+    });
+  }
+
+  for (const el of asArray(process.inclusiveGateway)) {
+    nodes.push({
+      id: el['@_id'],
+      type: 'inclusiveGateway',
+      name: el['@_name'] ?? el['@_id'],
+      formFields: [],
+      defaultFlowId: el['@_default'] || undefined,
+    });
+  }
+
   for (const el of asArray(process.endEvent)) {
     nodes.push({
       id: el['@_id'],
@@ -141,4 +170,8 @@ export function findNode(graph: BpmnGraph, id: string): BpmnNode {
 
 export function outgoingFlows(graph: BpmnGraph, nodeId: string): BpmnFlow[] {
   return graph.flows.filter((f) => f.source === nodeId);
+}
+
+export function incomingFlows(graph: BpmnGraph, nodeId: string): BpmnFlow[] {
+  return graph.flows.filter((f) => f.target === nodeId);
 }
