@@ -2,8 +2,10 @@ import {
   AuditLogEntry,
   ClientItem,
   DatabaseTable,
+  DocumentFolder,
   DocumentItem,
   FieldRegistryRow,
+  LibraryDocumentItem,
   MinimalUser,
   NotificationItem,
   NotificationTemplate,
@@ -289,6 +291,57 @@ export const api = {
     const token = getToken();
     try {
       const res = await fetch(`/api/documents/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) throw new Error(`Échec de l'ouverture (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (newTab) newTab.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      newTab?.close();
+      throw err;
+    }
+  },
+
+  listFolders: () => request<{ folders: DocumentFolder[] }>('/library/folders'),
+  createFolder: (name: string) => request<{ folder: DocumentFolder }>('/library/folders', { method: 'POST', body: { name } }),
+  getFolder: (id: string) =>
+    request<{ folder: DocumentFolder; documents: LibraryDocumentItem[] }>(`/library/folders/${id}`),
+  uploadLibraryDocument: async (folderId: string, file: File): Promise<{ document: LibraryDocumentItem }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = getToken();
+    const res = await fetch(`/api/library/folders/${folderId}/documents`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
+    return data as { document: LibraryDocumentItem };
+  },
+  downloadLibraryDocument: async (id: string, filename: string): Promise<void> => {
+    const token = getToken();
+    const res = await fetch(`/api/library/documents/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!res.ok) throw new Error(`Échec du téléchargement (${res.status})`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
+  viewLibraryDocument: async (id: string): Promise<void> => {
+    const newTab = window.open('', '_blank');
+    const token = getToken();
+    try {
+      const res = await fetch(`/api/library/documents/${id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!res.ok) throw new Error(`Échec de l'ouverture (${res.status})`);

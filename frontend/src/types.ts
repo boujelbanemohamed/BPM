@@ -174,6 +174,28 @@ export interface DocumentItem {
   uploaded_at: string;
 }
 
+export interface DocumentFolder {
+  id: string;
+  name: string;
+  created_by: string;
+  created_by_name?: string;
+  created_at: string;
+  updated_at: string;
+  document_count?: number;
+}
+
+export interface LibraryDocumentItem {
+  id: string;
+  folder_id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  storage_path: string;
+  uploaded_by: string;
+  uploaded_by_name?: string;
+  uploaded_at: string;
+}
+
 export interface PermissionMatrixRow {
   id: string;
   process_id: string;

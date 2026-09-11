@@ -15,6 +15,8 @@ import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AuditPage } from './pages/AuditPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { ClientDetailPage } from './pages/ClientDetailPage';
+import { DocumentsPage } from './pages/DocumentsPage';
+import { DocumentFolderPage } from './pages/DocumentFolderPage';
 import { FieldsRegistryPage } from './pages/FieldsRegistryPage';
 import { DatabaseSchemaPage } from './pages/DatabaseSchemaPage';
 import { AdminNotificationsPage } from './pages/AdminNotificationsPage';
@@ -48,6 +50,8 @@ export default function App() {
         <Route path="/instances/:id" element={<InstanceDetailPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/clients/:id" element={<ClientDetailPage />} />
+        <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/documents/:id" element={<DocumentFolderPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route

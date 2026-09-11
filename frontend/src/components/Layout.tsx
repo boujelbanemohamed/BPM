@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ClipboardList,
   Database,
+  FolderOpen,
   LayoutGrid,
   ListTree,
   LogOut,
@@ -125,6 +126,9 @@ export function Layout() {
             </NavLink>
             <NavLink to="/clients" className={navLinkClass}>
               <Users size={16} /> Clients
+            </NavLink>
+            <NavLink to="/documents" className={navLinkClass}>
+              <FolderOpen size={16} /> Documents
             </NavLink>
             {hasAccess('FIELDS_REGISTRY', 'VIEW') && (
               <NavLink to="/admin/fields" className={navLinkClass}>
