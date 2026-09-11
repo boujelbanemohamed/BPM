@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { api, getToken, setToken } from '../api/client';
+import { api, clearSession, getToken, storeSession } from '../api/client';
 import { PageAccessLevel, PageKey, PublicUser } from '../types';
 
 const LEVEL_RANK: Record<PageAccessLevel, number> = { NONE: 0, VIEW: 1, FULL: 2 };
@@ -8,8 +8,9 @@ const EMPTY_ACCESS = {} as Record<PageKey, PageAccessLevel>;
 interface AuthContextValue {
   user: PublicUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ requiresTwoFactor: boolean; pendingToken?: string }>;
+  verifyTwoFactor: (pendingToken: string, code: string) => Promise<void>;
+  logout: () => Promise<void>;
   isAdmin: boolean;
   pageAccess: Record<PageKey, PageAccessLevel>;
   hasAccess: (pageKey: PageKey, minLevel: PageAccessLevel) => boolean;
@@ -34,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(user);
       setPageAccess(pageAccess);
     } catch {
-      setToken(null);
+      clearSession();
       setUser(null);
       setPageAccess(EMPTY_ACCESS);
     }
@@ -46,14 +47,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
-    const { token, user, pageAccess } = await api.login(email, password);
-    setToken(token);
+    const result = await api.login(email, password);
+    if (result.requiresTwoFactor) {
+      return { requiresTwoFactor: true, pendingToken: result.pendingToken };
+    }
+    storeSession({ token: result.token, refreshToken: result.refreshToken });
+    setUser(result.user);
+    setPageAccess(result.pageAccess);
+    return { requiresTwoFactor: false };
+  }
+
+  async function verifyTwoFactor(pendingToken: string, code: string) {
+    const { token, refreshToken, user, pageAccess } = await api.verifyTwoFactorLogin(pendingToken, code);
+    storeSession({ token, refreshToken });
     setUser(user);
     setPageAccess(pageAccess);
   }
 
-  function logout() {
-    setToken(null);
+  async function logout() {
+    await api.logout();
+    clearSession();
     setUser(null);
     setPageAccess(EMPTY_ACCESS);
   }
@@ -67,7 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, pageAccess, hasAccess, refreshUser }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, verifyTwoFactor, logout, isAdmin, pageAccess, hasAccess, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

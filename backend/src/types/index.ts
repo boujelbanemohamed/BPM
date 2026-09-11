@@ -76,6 +76,9 @@ export interface User {
   absence_end: string | null;
   delegate_user_1_id: string | null;
   delegate_user_2_id: string | null;
+  two_factor_secret: string | null;
+  two_factor_enabled: boolean;
+  two_factor_enabled_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,6 +97,7 @@ export interface PublicUser {
   absenceEnd: string | null;
   delegateUser1Id: string | null;
   delegateUser2Id: string | null;
+  twoFactorEnabled: boolean;
   roles: string[];
 }
 

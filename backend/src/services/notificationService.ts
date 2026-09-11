@@ -3,6 +3,7 @@ import { NotificationType } from '../types';
 import {
   sendAccountDeactivatedEmail,
   sendPasswordChangedEmail,
+  sendPasswordResetEmail,
   sendProcessCompletedEmail,
   sendTaskAssignedEmail,
   sendWelcomeEmail,
@@ -150,4 +151,23 @@ export async function notifyPasswordChanged(
     recipientName: params.fullName,
     changedByAdmin: params.changedByAdmin,
   }).catch((err) => logger.error('notifyPasswordChanged email failed', { error: (err as Error).message }));
+}
+
+export async function notifyPasswordResetRequested(
+  client: Executor,
+  params: { userId: string; email: string; fullName: string; resetUrl: string; expiresInMinutes: number }
+): Promise<void> {
+  await createNotification(client, {
+    userId: params.userId,
+    type: 'GENERIC',
+    title: 'Réinitialisation de mot de passe demandée',
+    message: 'Une réinitialisation de votre mot de passe a été demandée depuis la page de connexion.',
+  });
+
+  sendPasswordResetEmail({
+    to: params.email,
+    recipientName: params.fullName,
+    resetUrl: params.resetUrl,
+    expiresInMinutes: params.expiresInMinutes,
+  }).catch((err) => logger.error('notifyPasswordResetRequested email failed', { error: (err as Error).message }));
 }

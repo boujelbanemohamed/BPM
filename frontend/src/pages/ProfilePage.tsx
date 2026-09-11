@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { Camera, KeyRound, Mail, Save, User as UserIcon, Users } from 'lucide-react';
+import { Camera, CheckCircle2, KeyRound, Mail, Save, ShieldCheck, ShieldOff, User as UserIcon, Users } from 'lucide-react';
 import { api } from '../api/client';
 import { MinimalUser, PublicUser } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +30,15 @@ export function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [pwStatus, setPwStatus] = useState<string | null>(null);
   const [pwError, setPwError] = useState<string | null>(null);
+
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{ secret: string; qrCodeDataUrl: string } | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorError, setTwoFactorError] = useState<string | null>(null);
+  const [twoFactorBusy, setTwoFactorBusy] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [disabling, setDisabling] = useState(false);
+  const [disablePassword, setDisablePassword] = useState('');
+  const [disableError, setDisableError] = useState<string | null>(null);
 
   useEffect(() => {
     api.getMyDelegation().then(({ delegation }) => {
@@ -115,6 +124,50 @@ export function ProfilePage() {
     } catch (err) {
       setPwError((err as Error).message);
       setPwStatus(null);
+    }
+  }
+
+  async function startTwoFactorSetup() {
+    setTwoFactorError(null);
+    setBackupCodes(null);
+    try {
+      const setup = await api.setupTwoFactor();
+      setTwoFactorSetup(setup);
+    } catch (err) {
+      setTwoFactorError((err as Error).message);
+    }
+  }
+
+  async function confirmTwoFactorEnable(e: FormEvent) {
+    e.preventDefault();
+    setTwoFactorError(null);
+    setTwoFactorBusy(true);
+    try {
+      const { backupCodes } = await api.enableTwoFactor(twoFactorCode.trim());
+      setBackupCodes(backupCodes);
+      setTwoFactorSetup(null);
+      setTwoFactorCode('');
+      await refreshUser();
+    } catch (err) {
+      setTwoFactorError((err as Error).message);
+    } finally {
+      setTwoFactorBusy(false);
+    }
+  }
+
+  async function confirmTwoFactorDisable(e: FormEvent) {
+    e.preventDefault();
+    setDisableError(null);
+    setTwoFactorBusy(true);
+    try {
+      await api.disableTwoFactor(disablePassword);
+      setDisabling(false);
+      setDisablePassword('');
+      await refreshUser();
+    } catch (err) {
+      setDisableError((err as Error).message);
+    } finally {
+      setTwoFactorBusy(false);
     }
   }
 
@@ -302,6 +355,119 @@ export function ProfilePage() {
           {pwStatus && <span className="text-sm text-slate-400">{pwStatus}</span>}
         </div>
       </form>
+
+      <div className="card space-y-4">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-700">
+          <ShieldCheck size={18} /> Authentification à deux facteurs (2FA)
+        </h2>
+
+        {backupCodes ? (
+          <div className="space-y-3">
+            <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+              <CheckCircle2 size={16} /> 2FA activée. Notez ces codes de secours dans un endroit sûr : ils ne seront plus
+              affichés.
+            </p>
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3 font-mono text-sm text-slate-700">
+              {backupCodes.map((code) => (
+                <span key={code}>{code}</span>
+              ))}
+            </div>
+            <button onClick={() => setBackupCodes(null)} className="btn-secondary">
+              J'ai noté mes codes
+            </button>
+          </div>
+        ) : user?.twoFactorEnabled ? (
+          <div className="space-y-3">
+            <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
+              <CheckCircle2 size={16} /> La 2FA est activée sur votre compte.
+            </p>
+            {!disabling ? (
+              <button onClick={() => setDisabling(true)} className="flex items-center gap-2 text-sm font-medium text-rose-600 hover:underline">
+                <ShieldOff size={14} /> Désactiver la 2FA
+              </button>
+            ) : (
+              <form onSubmit={confirmTwoFactorDisable} className="space-y-3">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-500">Confirmez avec votre mot de passe</span>
+                  <input
+                    type="password"
+                    required
+                    autoFocus
+                    className="input"
+                    value={disablePassword}
+                    onChange={(e) => setDisablePassword(e.target.value)}
+                  />
+                </label>
+                {disableError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{disableError}</p>}
+                <div className="flex items-center gap-3">
+                  <button type="submit" disabled={twoFactorBusy} className="btn-secondary border-rose-200 text-rose-600 hover:bg-rose-50">
+                    {twoFactorBusy ? 'Désactivation…' : 'Confirmer la désactivation'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDisabling(false);
+                      setDisablePassword('');
+                      setDisableError(null);
+                    }}
+                    className="text-sm text-slate-500 hover:text-slate-700"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        ) : !twoFactorSetup ? (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-500">
+              Ajoutez une étape de vérification supplémentaire à la connexion via une application d'authentification
+              (Google Authenticator, Authy...).
+            </p>
+            {twoFactorError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{twoFactorError}</p>}
+            <button onClick={startTwoFactorSetup} className="btn-primary">
+              <ShieldCheck size={16} /> Activer la 2FA
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={confirmTwoFactorEnable} className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Scannez ce QR code avec votre application d'authentification, puis saisissez le code à 6 chiffres généré
+              pour confirmer.
+            </p>
+            <img src={twoFactorSetup.qrCodeDataUrl} alt="QR code 2FA" className="mx-auto h-40 w-40 rounded-lg border border-slate-200" />
+            <p className="text-center font-mono text-xs text-slate-400">{twoFactorSetup.secret}</p>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Code à 6 chiffres</span>
+              <input
+                autoFocus
+                required
+                className="input text-center font-mono tracking-widest"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value)}
+                placeholder="123456"
+              />
+            </label>
+            {twoFactorError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{twoFactorError}</p>}
+            <div className="flex items-center gap-3">
+              <button type="submit" disabled={twoFactorBusy} className="btn-primary">
+                {twoFactorBusy ? 'Vérification…' : 'Confirmer'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTwoFactorSetup(null);
+                  setTwoFactorCode('');
+                  setTwoFactorError(null);
+                }}
+                className="text-sm text-slate-500 hover:text-slate-700"
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

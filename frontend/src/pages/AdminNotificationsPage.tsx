@@ -8,6 +8,7 @@ const TEMPLATE_LABELS: Record<string, string> = {
   WELCOME: 'Bienvenue (création de compte)',
   PASSWORD_CHANGED_SELF: 'Mot de passe modifié (par l\'utilisateur)',
   PASSWORD_CHANGED_BY_ADMIN: 'Mot de passe réinitialisé (par un admin)',
+  PASSWORD_RESET_REQUESTED: 'Demande de réinitialisation (mot de passe oublié)',
   TASK_ASSIGNED: 'Tâche assignée',
   TASK_DELEGATED: 'Tâche déléguée (suppléance)',
   ACCOUNT_DEACTIVATED: 'Compte désactivé',

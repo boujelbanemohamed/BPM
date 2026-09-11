@@ -39,6 +39,7 @@ function toAuthenticatedUser(row: UserWithRoles): AuthenticatedUser {
     absenceEnd: row.absence_end,
     delegateUser1Id: row.delegate_user_1_id,
     delegateUser2Id: row.delegate_user_2_id,
+    twoFactorEnabled: row.two_factor_enabled,
     roles: row.role_names ?? [],
     roleIds: row.role_ids ?? [],
   };

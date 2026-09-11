@@ -56,6 +56,9 @@ CREATE TABLE users (
   absence_end         DATE,
   delegate_user_1_id  UUID REFERENCES users(id) ON DELETE SET NULL,
   delegate_user_2_id  UUID REFERENCES users(id) ON DELETE SET NULL,
+  two_factor_secret     VARCHAR(255),
+  two_factor_enabled    BOOLEAN NOT NULL DEFAULT FALSE,
+  two_factor_enabled_at TIMESTAMPTZ,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_delegate_not_self_1 CHECK (delegate_user_1_id IS NULL OR delegate_user_1_id <> id),
@@ -74,6 +77,43 @@ CREATE TRIGGER trg_users_updated_at
 
 CREATE INDEX idx_users_delegate_1 ON users(delegate_user_1_id);
 CREATE INDEX idx_users_delegate_2 ON users(delegate_user_2_id);
+
+-- ---------------------------------------------------------------------
+-- password_reset_tokens — liens de réinitialisation en libre-service
+-- refresh_tokens        — session rafraîchie silencieusement (rotation)
+-- two_factor_backup_codes — codes de secours à usage unique pour la 2FA
+-- ---------------------------------------------------------------------
+CREATE TABLE password_reset_tokens (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash VARCHAR(64) NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_password_reset_tokens_hash ON password_reset_tokens(token_hash);
+CREATE INDEX idx_password_reset_tokens_user ON password_reset_tokens(user_id);
+
+CREATE TABLE refresh_tokens (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash  VARCHAR(64) NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  revoked_at  TIMESTAMPTZ,
+  replaced_by UUID REFERENCES refresh_tokens(id),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_refresh_tokens_hash ON refresh_tokens(token_hash);
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
+
+CREATE TABLE two_factor_backup_codes (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code_hash  VARCHAR(255) NOT NULL,
+  used_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_two_factor_backup_codes_user ON two_factor_backup_codes(user_id);
 
 -- ---------------------------------------------------------------------
 -- user_roles
@@ -405,7 +445,16 @@ INSERT INTO notification_templates (key, heading, subject, body_html, variables)
    '<p>Bonjour {{recipientName}},</p>
      <p>Le processus <strong>{{processName}}</strong> que vous avez démarré est terminé.</p>
      <p>Issue : <strong>{{outcome}}</strong></p>',
-   ARRAY['recipientName','processName','outcome']);
+   ARRAY['recipientName','processName','outcome']),
+
+  ('PASSWORD_RESET_REQUESTED', 'Réinitialisation de votre mot de passe', '[BPM] Réinitialisation de votre mot de passe',
+   '<p>Bonjour {{recipientName}},</p>
+     <p>Vous avez demandé la réinitialisation du mot de passe de votre compte BPM Platform.</p>
+     <p><a href="{{resetUrl}}" style="color:#2f5ce0;">Choisir un nouveau mot de passe</a></p>
+     <p style="background:#fff8e8;border:1px solid #f0d999;border-radius:6px;padding:10px 12px;">
+       Ce lien expire dans {{expiresInMinutes}} minutes. Si vous n''êtes pas à l''origine de cette demande, ignorez cet email : votre mot de passe actuel reste valide.
+     </p>',
+   ARRAY['recipientName','resetUrl','expiresInMinutes']);
 
 -- Copie figée du contenu ci-dessus, jamais modifiée par l'UI admin,
 -- utilisée uniquement pour la fonction "Réinitialiser" d'un modèle.

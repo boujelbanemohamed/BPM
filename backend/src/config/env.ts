@@ -8,7 +8,11 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().min(1),
 
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
-  JWT_EXPIRES_IN: z.string().default('8h'),
+  JWT_EXPIRES_IN: z.string().default('15m'),
+  REFRESH_TOKEN_DAYS: z.coerce.number().min(1).max(90).default(30),
+  PASSWORD_RESET_MINUTES: z.coerce.number().min(5).max(1440).default(60),
+  TWO_FACTOR_PENDING_MINUTES: z.coerce.number().min(1).max(30).default(5),
+  TWO_FACTOR_ISSUER: z.string().default('BPM Platform'),
   BCRYPT_ROUNDS: z.coerce.number().min(10).max(15).default(12),
 
   UPLOAD_DIR: z.string().default('/app/uploads'),

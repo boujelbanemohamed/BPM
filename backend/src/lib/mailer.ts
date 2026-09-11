@@ -203,6 +203,21 @@ export async function sendPasswordChangedEmail(params: {
   await send(params.to, rendered.subject, rendered.html);
 }
 
+export async function sendPasswordResetEmail(params: {
+  to: string;
+  recipientName: string;
+  resetUrl: string;
+  expiresInMinutes: number;
+}): Promise<void> {
+  const rendered = await renderTemplate('PASSWORD_RESET_REQUESTED', {
+    recipientName: params.recipientName,
+    resetUrl: params.resetUrl,
+    expiresInMinutes: String(params.expiresInMinutes),
+  });
+  if (!rendered) return;
+  await send(params.to, rendered.subject, rendered.html);
+}
+
 export async function sendProcessCompletedEmail(params: {
   to: string;
   recipientName: string;

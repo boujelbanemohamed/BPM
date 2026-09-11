@@ -22,6 +22,7 @@ import {
 } from '../types';
 
 const TOKEN_KEY = 'bpm_token';
+const REFRESH_TOKEN_KEY = 'bpm_refresh_token';
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -32,12 +33,73 @@ export function setToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string | null): void {
+  if (token) localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  else localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+export function storeSession(session: { token: string; refreshToken: string }): void {
+  setToken(session.token);
+  setRefreshToken(session.refreshToken);
+}
+
+export function clearSession(): void {
+  setToken(null);
+  setRefreshToken(null);
+}
+
 interface RequestOptions {
   method?: string;
   body?: unknown;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+// Ces routes gèrent elles-mêmes leurs erreurs 401 (identifiants/code invalides,
+// lien expiré...) : ce ne sont pas des signes qu'une session existante a
+// expiré, donc elles ne doivent jamais déclencher le rafraîchissement
+// automatique ni la redirection vers /login.
+const AUTH_ENTRY_POINTS = [
+  '/auth/login',
+  '/auth/2fa/verify-login',
+  '/auth/refresh',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
+
+let refreshPromise: Promise<boolean> | null = null;
+
+async function performRefresh(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { token: string; refreshToken: string };
+    storeSession(data);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Un seul appel /auth/refresh en vol même si plusieurs requêtes 401 arrivent en même temps. */
+function refreshSession(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = performRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+async function request<T>(path: string, options: RequestOptions = {}, retried = false): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -48,8 +110,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 
-  if (res.status === 401) {
-    setToken(null);
+  if (res.status === 401 && !AUTH_ENTRY_POINTS.includes(path)) {
+    if (!retried && (await refreshSession())) {
+      return request<T>(path, options, true);
+    }
+    clearSession();
     window.location.href = '/login';
     throw new Error('Session expirée');
   }
@@ -61,15 +126,37 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return data as T;
 }
 
+type LoginResult =
+  | { requiresTwoFactor: true; pendingToken: string }
+  | { requiresTwoFactor?: false; token: string; refreshToken: string; user: PublicUser; pageAccess: Record<PageKey, PageAccessLevel> };
+
 export const api = {
   login: (email: string, password: string) =>
-    request<{ token: string; user: PublicUser; pageAccess: Record<PageKey, PageAccessLevel> }>('/auth/login', {
-      method: 'POST',
-      body: { email, password },
-    }),
+    request<LoginResult>('/auth/login', { method: 'POST', body: { email, password } }),
+  verifyTwoFactorLogin: (pendingToken: string, code: string) =>
+    request<{ token: string; refreshToken: string; user: PublicUser; pageAccess: Record<PageKey, PageAccessLevel> }>(
+      '/auth/2fa/verify-login',
+      { method: 'POST', body: { pendingToken, code } }
+    ),
+  logout: async (): Promise<void> => {
+    const refreshToken = getRefreshToken();
+    try {
+      await request<{ ok: true }>('/auth/logout', { method: 'POST', body: { refreshToken: refreshToken ?? undefined } });
+    } catch {
+      // best-effort : la session locale est nettoyée quoi qu'il arrive
+    }
+  },
+  forgotPassword: (email: string) => request<{ ok: true }>('/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ ok: true }>('/auth/reset-password', { method: 'POST', body: { token, newPassword } }),
   me: () => request<{ user: PublicUser; pageAccess: Record<PageKey, PageAccessLevel> }>('/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ ok: true }>('/auth/me/password', { method: 'PUT', body: { currentPassword, newPassword } }),
+  setupTwoFactor: () => request<{ secret: string; qrCodeDataUrl: string }>('/auth/2fa/setup'),
+  enableTwoFactor: (code: string) =>
+    request<{ ok: true; backupCodes: string[] }>('/auth/2fa/enable', { method: 'POST', body: { code } }),
+  disableTwoFactor: (password: string) =>
+    request<{ ok: true }>('/auth/2fa/disable', { method: 'POST', body: { password } }),
 
   updateMyProfile: (payload: {
     firstName: string;
