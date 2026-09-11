@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
 
 export function ProcessTrashPage() {
+  const { t } = useTranslation();
   const [processes, setProcesses] = useState<ProcessDefinition[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,12 +33,7 @@ export function ProcessTrashPage() {
   }
 
   async function permanentlyDelete(p: ProcessDefinition) {
-    if (
-      !window.confirm(
-        `Supprimer définitivement le processus "${p.name}" (v${p.version}) ? Cette action est irréversible.`
-      )
-    )
-      return;
+    if (!window.confirm(t('trash.confirmDeletePermanently', { name: p.name, version: p.version }))) return;
     try {
       await api.permanentlyDeleteProcess(p.id);
       refresh();
@@ -48,24 +45,24 @@ export function ProcessTrashPage() {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <Link to="/processes" className="mb-1 flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600">
-        <ArrowLeft size={14} /> Retour aux processus
+        <ArrowLeft size={14} /> {t('designer.backToProcesses')}
       </Link>
       <h1 className="mb-6 flex items-center gap-2 text-2xl font-bold text-slate-800">
-        <Trash2 size={22} /> Corbeille
+        <Trash2 size={22} /> {t('trash.title')}
       </h1>
 
       {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-3">Référence</th>
-              <th className="px-4 py-3">Nom</th>
-              <th className="px-4 py-3">Version</th>
-              <th className="px-4 py-3">Supprimé par</th>
-              <th className="px-4 py-3">Supprimé le</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th className="px-4 py-3">{t('trash.table.reference')}</th>
+              <th className="px-4 py-3">{t('trash.table.name')}</th>
+              <th className="px-4 py-3">{t('trash.table.version')}</th>
+              <th className="px-4 py-3">{t('trash.table.deletedBy')}</th>
+              <th className="px-4 py-3">{t('trash.table.deletedAt')}</th>
+              <th className="px-4 py-3 text-right">{t('trash.table.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -84,13 +81,13 @@ export function ProcessTrashPage() {
                       onClick={() => restore(p)}
                       className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                     >
-                      <RotateCcw size={14} /> Restaurer
+                      <RotateCcw size={14} /> {t('trash.restore')}
                     </button>
                     <button
                       onClick={() => permanentlyDelete(p)}
                       className="flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
                     >
-                      <Trash2 size={14} /> Supprimer définitivement
+                      <Trash2 size={14} /> {t('trash.deletePermanently')}
                     </button>
                   </div>
                 </td>
@@ -99,7 +96,7 @@ export function ProcessTrashPage() {
             {processes.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                  La corbeille est vide.
+                  {t('trash.empty')}
                 </td>
               </tr>
             )}

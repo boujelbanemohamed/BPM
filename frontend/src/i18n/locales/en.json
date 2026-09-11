@@ -30,6 +30,8 @@
     "sending": "Sending…",
     "language": "Language",
     "fieldRequired": "Field \"{{label}}\" is required",
+    "yes": "Yes",
+    "no": "No",
     "pagination": {
       "previous": "Previous",
       "next": "Next",
@@ -378,5 +380,157 @@
       "manageClients": "Manage the Clients module (create, view, edit)",
       "manageProfile": "Manage their own profile: name, phone, avatar, password, email notification preference, backups"
     }
+  },
+  "designer": {
+    "backToProcesses": "Back to processes",
+    "loading": "Loading…",
+    "noAttachment": "No attachment",
+    "edit": "Edit",
+    "printPdf": "Print PDF",
+    "permissionsMatrix": "Permission matrix",
+    "readOnlyNotice": "This process is published: read-only. Create a new process for a new version.",
+    "attachEditor": {
+      "none": "— no attachment —",
+      "folder": "A folder",
+      "document": "A document"
+    },
+    "pdfExport": {
+      "titleSuffix": "{{name}} — PDF export",
+      "printButton": "Print / Save as PDF",
+      "exportedOn": "Exported on {{date}}",
+      "popupBlocked": "Could not open the print tab (blocked by the browser)"
+    }
+  },
+  "trash": {
+    "title": "Trash",
+    "table": {
+      "reference": "Reference",
+      "name": "Name",
+      "version": "Version",
+      "deletedBy": "Deleted by",
+      "deletedAt": "Deleted on",
+      "actions": "Actions"
+    },
+    "restore": "Restore",
+    "deletePermanently": "Delete permanently",
+    "confirmDeletePermanently": "Permanently delete process \"{{name}}\" (v{{version}})? This action is irreversible.",
+    "empty": "The trash is empty."
+  },
+  "matrix": {
+    "backToProcess": "Back to process",
+    "title": "Permission matrix — {{name}}",
+    "save": "Save matrix",
+    "noUserTasks": "No user task in this process.",
+    "table": {
+      "role": "Role",
+      "viewDocuments": "View documents",
+      "uploadDocuments": "Upload documents",
+      "read": "R",
+      "write": "W"
+    }
+  },
+  "fields": {
+    "title": "Fields registry",
+    "description": "Overview of all form fields defined across every process (Start event and user tasks), to avoid key duplication or inconsistencies.",
+    "searchPlaceholder": "Filter by key, label, process, step…",
+    "table": {
+      "step": "Step",
+      "type": "Type",
+      "key": "Key",
+      "label": "Label",
+      "fieldType": "Field type",
+      "required": "Required"
+    },
+    "stepTypes": {
+      "startEvent": "Start",
+      "userTask": "Task",
+      "exclusiveGateway": "Gateway",
+      "endEvent": "End"
+    },
+    "empty": "No field found."
+  },
+  "database": {
+    "title": "Database",
+    "description_one": "Current PostgreSQL schema structure ({{count}} table) — read-only.",
+    "description_other": "Current PostgreSQL schema structure ({{count}} tables) — read-only.",
+    "rowCount_one": "{{count}} row",
+    "rowCount_other": "{{count}} rows",
+    "table": {
+      "column": "Column",
+      "type": "Type",
+      "nullable": "Null",
+      "default": "Default"
+    },
+    "nullableYes": "yes",
+    "nullableNo": "no",
+    "loading": "Loading…"
+  },
+  "adminNotifications": {
+    "title": "Notifications",
+    "tabs": {
+      "smtp": "SMTP settings",
+      "templates": "Email templates"
+    },
+    "templateLabels": {
+      "WELCOME": "Welcome (account creation)",
+      "PASSWORD_CHANGED_SELF": "Password changed (by the user)",
+      "PASSWORD_CHANGED_BY_ADMIN": "Password reset (by an admin)",
+      "PASSWORD_RESET_REQUESTED": "Reset request (forgot password)",
+      "TASK_ASSIGNED": "Task assigned",
+      "TASK_DELEGATED": "Task delegated (backup)",
+      "ACCOUNT_DEACTIVATED": "Account deactivated",
+      "PROCESS_COMPLETED": "Process completed"
+    },
+    "smtp": {
+      "loading": "Loading…",
+      "envHint": "If the \"Server\" field below is empty, the platform uses the configuration from the file",
+      "envHintMiddle": "(variables",
+      "envHintEnd": ").",
+      "host": "SMTP server",
+      "port": "Port",
+      "secureLabel": "Implicit TLS connection (enable for port 465, disable for port 587 using STARTTLS)",
+      "username": "Username",
+      "passwordLabel": "Password",
+      "passwordKeepHint": "(leave blank to keep unchanged)",
+      "fromAddress": "From address",
+      "save": "Save",
+      "sendTest": "Send a test email",
+      "sending": "Sending…",
+      "testHint": "Sent to your own email address, using the configuration saved above.",
+      "testSuccess": "Test email sent — check your inbox."
+    },
+    "templates": {
+      "reset": "Reset",
+      "confirmReset": "Reset this template to its default content?",
+      "heading": "Title shown in the email",
+      "subject": "Email subject",
+      "bodyHtml": "Message body (HTML)",
+      "save": "Save",
+      "preview": "Preview",
+      "generating": "Generating…",
+      "previewSubject": "Subject:",
+      "previewTitle": "Email preview"
+    }
+  },
+  "diff": {
+    "backToProcess": "Back to process",
+    "title": "Compare versions — {{name}}",
+    "needTwoVersions": "You need at least two published versions of this process to compare them.",
+    "oldVersion": "Old version",
+    "newVersion": "New version",
+    "sameVersion": "Choose two different versions to see their differences.",
+    "loadError": "Could not load the BPMN diagram: {{message}}",
+    "computeError": "Could not compute the differences: {{message}}",
+    "added_one": "{{count}} added",
+    "added_other": "{{count}} added",
+    "removed_one": "{{count}} removed",
+    "removed_other": "{{count}} removed",
+    "changed_one": "{{count}} changed",
+    "changed_other": "{{count}} changed"
+  },
+  "processStatus": {
+    "DRAFT": "Draft",
+    "PUBLISHED": "Published",
+    "ARCHIVED": "Archived"
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import NavigatedViewer from 'bpmn-js/lib/NavigatedViewer';
 import bpmPlatformModdle from '../bpmn/bpmPlatformModdle.json';
 import { frTranslationsModule } from '../bpmn/frTranslations';
@@ -15,6 +16,7 @@ interface Props {
 }
 
 function useNavigatedViewer(xml: string) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ function useNavigatedViewer(xml: string) {
         setReady(true);
       })
       .catch((err: Error) => {
-        if (!cancelled) setError(`Impossible de charger le diagramme BPMN : ${err.message}`);
+        if (!cancelled) setError(t('diff.loadError', { message: err.message }));
       });
 
     return () => {
@@ -59,6 +61,7 @@ function useNavigatedViewer(xml: string) {
  * depuis l'ancienne, orange pour ceux présents dans les deux mais modifiés.
  */
 export function BpmnDiffViewer({ oldXml, oldLabel, newXml, newLabel }: Props) {
+  const { t } = useTranslation();
   const oldViewer = useNavigatedViewer(oldXml);
   const newViewer = useNavigatedViewer(newXml);
   const [summary, setSummary] = useState<{ added: number; removed: number; changed: number } | null>(null);
@@ -90,7 +93,7 @@ export function BpmnDiffViewer({ oldXml, oldLabel, newXml, newLabel }: Props) {
         setSummary({ added: addedIds.length, removed: removedIds.length, changed: changedIds.length });
       })
       .catch((err: Error) => {
-        if (!cancelled) setDiffError(`Impossible de calculer les différences : ${err.message}`);
+        if (!cancelled) setDiffError(t('diff.computeError', { message: err.message }));
       });
 
     return () => {
@@ -111,13 +114,13 @@ export function BpmnDiffViewer({ oldXml, oldLabel, newXml, newLabel }: Props) {
       {summary && (
         <div className="mb-3 flex items-center gap-4 rounded-lg bg-slate-50 px-3 py-2 text-sm">
           <span className="flex items-center gap-1.5 text-emerald-700">
-            <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> {summary.added} ajouté(s)
+            <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> {t('diff.added', { count: summary.added })}
           </span>
           <span className="flex items-center gap-1.5 text-rose-700">
-            <span className="h-2.5 w-2.5 rounded-sm bg-rose-500" /> {summary.removed} supprimé(s)
+            <span className="h-2.5 w-2.5 rounded-sm bg-rose-500" /> {t('diff.removed', { count: summary.removed })}
           </span>
           <span className="flex items-center gap-1.5 text-orange-700">
-            <span className="h-2.5 w-2.5 rounded-sm bg-orange-500" /> {summary.changed} modifié(s)
+            <span className="h-2.5 w-2.5 rounded-sm bg-orange-500" /> {t('diff.changed', { count: summary.changed })}
           </span>
         </div>
       )}

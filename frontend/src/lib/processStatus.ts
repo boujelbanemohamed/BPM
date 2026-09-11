@@ -1,9 +1,5 @@
-export const PROCESS_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Brouillon',
-  PUBLISHED: 'Publié',
-  ARCHIVED: 'Archivé',
-};
+import i18n from '../i18n';
 
 export function processStatusLabel(status: string): string {
-  return PROCESS_STATUS_LABELS[status] ?? status;
+  return i18n.t(`processStatus.${status}`, { defaultValue: status });
 }

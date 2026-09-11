@@ -30,6 +30,8 @@
     "sending": "Envoi…",
     "language": "Langue",
     "fieldRequired": "Le champ \"{{label}}\" est obligatoire",
+    "yes": "Oui",
+    "no": "Non",
     "pagination": {
       "previous": "Précédent",
       "next": "Suivant",
@@ -378,5 +380,157 @@
       "manageClients": "Gérer le module Clients (créer, consulter, modifier)",
       "manageProfile": "Gérer son propre profil : nom, téléphone, avatar, mot de passe, préférence de notifications email, suppléants"
     }
+  },
+  "designer": {
+    "backToProcesses": "Retour aux processus",
+    "loading": "Chargement…",
+    "noAttachment": "Aucune pièce jointe",
+    "edit": "Modifier",
+    "printPdf": "Imprimer PDF",
+    "permissionsMatrix": "Matrice de droits",
+    "readOnlyNotice": "Ce processus est publié : lecture seule. Créez un nouveau processus pour une nouvelle version.",
+    "attachEditor": {
+      "none": "— aucune pièce jointe —",
+      "folder": "Un dossier",
+      "document": "Un document"
+    },
+    "pdfExport": {
+      "titleSuffix": "{{name}} — export PDF",
+      "printButton": "Imprimer / Enregistrer en PDF",
+      "exportedOn": "Exporté le {{date}}",
+      "popupBlocked": "Impossible d'ouvrir l'onglet d'impression (bloqué par le navigateur)"
+    }
+  },
+  "trash": {
+    "title": "Corbeille",
+    "table": {
+      "reference": "Référence",
+      "name": "Nom",
+      "version": "Version",
+      "deletedBy": "Supprimé par",
+      "deletedAt": "Supprimé le",
+      "actions": "Actions"
+    },
+    "restore": "Restaurer",
+    "deletePermanently": "Supprimer définitivement",
+    "confirmDeletePermanently": "Supprimer définitivement le processus \"{{name}}\" (v{{version}}) ? Cette action est irréversible.",
+    "empty": "La corbeille est vide."
+  },
+  "matrix": {
+    "backToProcess": "Retour au processus",
+    "title": "Matrice de droits — {{name}}",
+    "save": "Enregistrer la matrice",
+    "noUserTasks": "Aucune tâche utilisateur dans ce processus.",
+    "table": {
+      "role": "Rôle",
+      "viewDocuments": "Voir documents",
+      "uploadDocuments": "Déposer documents",
+      "read": "L",
+      "write": "E"
+    }
+  },
+  "fields": {
+    "title": "Registre des champs",
+    "description": "Vue d'ensemble de tous les champs de formulaire définis dans tous les processus (Début et tâches utilisateur), pour éviter les doublons/incohérences de clés.",
+    "searchPlaceholder": "Filtrer par clé, libellé, processus, étape…",
+    "table": {
+      "step": "Étape",
+      "type": "Type",
+      "key": "Clé",
+      "label": "Libellé",
+      "fieldType": "Type de champ",
+      "required": "Obligatoire"
+    },
+    "stepTypes": {
+      "startEvent": "Début",
+      "userTask": "Tâche",
+      "exclusiveGateway": "Passerelle",
+      "endEvent": "Fin"
+    },
+    "empty": "Aucun champ trouvé."
+  },
+  "database": {
+    "title": "Base de données",
+    "description_one": "Structure actuelle du schéma PostgreSQL ({{count}} table) — lecture seule.",
+    "description_other": "Structure actuelle du schéma PostgreSQL ({{count}} tables) — lecture seule.",
+    "rowCount_one": "{{count}} ligne",
+    "rowCount_other": "{{count}} lignes",
+    "table": {
+      "column": "Colonne",
+      "type": "Type",
+      "nullable": "Null",
+      "default": "Défaut"
+    },
+    "nullableYes": "oui",
+    "nullableNo": "non",
+    "loading": "Chargement…"
+  },
+  "adminNotifications": {
+    "title": "Notifications",
+    "tabs": {
+      "smtp": "Paramètres SMTP",
+      "templates": "Modèles d'emails"
+    },
+    "templateLabels": {
+      "WELCOME": "Bienvenue (création de compte)",
+      "PASSWORD_CHANGED_SELF": "Mot de passe modifié (par l'utilisateur)",
+      "PASSWORD_CHANGED_BY_ADMIN": "Mot de passe réinitialisé (par un admin)",
+      "PASSWORD_RESET_REQUESTED": "Demande de réinitialisation (mot de passe oublié)",
+      "TASK_ASSIGNED": "Tâche assignée",
+      "TASK_DELEGATED": "Tâche déléguée (suppléance)",
+      "ACCOUNT_DEACTIVATED": "Compte désactivé",
+      "PROCESS_COMPLETED": "Processus terminé"
+    },
+    "smtp": {
+      "loading": "Chargement…",
+      "envHint": "Si le champ \"Serveur\" ci-dessous est vide, la plateforme utilise la configuration du fichier",
+      "envHintMiddle": "(variables",
+      "envHintEnd": ").",
+      "host": "Serveur SMTP",
+      "port": "Port",
+      "secureLabel": "Connexion TLS implicite (à activer pour le port 465, désactiver pour le port 587 en STARTTLS)",
+      "username": "Identifiant",
+      "passwordLabel": "Mot de passe",
+      "passwordKeepHint": "(laisser vide pour ne pas le modifier)",
+      "fromAddress": "Adresse d'expédition",
+      "save": "Enregistrer",
+      "sendTest": "Envoyer un email de test",
+      "sending": "Envoi…",
+      "testHint": "Envoyé à votre propre adresse email, avec la configuration enregistrée ci-dessus.",
+      "testSuccess": "Email de test envoyé — vérifiez votre boîte de réception."
+    },
+    "templates": {
+      "reset": "Réinitialiser",
+      "confirmReset": "Réinitialiser ce modèle à son contenu par défaut ?",
+      "heading": "Titre affiché dans l'email",
+      "subject": "Objet de l'email",
+      "bodyHtml": "Corps du message (HTML)",
+      "save": "Enregistrer",
+      "preview": "Aperçu",
+      "generating": "Génération…",
+      "previewSubject": "Objet :",
+      "previewTitle": "Aperçu de l'email"
+    }
+  },
+  "diff": {
+    "backToProcess": "Retour au processus",
+    "title": "Comparer les versions — {{name}}",
+    "needTwoVersions": "Il faut au moins deux versions publiées de ce processus pour pouvoir les comparer.",
+    "oldVersion": "Ancienne version",
+    "newVersion": "Nouvelle version",
+    "sameVersion": "Choisissez deux versions différentes pour voir leurs différences.",
+    "loadError": "Impossible de charger le diagramme BPMN : {{message}}",
+    "computeError": "Impossible de calculer les différences : {{message}}",
+    "added_one": "{{count}} ajouté",
+    "added_other": "{{count}} ajoutés",
+    "removed_one": "{{count}} supprimé",
+    "removed_other": "{{count}} supprimés",
+    "changed_one": "{{count}} modifié",
+    "changed_other": "{{count}} modifiés"
+  },
+  "processStatus": {
+    "DRAFT": "Brouillon",
+    "PUBLISHED": "Publié",
+    "ARCHIVED": "Archivé"
   }
 }

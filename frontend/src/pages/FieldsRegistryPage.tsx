@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ListTree, Search } from 'lucide-react';
 import { api } from '../api/client';
 import { FieldRegistryRow } from '../types';
@@ -11,14 +12,15 @@ const statusBadge: Record<string, string> = {
   ARCHIVED: 'bg-slate-200 text-slate-600',
 };
 
-const STEP_TYPE_LABEL: Record<string, string> = {
-  startEvent: 'Début',
-  userTask: 'Tâche',
-  exclusiveGateway: 'Passerelle',
-  endEvent: 'Fin',
+const STEP_TYPE_KEYS: Record<string, string> = {
+  startEvent: 'startEvent',
+  userTask: 'userTask',
+  exclusiveGateway: 'exclusiveGateway',
+  endEvent: 'endEvent',
 };
 
 export function FieldsRegistryPage() {
+  const { t } = useTranslation();
   const [fields, setFields] = useState<FieldRegistryRow[]>([]);
   const [query, setQuery] = useState('');
 
@@ -50,17 +52,15 @@ export function FieldsRegistryPage() {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 flex items-center gap-2 text-2xl font-bold text-slate-800">
-        <ListTree size={22} /> Registre des champs
+        <ListTree size={22} /> {t('fields.title')}
       </h1>
-      <p className="mb-4 text-sm text-slate-500">
-        Vue d'ensemble de tous les champs de formulaire définis dans tous les processus (Début et tâches utilisateur), pour éviter les doublons/incohérences de clés.
-      </p>
+      <p className="mb-4 text-sm text-slate-500">{t('fields.description')}</p>
 
       <div className="relative mb-4">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           className="input pl-9"
-          placeholder="Filtrer par clé, libellé, processus, étape…"
+          placeholder={t('fields.searchPlaceholder') as string}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -80,30 +80,32 @@ export function FieldsRegistryPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-xs font-semibold uppercase text-slate-400">
                 <tr>
-                  <th className="py-1.5">Étape</th>
-                  <th className="py-1.5">Type</th>
-                  <th className="py-1.5">Clé</th>
-                  <th className="py-1.5">Libellé</th>
-                  <th className="py-1.5">Type de champ</th>
-                  <th className="py-1.5">Obligatoire</th>
+                  <th className="py-1.5">{t('fields.table.step')}</th>
+                  <th className="py-1.5">{t('fields.table.type')}</th>
+                  <th className="py-1.5">{t('fields.table.key')}</th>
+                  <th className="py-1.5">{t('fields.table.label')}</th>
+                  <th className="py-1.5">{t('fields.table.fieldType')}</th>
+                  <th className="py-1.5">{t('fields.table.required')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {g.rows.map((f, i) => (
                   <tr key={i}>
                     <td className="py-1.5 text-slate-600">{f.stepName}</td>
-                    <td className="py-1.5 text-slate-400">{STEP_TYPE_LABEL[f.stepType] ?? f.stepType}</td>
+                    <td className="py-1.5 text-slate-400">
+                      {STEP_TYPE_KEYS[f.stepType] ? t(`fields.stepTypes.${STEP_TYPE_KEYS[f.stepType]}`) : f.stepType}
+                    </td>
                     <td className="py-1.5 font-mono text-xs text-brand-700">{f.fieldKey}</td>
                     <td className="py-1.5 text-slate-600">{f.fieldLabel}</td>
                     <td className="py-1.5 text-slate-500">{f.fieldType}</td>
-                    <td className="py-1.5">{f.required ? 'Oui' : 'Non'}</td>
+                    <td className="py-1.5">{f.required ? t('common.yes') : t('common.no')}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ))}
-        {grouped.length === 0 && <div className="card text-center text-slate-400">Aucun champ trouvé.</div>}
+        {grouped.length === 0 && <div className="card text-center text-slate-400">{t('fields.empty')}</div>}
       </div>
     </div>
   );

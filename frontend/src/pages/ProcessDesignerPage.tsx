@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Archive,
   ArrowLeft,
@@ -36,6 +37,7 @@ function escapeHtml(value: string): string {
 }
 
 export function ProcessDesignerPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasAccess } = useAuth();
@@ -64,13 +66,13 @@ export function ProcessDesignerPage() {
 
   async function save() {
     if (!process || !designerRef.current) return;
-    setStatus('Enregistrement…');
+    setStatus(t('profile.saving'));
     setError(null);
     try {
       const bpmnXml = await designerRef.current.getXml();
       const { process: updated } = await api.updateProcess(process.id, { bpmnXml });
       setProcess(updated);
-      setStatus('Enregistré');
+      setStatus(t('profile.saved'));
       setTimeout(() => setStatus(null), 1500);
     } catch (err) {
       setError((err as Error).message);
@@ -109,7 +111,7 @@ export function ProcessDesignerPage() {
     const printTab = window.open('', '_blank');
     try {
       const svg = await designerRef.current.getSvg();
-      if (!printTab) throw new Error("Impossible d'ouvrir l'onglet d'impression (bloqué par le navigateur)");
+      if (!printTab) throw new Error(t('designer.pdfExport.popupBlocked'));
 
       const exportDate = new Date().toLocaleString('fr-FR');
       const statusClass = process.status.toLowerCase();
@@ -117,7 +119,7 @@ export function ProcessDesignerPage() {
 <html lang="fr">
 <head>
 <meta charset="utf-8" />
-<title>${escapeHtml(process.name)} — export PDF</title>
+<title>${escapeHtml(t('designer.pdfExport.titleSuffix', { name: process.name }))}</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px; color: #1e293b; }
   header { margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
@@ -138,10 +140,10 @@ export function ProcessDesignerPage() {
 </style>
 </head>
 <body>
-  <div class="print-bar"><button onclick="window.print()">Imprimer / Enregistrer en PDF</button></div>
+  <div class="print-bar"><button onclick="window.print()">${escapeHtml(t('designer.pdfExport.printButton'))}</button></div>
   <header>
     <h1>${escapeHtml(process.name)} <span class="badge badge-${statusClass}">${escapeHtml(processStatusLabel(process.status))}</span></h1>
-    <div class="meta">${escapeHtml(process.reference)} · Version ${process.version} · Exporté le ${exportDate}</div>
+    <div class="meta">${escapeHtml(process.reference)} · Version ${process.version} · ${escapeHtml(t('designer.pdfExport.exportedOn', { date: exportDate }))}</div>
   </header>
   <div class="diagram">${svg}</div>
 </body>
@@ -194,12 +196,7 @@ export function ProcessDesignerPage() {
 
   async function archive() {
     if (!process) return;
-    if (
-      !window.confirm(
-        "Archiver ce processus ? Il ne pourra plus être démarré, mais les instances déjà en cours continueront normalement."
-      )
-    )
-      return;
+    if (!window.confirm(t('processes.confirmArchive'))) return;
     try {
       const { process: updated } = await api.archiveProcess(process.id);
       setProcess(updated);
@@ -208,7 +205,7 @@ export function ProcessDesignerPage() {
     }
   }
 
-  if (!process) return <div className="p-6 text-slate-400">Chargement…</div>;
+  if (!process) return <div className="p-6 text-slate-400">{t('designer.loading')}</div>;
 
   const readOnly = process.status !== 'DRAFT' || !canDesign;
   const canEditMeta = canDesign && process.status !== 'PUBLISHED';
@@ -218,7 +215,7 @@ export function ProcessDesignerPage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <Link to="/processes" className="mb-1 flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600">
-            <ArrowLeft size={14} /> Retour aux processus
+            <ArrowLeft size={14} /> {t('designer.backToProcesses')}
           </Link>
           <h1 className="flex items-center gap-2 text-xl font-bold text-slate-800">
             {process.name}
@@ -275,25 +272,25 @@ export function ProcessDesignerPage() {
                     }
                     className="flex items-center gap-0.5 font-semibold text-brand-600 hover:underline"
                   >
-                    <Eye size={12} /> Visualiser
+                    <Eye size={12} /> {t('documents.view')}
                   </button>
                   <button
                     onClick={() => api.downloadLibraryDocument(process.attached_document_id!, process.attached_document_name!)}
                     className="flex items-center gap-0.5 font-semibold text-brand-600 hover:underline"
                   >
-                    <Download size={12} /> Télécharger
+                    <Download size={12} /> {t('documents.download')}
                   </button>
                 </span>
               )}
               {!process.attached_folder_id && !process.attached_document_id && (
-                <span className="text-xs text-slate-400">Aucune pièce jointe</span>
+                <span className="text-xs text-slate-400">{t('designer.noAttachment')}</span>
               )}
               {canDesign && (
                 <button
                   onClick={openAttachEditor}
                   className="flex items-center gap-0.5 text-xs font-semibold text-brand-600 hover:underline"
                 >
-                  <PencilLine size={12} /> Modifier
+                  <PencilLine size={12} /> {t('designer.edit')}
                 </button>
               )}
             </div>
@@ -306,9 +303,9 @@ export function ProcessDesignerPage() {
                 value={attachType}
                 onChange={(e) => setAttachType(e.target.value as 'none' | 'folder' | 'document')}
               >
-                <option value="none">— aucune pièce jointe —</option>
-                <option value="folder">Un dossier</option>
-                <option value="document">Un document</option>
+                <option value="none">{t('designer.attachEditor.none')}</option>
+                <option value="folder">{t('designer.attachEditor.folder')}</option>
+                <option value="document">{t('designer.attachEditor.document')}</option>
               </select>
               {attachType === 'folder' && (
                 <select
@@ -316,7 +313,7 @@ export function ProcessDesignerPage() {
                   value={attachFolderId}
                   onChange={(e) => setAttachFolderId(e.target.value)}
                 >
-                  <option value="">— choisir un dossier —</option>
+                  <option value="">{t('processes.createModal.chooseFolder')}</option>
                   {attachableFolders.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.name}
@@ -330,7 +327,7 @@ export function ProcessDesignerPage() {
                   value={attachDocumentId}
                   onChange={(e) => setAttachDocumentId(e.target.value)}
                 >
-                  <option value="">— choisir un document —</option>
+                  <option value="">{t('processes.createModal.chooseDocument')}</option>
                   {attachableDocuments.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.filename} ({d.folder_name})
@@ -343,14 +340,14 @@ export function ProcessDesignerPage() {
                 disabled={attachBusy || (attachType === 'folder' && !attachFolderId) || (attachType === 'document' && !attachDocumentId)}
                 className="rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
               >
-                {attachBusy ? 'Enregistrement…' : 'Enregistrer'}
+                {attachBusy ? t('profile.saving') : t('profile.save')}
               </button>
               <button
                 onClick={() => setAttachEditing(false)}
                 disabled={attachBusy}
                 className="flex items-center gap-0.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
               >
-                <X size={12} /> Annuler
+                <X size={12} /> {t('profile.cancel')}
               </button>
             </div>
           )}
@@ -358,26 +355,26 @@ export function ProcessDesignerPage() {
         <div className="flex items-center gap-2">
           {status && <span className="text-sm text-slate-400">{status}</span>}
           <button onClick={exportPdf} className="btn-secondary">
-            <Printer size={16} /> Imprimer PDF
+            <Printer size={16} /> {t('designer.printPdf')}
           </button>
           {canSeePermissions && (
             <button onClick={() => navigate(`/processes/${process.id}/permissions`)} className="btn-secondary">
-              <ShieldCheck size={16} /> Matrice de droits
+              <ShieldCheck size={16} /> {t('designer.permissionsMatrix')}
             </button>
           )}
           {!readOnly && (
             <>
               <button onClick={save} className="btn-secondary">
-                <Save size={16} /> Enregistrer
+                <Save size={16} /> {t('profile.save')}
               </button>
               <button onClick={publish} className="btn-primary">
-                <UploadCloud size={16} /> Publier
+                <UploadCloud size={16} /> {t('processes.publish')}
               </button>
             </>
           )}
           {canDesign && process.status === 'PUBLISHED' && (
             <button onClick={archive} className="btn-secondary">
-              <Archive size={16} /> Archiver
+              <Archive size={16} /> {t('processes.archive')}
             </button>
           )}
         </div>
@@ -386,7 +383,7 @@ export function ProcessDesignerPage() {
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
       {readOnly && process.status === 'PUBLISHED' && (
         <p className="mb-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-500">
-          Ce processus est publié : lecture seule. Créez un nouveau processus pour une nouvelle version.
+          {t('designer.readOnlyNotice')}
         </p>
       )}
 

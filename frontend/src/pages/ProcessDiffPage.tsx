@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, GitCompare } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
 import { BpmnDiffViewer } from '../components/BpmnDiffViewer';
 
 export function ProcessDiffPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [process, setProcess] = useState<ProcessDefinition | null>(null);
   const [versions, setVersions] = useState<ProcessDefinition[]>([]);
@@ -40,26 +42,24 @@ export function ProcessDiffPage() {
   const newVersion = versions.find((v) => v.id === newVersionId);
 
   if (error) return <div className="p-6 text-rose-600">{error}</div>;
-  if (!process) return <div className="p-6 text-slate-400">Chargement…</div>;
+  if (!process) return <div className="p-6 text-slate-400">{t('designer.loading')}</div>;
 
   return (
     <div className="mx-auto max-w-7xl p-6">
       <Link to={`/processes/${process.id}`} className="mb-1 flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600">
-        <ArrowLeft size={14} /> Retour au processus
+        <ArrowLeft size={14} /> {t('diff.backToProcess')}
       </Link>
       <h1 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-800">
-        <GitCompare size={20} /> Comparer les versions — {process.name}
+        <GitCompare size={20} /> {t('diff.title', { name: process.name })}
       </h1>
 
       {versions.length < 2 ? (
-        <div className="card text-slate-400">
-          Il faut au moins deux versions publiées de ce processus pour pouvoir les comparer.
-        </div>
+        <div className="card text-slate-400">{t('diff.needTwoVersions')}</div>
       ) : (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-3 card">
             <label className="flex items-center gap-2 text-sm text-slate-600">
-              Ancienne version
+              {t('diff.oldVersion')}
               <select
                 value={oldVersionId}
                 onChange={(e) => setOldVersionId(e.target.value)}
@@ -73,7 +73,7 @@ export function ProcessDiffPage() {
               </select>
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-600">
-              Nouvelle version
+              {t('diff.newVersion')}
               <select
                 value={newVersionId}
                 onChange={(e) => setNewVersionId(e.target.value)}
@@ -90,7 +90,7 @@ export function ProcessDiffPage() {
 
           {oldVersion && newVersion && (
             oldVersion.id === newVersion.id ? (
-              <div className="card text-slate-400">Choisissez deux versions différentes pour voir leurs différences.</div>
+              <div className="card text-slate-400">{t('diff.sameVersion')}</div>
             ) : (
               <BpmnDiffViewer
                 oldXml={oldVersion.bpmn_xml}

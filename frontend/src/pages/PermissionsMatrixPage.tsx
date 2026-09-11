@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Save } from 'lucide-react';
 import { api } from '../api/client';
 import { FormField, PermissionMatrixRow, ProcessDefinition, Role } from '../types';
@@ -39,6 +40,7 @@ function rowKey(stepName: string, roleId: number): string {
 }
 
 export function PermissionsMatrixPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const { hasAccess } = useAuth();
   const canEdit = hasAccess('PERMISSIONS_MATRIX', 'FULL');
@@ -88,7 +90,7 @@ export function PermissionsMatrixPage() {
 
   async function save() {
     if (!process) return;
-    setStatus('Enregistrement…');
+    setStatus(t('profile.saving'));
     const payload: PermissionMatrixRow[] = [];
     for (const step of steps) {
       for (const role of configurableRoles) {
@@ -115,33 +117,33 @@ export function PermissionsMatrixPage() {
           canUploadDocuments: r.can_upload_documents,
         }))
       );
-      setStatus('Enregistré');
+      setStatus(t('profile.saved'));
       setTimeout(() => setStatus(null), 1500);
     } catch (err) {
       setStatus((err as Error).message);
     }
   }
 
-  if (!process) return <div className="p-6 text-slate-400">Chargement…</div>;
+  if (!process) return <div className="p-6 text-slate-400">{t('designer.loading')}</div>;
 
   return (
     <div className="mx-auto max-w-6xl p-6">
       <Link to={`/processes/${process.id}`} className="mb-1 flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600">
-        <ArrowLeft size={14} /> Retour au processus
+        <ArrowLeft size={14} /> {t('matrix.backToProcess')}
       </Link>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">Matrice de droits — {process.name}</h1>
+        <h1 className="text-xl font-bold text-slate-800">{t('matrix.title', { name: process.name })}</h1>
         <div className="flex items-center gap-3">
           {status && <span className="text-sm text-slate-400">{status}</span>}
           {canEdit && (
             <button onClick={save} className="btn-primary">
-              <Save size={16} /> Enregistrer la matrice
+              <Save size={16} /> {t('matrix.save')}
             </button>
           )}
         </div>
       </div>
 
-      {steps.length === 0 && <p className="card text-slate-400">Aucune tâche utilisateur dans ce processus.</p>}
+      {steps.length === 0 && <p className="card text-slate-400">{t('matrix.noUserTasks')}</p>}
 
       <div className="space-y-6">
         {steps.map((step) => (
@@ -151,14 +153,14 @@ export function PermissionsMatrixPage() {
               <table className="w-full text-sm">
                 <thead className="text-left text-xs font-semibold uppercase text-slate-400">
                   <tr>
-                    <th className="py-2 pr-4">Rôle</th>
+                    <th className="py-2 pr-4">{t('matrix.table.role')}</th>
                     {step.formFields.map((f) => (
                       <th key={f.key} className="px-2 py-2 text-center">
                         {f.label}
                       </th>
                     ))}
-                    <th className="px-2 py-2 text-center">Voir documents</th>
-                    <th className="px-2 py-2 text-center">Déposer documents</th>
+                    <th className="px-2 py-2 text-center">{t('matrix.table.viewDocuments')}</th>
+                    <th className="px-2 py-2 text-center">{t('matrix.table.uploadDocuments')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -179,7 +181,7 @@ export function PermissionsMatrixPage() {
                                     disabled={!canEdit}
                                     onChange={(e) => updateFieldPermission(step.name, role.id, f.key, { read: e.target.checked })}
                                   />
-                                  L
+                                  {t('matrix.table.read')}
                                 </label>
                                 <label className="flex items-center gap-1 text-xs text-slate-500">
                                   <input
@@ -188,7 +190,7 @@ export function PermissionsMatrixPage() {
                                     disabled={!canEdit}
                                     onChange={(e) => updateFieldPermission(step.name, role.id, f.key, { write: e.target.checked })}
                                   />
-                                  E
+                                  {t('matrix.table.write')}
                                 </label>
                               </div>
                             </td>
