@@ -23,6 +23,7 @@ import { DocumentFolder, LibraryDocumentItem, ProcessDefinition } from '../types
 import { useAuth } from '../context/AuthContext';
 import { DynamicForm, extractFormFields } from '../components/DynamicForm';
 import { processStatusLabel } from '../lib/processStatus';
+import { Pagination } from '../components/Pagination';
 
 interface ImportResult {
   created: number;
@@ -36,12 +37,16 @@ const statusBadge: Record<string, string> = {
   ARCHIVED: 'bg-slate-200 text-slate-600',
 };
 
+const LIMIT = 25;
+
 export function ProcessesPage() {
   const { t } = useTranslation();
   const { hasAccess } = useAuth();
   const canDesign = hasAccess('PROCESSES_DESIGN', 'FULL');
   const canSeePermissions = hasAccess('PERMISSIONS_MATRIX', 'VIEW');
   const [processes, setProcesses] = useState<ProcessDefinition[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [startModalProcess, setStartModalProcess] = useState<ProcessDefinition | null>(null);
   const [startBusy, setStartBusy] = useState(false);
@@ -62,8 +67,9 @@ export function ProcessesPage() {
 
   async function refresh() {
     try {
-      const { processes } = await api.listProcesses();
+      const { processes, total } = await api.listProcesses({ limit: LIMIT, offset });
       setProcesses(processes);
+      setTotal(total);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -71,7 +77,8 @@ export function ProcessesPage() {
 
   useEffect(() => {
     refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offset]);
 
   function openCreateModal() {
     setCreateName('');
@@ -350,8 +357,7 @@ export function ProcessesPage() {
                       {p.status === 'DRAFT' && canDesign ? <PencilLine size={14} /> : <Settings size={14} />}
                       {p.status === 'DRAFT' && canDesign ? t('processes.edit') : t('processes.view')}
                     </button>
-                    {p.status === 'PUBLISHED' &&
-                      processes.some((other) => other.process_key === p.process_key && other.id !== p.id && other.status === 'PUBLISHED') && (
+                    {p.status === 'PUBLISHED' && p.has_comparable_version && (
                         <button
                           onClick={() => navigate(`/processes/${p.id}/compare`)}
                           className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
@@ -422,6 +428,7 @@ export function ProcessesPage() {
           </tbody>
         </table>
       </div>
+      <Pagination offset={offset} limit={LIMIT} total={total} onOffsetChange={setOffset} />
 
       {createModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">

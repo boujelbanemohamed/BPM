@@ -70,3 +70,33 @@ export async function listUsers(executor: Executor): Promise<AuthenticatedUser[]
   const result = await executor.query<UserWithRoles>(`${BASE_SELECT} GROUP BY u.id ORDER BY u.full_name ASC`);
   return result.rows.map(toAuthenticatedUser);
 }
+
+export interface UsersPage {
+  users: AuthenticatedUser[];
+  total: number;
+  twoFactorEnabledCount: number;
+}
+
+/**
+ * Page de la liste complète des utilisateurs (table d'administration),
+ * avec le total global et le nombre d'utilisateurs 2FA activée sur
+ * l'ensemble des comptes (pas seulement la page courante), pour que les
+ * statistiques affichées restent correctes une fois la liste paginée.
+ */
+export async function listUsersPage(
+  executor: Executor,
+  pagination: { limit: number; offset: number }
+): Promise<UsersPage> {
+  const { rows } = await executor.query<UserWithRoles>(
+    `${BASE_SELECT} GROUP BY u.id ORDER BY u.full_name ASC LIMIT $1 OFFSET $2`,
+    [pagination.limit, pagination.offset]
+  );
+  const { rows: countRows } = await executor.query<{ total: string; two_factor_count: string }>(
+    `SELECT count(*)::text AS total, count(*) FILTER (WHERE two_factor_enabled)::text AS two_factor_count FROM users`
+  );
+  return {
+    users: rows.map(toAuthenticatedUser),
+    total: Number(countRows[0].total),
+    twoFactorEnabledCount: Number(countRows[0].two_factor_count),
+  };
+}

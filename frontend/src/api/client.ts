@@ -198,7 +198,13 @@ export const api = {
     absenceEnd: string | null;
   }) => request<{ delegation: PublicUser }>('/users/me/delegation', { method: 'PUT', body: payload }),
 
-  adminListUsers: () => request<{ users: PublicUser[] }>('/admin/users'),
+  adminListUsers: (params: { limit?: number; offset?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.offset !== undefined) query.set('offset', String(params.offset));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request<{ users: PublicUser[]; total: number; twoFactorEnabledCount: number }>(`/admin/users${suffix}`);
+  },
   adminCreateUser: (payload: {
     email: string;
     password: string;
@@ -263,7 +269,14 @@ export const api = {
     URL.revokeObjectURL(url);
   },
 
-  listProcesses: () => request<{ processes: ProcessDefinition[] }>('/processes'),
+  listProcesses: (params: { limit?: number; offset?: number; processKey?: string } = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.offset !== undefined) query.set('offset', String(params.offset));
+    if (params.processKey !== undefined) query.set('processKey', params.processKey);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request<{ processes: ProcessDefinition[]; total: number }>(`/processes${suffix}`);
+  },
   getProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}`),
   createProcess: (payload: {
     name: string;

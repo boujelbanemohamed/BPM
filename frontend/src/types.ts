@@ -127,6 +127,7 @@ export interface ProcessDefinition {
   attached_folder_name?: string | null;
   attached_document_id?: string | null;
   attached_document_name?: string | null;
+  has_comparable_version?: boolean;
 }
 
 export interface ProcessInstance {

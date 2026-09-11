@@ -7,6 +7,7 @@ import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { writeAuditLog, writeAuditLogTx } from '../lib/audit';
+import { paginationClause, paginationQuerySchema } from '../lib/pagination';
 import { parseGraph } from '../services/workflowEngine';
 import { PermissionMatrixRow, ProcessRow } from '../types';
 
@@ -179,28 +180,62 @@ const PROCESS_IMPORT_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>`;
 
+const listProcessesQuerySchema = paginationQuerySchema.extend({
+  // Filtre utilisé par la comparaison de versions (ProcessDiffPage) pour
+  // récupérer toutes les versions publiées d'un même processus sans passer
+  // par la pagination de la liste principale (une famille de versions reste
+  // par nature un petit ensemble, contrairement à la table complète).
+  processKey: z.string().optional(),
+});
+
 processesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
+    const { processKey, ...pagination } = listProcessesQuerySchema.parse(req.query);
+
+    const params: unknown[] = [];
+    let where = 'WHERE p.deleted_at IS NULL';
+    if (processKey) {
+      params.push(processKey);
+      where += ` AND p.process_key = $${params.length}`;
+    }
+    const filterParamCount = params.length;
+    const limitClause = processKey ? '' : paginationClause(params, pagination);
+
     const { rows } = await pool.query<
       ProcessRow & {
         created_by_name: string;
         instance_count: number;
         attached_folder_name: string | null;
         attached_document_name: string | null;
+        has_comparable_version: boolean;
       }
     >(
       `SELECT p.*, u.full_name AS created_by_name,
               (SELECT COUNT(*) FROM process_instances pi WHERE pi.process_id = p.id)::int AS instance_count,
-              af.name AS attached_folder_name, ad.filename AS attached_document_name
+              af.name AS attached_folder_name, ad.filename AS attached_document_name,
+              EXISTS (
+                SELECT 1 FROM processes p2
+                WHERE p2.process_key = p.process_key AND p2.id <> p.id
+                  AND p2.status = 'PUBLISHED' AND p2.deleted_at IS NULL
+              ) AS has_comparable_version
        FROM processes p
        JOIN users u ON u.id = p.created_by
        LEFT JOIN document_folders af ON af.id = p.attached_folder_id
        LEFT JOIN library_documents ad ON ad.id = p.attached_document_id
-       WHERE p.deleted_at IS NULL
-       ORDER BY p.name ASC, p.version DESC`
+       ${where}
+       ORDER BY p.name ASC, p.version DESC
+       ${limitClause}`,
+      params
     );
-    res.json({ processes: rows });
+
+    const { rows: countRows } = await pool.query<{ count: string }>(
+      `SELECT count(*)::text FROM processes p ${where}`,
+      params.slice(0, filterParamCount)
+    );
+    const total = Number(countRows[0].count);
+
+    res.json({ processes: rows, total });
   })
 );
 

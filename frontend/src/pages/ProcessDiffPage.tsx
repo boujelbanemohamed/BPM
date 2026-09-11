@@ -20,10 +20,8 @@ export function ProcessDiffPage() {
     (async () => {
       try {
         const { process: current } = await api.getProcess(id);
-        const { processes: all } = await api.listProcesses();
-        const published = all
-          .filter((p) => p.process_key === current.process_key && p.status === 'PUBLISHED')
-          .sort((a, b) => a.version - b.version);
+        const { processes: sameKey } = await api.listProcesses({ processKey: current.process_key });
+        const published = sameKey.filter((p) => p.status === 'PUBLISHED').sort((a, b) => a.version - b.version);
 
         setProcess(current);
         setVersions(published);

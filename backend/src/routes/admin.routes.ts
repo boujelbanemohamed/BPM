@@ -8,9 +8,10 @@ import { requireAuth } from '../middleware/auth';
 import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { env } from '../config/env';
-import { findUserById, toPublicUser } from '../db/usersRepo';
+import { findUserById, listUsersPage, toPublicUser } from '../db/usersRepo';
 import { writeAuditLog, writeAuditLogTx } from '../lib/audit';
 import { HttpError } from '../middleware/errorHandler';
+import { paginationQuerySchema } from '../lib/pagination';
 import { parseCsvRecords } from '../lib/csv';
 import { reassignPendingTasksForUser } from '../services/delegationService';
 import { notifyAccountDeactivated, notifyPasswordChanged, notifyTaskAssigned, notifyWelcome } from '../services/notificationService';
@@ -21,9 +22,9 @@ adminUsersRouter.use(requireAuth, requirePageAccess('USERS', 'VIEW'));
 adminUsersRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { rows } = await pool.query<{ id: string }>('SELECT id FROM users ORDER BY full_name ASC');
-    const users = await Promise.all(rows.map((r) => findUserById(pool, r.id)));
-    res.json({ users: users.filter(Boolean).map((u) => toPublicUser(u!)) });
+    const pagination = paginationQuerySchema.parse(req.query);
+    const { users, total, twoFactorEnabledCount } = await listUsersPage(pool, pagination);
+    res.json({ users: users.map(toPublicUser), total, twoFactorEnabledCount });
   })
 );
 

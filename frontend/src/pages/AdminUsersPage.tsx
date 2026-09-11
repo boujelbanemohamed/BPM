@@ -2,8 +2,9 @@ import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, FileUp, PlusCircle, PowerOff, Power, PencilLine, ShieldCheck, ShieldOff, X } from 'lucide-react';
 import { api } from '../api/client';
-import { PublicUser, Role } from '../types';
+import { MinimalUser, PublicUser, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { Pagination } from '../components/Pagination';
 
 interface ImportResult {
   created: number;
@@ -40,11 +41,21 @@ const EMPTY_FORM: FormState = {
   absenceEnd: '',
 };
 
+const LIMIT = 25;
+
 export function AdminUsersPage() {
   const { t } = useTranslation();
   const { hasAccess } = useAuth();
   const canEdit = hasAccess('USERS', 'FULL');
   const [users, setUsers] = useState<PublicUser[]>([]);
+  // Liste minimale non paginée (tous les utilisateurs), utilisée pour les
+  // sélecteurs de suppléants et la résolution des noms dans le tableau :
+  // ces deux usages doivent rester corrects même quand l'utilisateur
+  // recherché n'est pas sur la page courante de `users`.
+  const [allUsersMinimal, setAllUsersMinimal] = useState<MinimalUser[]>([]);
+  const [total, setTotal] = useState(0);
+  const [twoFactorEnabledCount, setTwoFactorEnabledCount] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [roles, setRoles] = useState<Role[]>([]);
   const [form, setForm] = useState<FormState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,14 +65,22 @@ export function AdminUsersPage() {
   const csvInputRef = useRef<HTMLInputElement>(null);
 
   async function refresh() {
-    const [usersRes, rolesRes] = await Promise.all([api.adminListUsers(), api.listRoles()]);
+    const [usersRes, rolesRes, minimalRes] = await Promise.all([
+      api.adminListUsers({ limit: LIMIT, offset }),
+      api.listRoles(),
+      api.listUsersMinimal(),
+    ]);
     setUsers(usersRes.users);
+    setTotal(usersRes.total);
+    setTwoFactorEnabledCount(usersRes.twoFactorEnabledCount);
     setRoles(rolesRes.roles);
+    setAllUsersMinimal(minimalRes.users);
   }
 
   useEffect(() => {
     refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offset]);
 
   function openCreate() {
     setForm({ ...EMPTY_FORM });
@@ -174,8 +193,7 @@ export function AdminUsersPage() {
     }
   }
 
-  const otherUsers = users.filter((u) => u.id !== form?.id);
-  const twoFactorCount = users.filter((u) => u.twoFactorEnabled).length;
+  const otherUsers = allUsersMinimal.filter((u) => u.id !== form?.id);
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -184,7 +202,7 @@ export function AdminUsersPage() {
           <h1 className="text-2xl font-bold text-slate-800">{t('adminUsers.title')}</h1>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
             <ShieldCheck size={14} className="text-emerald-600" />
-            {t('adminUsers.twoFactorCount', { count: twoFactorCount, total: users.length })}
+            {t('adminUsers.twoFactorCount', { count: twoFactorEnabledCount, total })}
           </p>
         </div>
         {canEdit && (
@@ -398,8 +416,8 @@ export function AdminUsersPage() {
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-400">
-                  {users.find((x) => x.id === u.delegateUser1Id)?.fullName ?? '—'} /{' '}
-                  {users.find((x) => x.id === u.delegateUser2Id)?.fullName ?? '—'}
+                  {allUsersMinimal.find((x) => x.id === u.delegateUser1Id)?.fullName ?? '—'} /{' '}
+                  {allUsersMinimal.find((x) => x.id === u.delegateUser2Id)?.fullName ?? '—'}
                 </td>
                 <td className="px-4 py-3">
                   {canEdit && (
@@ -430,6 +448,7 @@ export function AdminUsersPage() {
           </tbody>
         </table>
       </div>
+      <Pagination offset={offset} limit={LIMIT} total={total} onOffsetChange={setOffset} />
     </div>
   );
 }
