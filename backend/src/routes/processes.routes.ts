@@ -13,6 +13,23 @@ import { PermissionMatrixRow, ProcessRow } from '../types';
 export const processesRouter = Router();
 processesRouter.use(requireAuth);
 
+type ProcessRowWithAttachments = ProcessRow & {
+  attached_folder_name: string | null;
+  attached_document_name: string | null;
+};
+
+async function fetchProcessWithAttachments(id: string): Promise<ProcessRowWithAttachments> {
+  const { rows } = await pool.query<ProcessRowWithAttachments>(
+    `SELECT p.*, af.name AS attached_folder_name, ad.filename AS attached_document_name
+     FROM processes p
+     LEFT JOIN document_folders af ON af.id = p.attached_folder_id
+     LEFT JOIN library_documents ad ON ad.id = p.attached_document_id
+     WHERE p.id = $1`,
+    [id]
+  );
+  return rows[0];
+}
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -359,6 +376,8 @@ const updateProcessSchema = z.object({
   bpmnXml: z.string().optional(),
   reference: z.string().min(1).max(20).optional(),
   version: z.number().int().min(1).max(9999).optional(),
+  attachedFolderId: z.string().uuid().nullable().optional(),
+  attachedDocumentId: z.string().uuid().nullable().optional(),
 });
 
 processesRouter.put(
@@ -372,21 +391,31 @@ processesRouter.put(
     );
     const existing = existingRows[0];
     if (!existing) throw new HttpError(404, 'Processus introuvable');
-    if (existing.status === 'PUBLISHED') {
-      throw new HttpError(409, 'Un processus publié ne peut pas être modifié');
-    }
 
     const editingDesign = body.name !== undefined || body.description !== undefined || body.bpmnXml !== undefined;
+    const editingMeta = body.reference !== undefined || body.version !== undefined;
+
     if (editingDesign && existing.status !== 'DRAFT') {
       throw new HttpError(409, 'Seul un processus en brouillon peut voir son diagramme modifié');
+    }
+    // La référence/version restent verrouillées une fois publié, mais la pièce
+    // jointe (dossier/document) reste modifiable quel que soit le statut.
+    if (editingMeta && existing.status === 'PUBLISHED') {
+      throw new HttpError(409, 'Un processus publié ne peut pas être modifié');
     }
 
     if (body.bpmnXml) parseGraph(body.bpmnXml);
 
+    const nextFolderId = body.attachedFolderId !== undefined ? body.attachedFolderId : existing.attached_folder_id;
+    const nextDocumentId =
+      body.attachedDocumentId !== undefined ? body.attachedDocumentId : existing.attached_document_id;
+
     try {
       const { rows } = await pool.query<ProcessRow>(
-        `UPDATE processes SET name = $1, description = $2, bpmn_xml = $3, process_key = $4, reference = $5, version = $6
-         WHERE id = $7 RETURNING *`,
+        `UPDATE processes
+         SET name = $1, description = $2, bpmn_xml = $3, process_key = $4, reference = $5, version = $6,
+             attached_folder_id = $7, attached_document_id = $8
+         WHERE id = $9 RETURNING *`,
         [
           body.name ?? existing.name,
           body.description ?? existing.description,
@@ -394,6 +423,8 @@ processesRouter.put(
           body.name ? slugify(body.name) : existing.process_key,
           body.reference ?? existing.reference,
           body.version ?? existing.version,
+          nextFolderId,
+          nextDocumentId,
           existing.id,
         ]
       );
@@ -406,7 +437,7 @@ processesRouter.put(
         ipAddress: req.ip,
       });
 
-      res.json({ process: rows[0] });
+      res.json({ process: await fetchProcessWithAttachments(rows[0].id) });
     } catch (err: any) {
       if (err.code === '23505') {
         if (err.constraint === 'processes_reference_key') {
@@ -414,6 +445,7 @@ processesRouter.put(
         }
         throw new HttpError(409, 'Un processus avec ce nom et cette version existe déjà');
       }
+      if (err.code === '23503') throw new HttpError(400, 'Le dossier ou le document sélectionné est introuvable');
       throw err;
     }
   })
@@ -436,10 +468,7 @@ processesRouter.post(
       throw new HttpError(400, 'Le processus doit contenir au moins un événement de fin avant publication');
     }
 
-    const { rows } = await pool.query<ProcessRow>(
-      `UPDATE processes SET status = 'PUBLISHED' WHERE id = $1 RETURNING *`,
-      [existing.id]
-    );
+    await pool.query(`UPDATE processes SET status = 'PUBLISHED' WHERE id = $1`, [existing.id]);
 
     await writeAuditLog({
       userId: req.user!.id,
@@ -449,7 +478,7 @@ processesRouter.post(
       ipAddress: req.ip,
     });
 
-    res.json({ process: rows[0] });
+    res.json({ process: await fetchProcessWithAttachments(existing.id) });
   })
 );
 
@@ -467,10 +496,7 @@ processesRouter.post(
       throw new HttpError(409, 'Seul un processus publié peut être archivé');
     }
 
-    const { rows } = await pool.query<ProcessRow>(
-      `UPDATE processes SET status = 'ARCHIVED' WHERE id = $1 RETURNING *`,
-      [existing.id]
-    );
+    await pool.query(`UPDATE processes SET status = 'ARCHIVED' WHERE id = $1`, [existing.id]);
 
     await writeAuditLog({
       userId: req.user!.id,
@@ -480,7 +506,7 @@ processesRouter.post(
       ipAddress: req.ip,
     });
 
-    res.json({ process: rows[0] });
+    res.json({ process: await fetchProcessWithAttachments(existing.id) });
   })
 );
 
@@ -584,10 +610,7 @@ processesRouter.post(
     const existing = existingRows[0];
     if (!existing) throw new HttpError(404, "Processus introuvable dans la corbeille");
 
-    const { rows } = await pool.query<ProcessRow>(
-      'UPDATE processes SET deleted_at = NULL, deleted_by = NULL WHERE id = $1 RETURNING *',
-      [existing.id]
-    );
+    await pool.query('UPDATE processes SET deleted_at = NULL, deleted_by = NULL WHERE id = $1', [existing.id]);
 
     await writeAuditLog({
       userId: req.user!.id,
@@ -598,7 +621,7 @@ processesRouter.post(
       ipAddress: req.ip,
     });
 
-    res.json({ process: rows[0] });
+    res.json({ process: await fetchProcessWithAttachments(existing.id) });
   })
 );
 

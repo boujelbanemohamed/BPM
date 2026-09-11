@@ -186,7 +186,15 @@ export const api = {
   }) => request<{ process: ProcessDefinition }>('/processes', { method: 'POST', body: payload }),
   updateProcess: (
     id: string,
-    payload: { name?: string; description?: string; bpmnXml?: string; reference?: string; version?: number }
+    payload: {
+      name?: string;
+      description?: string;
+      bpmnXml?: string;
+      reference?: string;
+      version?: number;
+      attachedFolderId?: string | null;
+      attachedDocumentId?: string | null;
+    }
   ) => request<{ process: ProcessDefinition }>(`/processes/${id}`, { method: 'PUT', body: payload }),
   publishProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/publish`, { method: 'POST' }),
   archiveProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}/archive`, { method: 'POST' }),

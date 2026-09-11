@@ -1,6 +1,21 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Archive, Copy, Download, FileUp, Plus, Settings, Play, PencilLine, ShieldCheck, Trash2, X } from 'lucide-react';
+import {
+  Archive,
+  Copy,
+  Download,
+  Eye,
+  FileText,
+  FileUp,
+  Folder,
+  Plus,
+  Settings,
+  Play,
+  PencilLine,
+  ShieldCheck,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { api } from '../api/client';
 import { DocumentFolder, LibraryDocumentItem, ProcessDefinition } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -284,6 +299,7 @@ export function ProcessesPage() {
               <th className="px-4 py-3">Nom</th>
               <th className="px-4 py-3">Version</th>
               <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3">Pièce jointe</th>
               <th className="px-4 py-3">Créé par</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -298,6 +314,34 @@ export function ProcessesPage() {
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[p.status]}`}>
                     {processStatusLabel(p.status)}
                   </span>
+                </td>
+                <td className="px-4 py-3">
+                  {p.attached_folder_id && (
+                    <Link
+                      to={`/documents/${p.attached_folder_id}`}
+                      className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
+                    >
+                      <Folder size={13} /> {p.attached_folder_name}
+                    </Link>
+                  )}
+                  {p.attached_document_id && (
+                    <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <FileText size={13} className="shrink-0 text-slate-400" />
+                      <span className="truncate">{p.attached_document_name}</span>
+                      <button
+                        onClick={() =>
+                          api
+                            .viewLibraryDocument(p.attached_document_id!)
+                            .catch((err) => window.alert((err as Error).message))
+                        }
+                        className="shrink-0 text-brand-600 hover:text-brand-700"
+                        title="Visualiser"
+                      >
+                        <Eye size={13} />
+                      </button>
+                    </span>
+                  )}
+                  {!p.attached_folder_id && !p.attached_document_id && <span className="text-xs text-slate-300">—</span>}
                 </td>
                 <td className="px-4 py-3 text-slate-500">{p.created_by_name}</td>
                 <td className="px-4 py-3">
@@ -364,7 +408,7 @@ export function ProcessesPage() {
             ))}
             {processes.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                   Aucun processus pour l'instant.
                 </td>
               </tr>

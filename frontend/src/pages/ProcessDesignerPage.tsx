@@ -1,8 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Archive, ArrowLeft, Download, Eye, FileText, Folder, Printer, Save, ShieldCheck, UploadCloud } from 'lucide-react';
+import {
+  Archive,
+  ArrowLeft,
+  Download,
+  Eye,
+  FileText,
+  Folder,
+  PencilLine,
+  Printer,
+  Save,
+  ShieldCheck,
+  UploadCloud,
+  X,
+} from 'lucide-react';
 import { api } from '../api/client';
-import { MinimalUser, ProcessDefinition, Role } from '../types';
+import { DocumentFolder, LibraryDocumentItem, MinimalUser, ProcessDefinition, Role } from '../types';
 import { BpmnDesigner, BpmnDesignerHandle } from '../components/BpmnDesigner';
 import { useAuth } from '../context/AuthContext';
 import { processStatusLabel } from '../lib/processStatus';
@@ -34,6 +47,13 @@ export function ProcessDesignerPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const designerRef = useRef<BpmnDesignerHandle>(null);
+  const [attachEditing, setAttachEditing] = useState(false);
+  const [attachType, setAttachType] = useState<'none' | 'folder' | 'document'>('none');
+  const [attachFolderId, setAttachFolderId] = useState('');
+  const [attachDocumentId, setAttachDocumentId] = useState('');
+  const [attachableFolders, setAttachableFolders] = useState<DocumentFolder[]>([]);
+  const [attachableDocuments, setAttachableDocuments] = useState<LibraryDocumentItem[]>([]);
+  const [attachBusy, setAttachBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -144,6 +164,34 @@ export function ProcessDesignerPage() {
     }
   }
 
+  function openAttachEditor() {
+    if (!process) return;
+    setAttachType(process.attached_folder_id ? 'folder' : process.attached_document_id ? 'document' : 'none');
+    setAttachFolderId(process.attached_folder_id ?? '');
+    setAttachDocumentId(process.attached_document_id ?? '');
+    setAttachEditing(true);
+    api.listFolders().then(({ folders }) => setAttachableFolders(folders)).catch(() => {});
+    api.listAllLibraryDocuments().then(({ documents }) => setAttachableDocuments(documents)).catch(() => {});
+  }
+
+  async function saveAttachment() {
+    if (!process) return;
+    setAttachBusy(true);
+    setError(null);
+    try {
+      const { process: updated } = await api.updateProcess(process.id, {
+        attachedFolderId: attachType === 'folder' ? attachFolderId || null : null,
+        attachedDocumentId: attachType === 'document' ? attachDocumentId || null : null,
+      });
+      setProcess(updated);
+      setAttachEditing(false);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setAttachBusy(false);
+    }
+  }
+
   async function archive() {
     if (!process) return;
     if (
@@ -206,32 +254,105 @@ export function ProcessDesignerPage() {
               <span>v{process.version}</span>
             )}
           </p>
-          {process.attached_folder_id && (
-            <Link
-              to={`/documents/${process.attached_folder_id}`}
-              className="mt-1 flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
-            >
-              <Folder size={13} /> {process.attached_folder_name}
-            </Link>
+          {!attachEditing && (
+            <div className="mt-1 flex items-center gap-2">
+              {process.attached_folder_id && (
+                <Link
+                  to={`/documents/${process.attached_folder_id}`}
+                  className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
+                >
+                  <Folder size={13} /> {process.attached_folder_name}
+                </Link>
+              )}
+              {process.attached_document_id && (
+                <span className="flex items-center gap-2 text-xs text-slate-500">
+                  <FileText size={13} className="text-slate-400" /> {process.attached_document_name}
+                  <button
+                    onClick={() =>
+                      api
+                        .viewLibraryDocument(process.attached_document_id!)
+                        .catch((err) => window.alert((err as Error).message))
+                    }
+                    className="flex items-center gap-0.5 font-semibold text-brand-600 hover:underline"
+                  >
+                    <Eye size={12} /> Visualiser
+                  </button>
+                  <button
+                    onClick={() => api.downloadLibraryDocument(process.attached_document_id!, process.attached_document_name!)}
+                    className="flex items-center gap-0.5 font-semibold text-brand-600 hover:underline"
+                  >
+                    <Download size={12} /> Télécharger
+                  </button>
+                </span>
+              )}
+              {!process.attached_folder_id && !process.attached_document_id && (
+                <span className="text-xs text-slate-400">Aucune pièce jointe</span>
+              )}
+              {canDesign && (
+                <button
+                  onClick={openAttachEditor}
+                  className="flex items-center gap-0.5 text-xs font-semibold text-brand-600 hover:underline"
+                >
+                  <PencilLine size={12} /> Modifier
+                </button>
+              )}
+            </div>
           )}
-          {process.attached_document_id && (
-            <span className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-              <FileText size={13} className="text-slate-400" /> {process.attached_document_name}
-              <button
-                onClick={() =>
-                  api.viewLibraryDocument(process.attached_document_id!).catch((err) => window.alert((err as Error).message))
-                }
-                className="flex items-center gap-0.5 font-semibold text-brand-600 hover:underline"
+
+          {attachEditing && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+              <select
+                className="input w-auto py-1 text-xs"
+                value={attachType}
+                onChange={(e) => setAttachType(e.target.value as 'none' | 'folder' | 'document')}
               >
-                <Eye size={12} /> Visualiser
+                <option value="none">— aucune pièce jointe —</option>
+                <option value="folder">Un dossier</option>
+                <option value="document">Un document</option>
+              </select>
+              {attachType === 'folder' && (
+                <select
+                  className="input w-auto py-1 text-xs"
+                  value={attachFolderId}
+                  onChange={(e) => setAttachFolderId(e.target.value)}
+                >
+                  <option value="">— choisir un dossier —</option>
+                  {attachableFolders.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {attachType === 'document' && (
+                <select
+                  className="input w-auto py-1 text-xs"
+                  value={attachDocumentId}
+                  onChange={(e) => setAttachDocumentId(e.target.value)}
+                >
+                  <option value="">— choisir un document —</option>
+                  {attachableDocuments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.filename} ({d.folder_name})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={saveAttachment}
+                disabled={attachBusy || (attachType === 'folder' && !attachFolderId) || (attachType === 'document' && !attachDocumentId)}
+                className="rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {attachBusy ? 'Enregistrement…' : 'Enregistrer'}
               </button>
               <button
-                onClick={() => api.downloadLibraryDocument(process.attached_document_id!, process.attached_document_name!)}
-                className="flex items-center gap-0.5 font-semibold text-brand-600 hover:underline"
+                onClick={() => setAttachEditing(false)}
+                disabled={attachBusy}
+                className="flex items-center gap-0.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
               >
-                <Download size={12} /> Télécharger
+                <X size={12} /> Annuler
               </button>
-            </span>
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2">
