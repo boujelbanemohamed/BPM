@@ -2,7 +2,7 @@ import { PoolClient } from 'pg';
 import { BpmnFlow, BpmnGraph, BpmnNode, findNode, incomingFlows, outgoingFlows, parseBpmnXml } from '../lib/bpmnParser';
 import { evaluateExpression } from '../lib/conditions';
 import { resolveEffectiveAssignee } from './delegationService';
-import { notifyProcessCompleted, notifyTaskAssigned } from './notificationService';
+import { notifyProcessCancelled, notifyProcessCompleted, notifyTaskAssigned } from './notificationService';
 import { writeAuditLogTx } from '../lib/audit';
 import { findUserById } from '../db/usersRepo';
 import { HttpError } from '../middleware/errorHandler';
@@ -140,17 +140,31 @@ async function advanceViaFlow(
   }
 
   if (targetNode.type === 'endEvent') {
+    // Un événement de fin d'erreur/annulation interrompt l'instance : elle
+    // passe à CANCELLED plutôt que COMPLETED, et toute tâche encore en
+    // attente sur une autre branche (ex. une passerelle parallèle dont
+    // une seule branche a atteint cette sortie) est elle-même annulée,
+    // pour ne pas laisser de tâche orpheline sans instance active à faire
+    // progresser.
+    const finalStatus = targetNode.isError ? 'CANCELLED' : 'COMPLETED';
+
     const { rows } = await client.query<ProcessInstanceRow>(
       `UPDATE process_instances
-       SET status = 'COMPLETED', current_step_name = $1, current_element_id = $2, completed_at = now()
-       WHERE id = $3 RETURNING *`,
-      [targetNode.name, targetNode.id, instance.id]
+       SET status = $1, current_step_name = $2, current_element_id = $3, completed_at = now()
+       WHERE id = $4 RETURNING *`,
+      [finalStatus, targetNode.name, targetNode.id, instance.id]
     );
     const updated = rows[0];
 
+    if (targetNode.isError) {
+      await client.query(`UPDATE tasks SET status = 'CANCELLED' WHERE instance_id = $1 AND status = 'PENDING'`, [
+        instance.id,
+      ]);
+    }
+
     await writeAuditLogTx(client, {
       userId: null,
-      action: 'PROCESS_COMPLETED',
+      action: targetNode.isError ? 'PROCESS_CANCELLED' : 'PROCESS_COMPLETED',
       entityType: 'process_instance',
       entityId: instance.id,
       details: { endEvent: targetNode.name },
@@ -158,14 +172,19 @@ async function advanceViaFlow(
 
     const starter = await findUserById(client, instance.started_by);
     if (starter) {
-      await notifyProcessCompleted(client, {
+      const notifyParams = {
         userId: starter.id,
         email: starter.email,
         fullName: starter.fullName,
         processName: process.name,
         outcome: targetNode.name,
         instanceId: instance.id,
-      });
+      };
+      if (targetNode.isError) {
+        await notifyProcessCancelled(client, notifyParams);
+      } else {
+        await notifyProcessCompleted(client, notifyParams);
+      }
     }
 
     return updated;

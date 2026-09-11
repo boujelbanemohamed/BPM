@@ -479,7 +479,8 @@
       "TASK_ASSIGNED": "Task assigned",
       "TASK_DELEGATED": "Task delegated (backup)",
       "ACCOUNT_DEACTIVATED": "Account deactivated",
-      "PROCESS_COMPLETED": "Process completed"
+      "PROCESS_COMPLETED": "Process completed",
+      "PROCESS_CANCELLED": "Process cancelled"
     },
     "smtp": {
       "loading": "Loading…",
@@ -564,6 +565,7 @@
       "EDGE_TAKEN": "Transition",
       "GATEWAY_EVALUATED": "Gateway evaluated",
       "PROCESS_COMPLETED": "Process completed",
+      "PROCESS_CANCELLED": "Process cancelled",
       "TASK_REASSIGNED": "Task reassigned (backup)",
       "DOCUMENT_UPLOADED": "Document uploaded",
       "DOCUMENT_DOWNLOADED": "Document viewed",
@@ -585,6 +587,7 @@
       "addParallelGateway": "+ Parallel gateway",
       "addInclusiveGateway": "+ Inclusive gateway",
       "addEndEvent": "+ End event",
+      "addErrorEndEvent": "+ End (error/cancel)",
       "paletteHint": "Use the palette on the left of the canvas to draw transitions between elements."
     },
     "noSelection": "Select an element in the diagram to configure it.",
@@ -592,6 +595,8 @@
     "genericTaskHintBefore": "Use the context menu (wrench icon) on the selected element in the canvas to turn it into a",
     "genericTaskHintAfter": ", then configure its assignment here.",
     "endEventTitle": "End event",
+    "errorEndEventTitle": "End event (error/cancel)",
+    "errorEndEventHint": "Reaching this event immediately interrupts the instance (status \"Cancelled\"), including any task still pending on other parallel branches.",
     "exclusiveGatewayTitle": "Exclusive gateway",
     "fieldLabel": "Label",
     "parallelGatewayTitle": "Parallel gateway",

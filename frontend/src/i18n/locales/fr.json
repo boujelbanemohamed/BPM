@@ -479,7 +479,8 @@
       "TASK_ASSIGNED": "Tâche assignée",
       "TASK_DELEGATED": "Tâche déléguée (suppléance)",
       "ACCOUNT_DEACTIVATED": "Compte désactivé",
-      "PROCESS_COMPLETED": "Processus terminé"
+      "PROCESS_COMPLETED": "Processus terminé",
+      "PROCESS_CANCELLED": "Processus annulé"
     },
     "smtp": {
       "loading": "Chargement…",
@@ -564,6 +565,7 @@
       "EDGE_TAKEN": "Transition",
       "GATEWAY_EVALUATED": "Passerelle évaluée",
       "PROCESS_COMPLETED": "Processus terminé",
+      "PROCESS_CANCELLED": "Processus annulé",
       "TASK_REASSIGNED": "Tâche réassignée (suppléance)",
       "DOCUMENT_UPLOADED": "Document déposé",
       "DOCUMENT_DOWNLOADED": "Document consulté",
@@ -585,6 +587,7 @@
       "addParallelGateway": "+ Passerelle parallèle",
       "addInclusiveGateway": "+ Passerelle inclusive",
       "addEndEvent": "+ Événement de fin",
+      "addErrorEndEvent": "+ Fin (erreur/annulation)",
       "paletteHint": "Utilisez la palette à gauche du canevas pour dessiner les transitions entre les éléments."
     },
     "noSelection": "Sélectionnez un élément du diagramme pour le configurer.",
@@ -592,6 +595,8 @@
     "genericTaskHintBefore": "Utilisez le menu contextuel (icône clé à molette) sur l'élément sélectionné dans le canevas pour la transformer en",
     "genericTaskHintAfter": ", puis configurez son assignation ici.",
     "endEventTitle": "Événement de fin",
+    "errorEndEventTitle": "Événement de fin (erreur/annulation)",
+    "errorEndEventHint": "Atteindre cet événement interrompt immédiatement l'instance (statut « Annulé »), y compris les tâches encore en attente sur d'autres branches parallèles.",
     "exclusiveGatewayTitle": "Passerelle exclusive",
     "fieldLabel": "Libellé",
     "parallelGatewayTitle": "Passerelle parallèle",

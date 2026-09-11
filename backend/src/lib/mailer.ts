@@ -232,3 +232,18 @@ export async function sendProcessCompletedEmail(params: {
   if (!rendered) return;
   await send(params.to, rendered.subject, rendered.html);
 }
+
+export async function sendProcessCancelledEmail(params: {
+  to: string;
+  recipientName: string;
+  processName: string;
+  outcome: string;
+}): Promise<void> {
+  const rendered = await renderTemplate('PROCESS_CANCELLED', {
+    recipientName: params.recipientName,
+    processName: params.processName,
+    outcome: params.outcome,
+  });
+  if (!rendered) return;
+  await send(params.to, rendered.subject, rendered.html);
+}

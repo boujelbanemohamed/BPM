@@ -479,6 +479,12 @@ INSERT INTO notification_templates (key, heading, subject, body_html, variables)
      <p>Issue : <strong>{{outcome}}</strong></p>',
    ARRAY['recipientName','processName','outcome']),
 
+  ('PROCESS_CANCELLED', 'Processus annulé', '[BPM] Processus annulé : {{processName}}',
+   '<p>Bonjour {{recipientName}},</p>
+     <p>Le processus <strong>{{processName}}</strong> que vous avez démarré a été interrompu.</p>
+     <p>Motif : <strong>{{outcome}}</strong></p>',
+   ARRAY['recipientName','processName','outcome']),
+
   ('PASSWORD_RESET_REQUESTED', 'Réinitialisation de votre mot de passe', '[BPM] Réinitialisation de votre mot de passe',
    '<p>Bonjour {{recipientName}},</p>
      <p>Vous avez demandé la réinitialisation du mot de passe de votre compte BPM Platform.</p>

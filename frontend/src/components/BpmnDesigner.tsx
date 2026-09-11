@@ -105,7 +105,7 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialXml, readOnly]);
 
-  function addElement(bpmnType: string, label: string) {
+  function addElement(bpmnType: string, label: string, extraProps?: Record<string, unknown>) {
     const modeler = modelerRef.current;
     if (!modeler) return;
     const modeling = modeler.get('modeling');
@@ -120,8 +120,17 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
       y: Math.round(viewbox.y + viewbox.height / 2 + (Math.random() * 80 - 40)),
     };
     modeling.createShape(shape, position, rootElement);
-    modeling.updateProperties(shape, { name: label, id: nextId(bpmnType.split(':')[1]) });
+    modeling.updateProperties(shape, { name: label, id: nextId(bpmnType.split(':')[1]), ...extraProps });
     setSelected(shape);
+  }
+
+  function addErrorEndEvent() {
+    const modeler = modelerRef.current;
+    if (!modeler) return;
+    const bpmnFactory = modeler.get('bpmnFactory');
+    addElement('bpmn:EndEvent', 'Annulé', {
+      eventDefinitions: [bpmnFactory.create('bpmn:ErrorEventDefinition', {})],
+    });
   }
 
   return (
@@ -134,6 +143,7 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
             <ToolbarButton onClick={() => addElement('bpmn:ParallelGateway', 'Parallèle')}>{t('bpmnDesigner.toolbar.addParallelGateway')}</ToolbarButton>
             <ToolbarButton onClick={() => addElement('bpmn:InclusiveGateway', 'Inclusive')}>{t('bpmnDesigner.toolbar.addInclusiveGateway')}</ToolbarButton>
             <ToolbarButton onClick={() => addElement('bpmn:EndEvent', 'Fin')}>{t('bpmnDesigner.toolbar.addEndEvent')}</ToolbarButton>
+            <ToolbarButton onClick={addErrorEndEvent}>{t('bpmnDesigner.toolbar.addErrorEndEvent')}</ToolbarButton>
             <span className="ml-2 self-center text-xs text-slate-400">{t('bpmnDesigner.toolbar.paletteHint')}</span>
           </div>
         )}
@@ -209,10 +219,18 @@ function ElementPanel({
   }
 
   if (type === 'bpmn:EndEvent' || type === 'bpmn:ExclusiveGateway') {
+    const isErrorEnd =
+      type === 'bpmn:EndEvent' &&
+      Array.isArray(bo.eventDefinitions) &&
+      bo.eventDefinitions.some((d: any) => d.$type === 'bpmn:ErrorEventDefinition');
     return (
       <div>
         <p className="mb-2 text-xs font-semibold uppercase text-slate-400">
-          {type === 'bpmn:EndEvent' ? t('bpmnDesigner.endEventTitle') : t('bpmnDesigner.exclusiveGatewayTitle')}
+          {type === 'bpmn:ExclusiveGateway'
+            ? t('bpmnDesigner.exclusiveGatewayTitle')
+            : isErrorEnd
+              ? t('bpmnDesigner.errorEndEventTitle')
+              : t('bpmnDesigner.endEventTitle')}
         </p>
         <Field label={t('bpmnDesigner.fieldLabel')}>
           <input
@@ -221,6 +239,7 @@ function ElementPanel({
             onBlur={(e) => updateProps({ name: e.target.value })}
           />
         </Field>
+        {isErrorEnd && <p className="mt-3 text-xs text-slate-500">{t('bpmnDesigner.errorEndEventHint')}</p>}
       </div>
     );
   }

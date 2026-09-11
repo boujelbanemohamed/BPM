@@ -18,6 +18,8 @@ export interface BpmnNode {
   assigneeUserId?: string;
   formFields: FormField[];
   defaultFlowId?: string;
+  /** Uniquement pour un endEvent portant un <bpmn:errorEventDefinition> : termine l'instance en erreur/annulation plutôt qu'en succès. */
+  isError?: boolean;
 }
 
 export interface BpmnFlow {
@@ -145,6 +147,7 @@ export function parseBpmnXml(xml: string): BpmnGraph {
       type: 'endEvent',
       name: el['@_name'] ?? 'Fin',
       formFields: [],
+      isError: Boolean(el.errorEventDefinition),
     });
   }
 

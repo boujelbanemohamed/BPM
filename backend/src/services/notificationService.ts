@@ -4,6 +4,7 @@ import {
   sendAccountDeactivatedEmail,
   sendPasswordChangedEmail,
   sendPasswordResetEmail,
+  sendProcessCancelledEmail,
   sendProcessCompletedEmail,
   sendTaskAssignedEmail,
   sendWelcomeEmail,
@@ -111,6 +112,35 @@ export async function notifyProcessCompleted(
       processName: params.processName,
       outcome: params.outcome,
     }).catch((err) => logger.error('notifyProcessCompleted email failed', { error: (err as Error).message }));
+  }
+}
+
+/**
+ * Émise quand une instance atteint un événement de fin d'erreur/annulation
+ * BPMN plutôt qu'une fin normale. Réutilise le type de notification
+ * GENERIC (comme les commentaires ou la bienvenue) : seul le contenu
+ * (titre/email, via le modèle PROCESS_CANCELLED) change, pas la
+ * mécanique de préférence email ci-dessus.
+ */
+export async function notifyProcessCancelled(
+  client: PoolClient,
+  params: { userId: string; email: string; fullName: string; processName: string; outcome: string; instanceId: string }
+): Promise<void> {
+  await createNotification(client, {
+    userId: params.userId,
+    type: 'GENERIC',
+    title: `Processus annulé : ${params.processName}`,
+    message: `Le processus "${params.processName}" que vous avez démarré a été interrompu (${params.outcome}).`,
+    link: `/instances/${params.instanceId}`,
+  });
+
+  if (await isEmailEnabled(client, params.userId)) {
+    sendProcessCancelledEmail({
+      to: params.email,
+      recipientName: params.fullName,
+      processName: params.processName,
+      outcome: params.outcome,
+    }).catch((err) => logger.error('notifyProcessCancelled email failed', { error: (err as Error).message }));
   }
 }
 

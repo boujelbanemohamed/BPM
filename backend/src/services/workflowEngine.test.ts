@@ -425,3 +425,80 @@ describe('workflowEngine — inclusive gateway (OR fork/join)', () => {
     });
   });
 });
+
+// Fin en une seule branche, sans parallélisme : l'instance atteint
+// directement un endEvent portant un <bpmn:errorEventDefinition>.
+const SIMPLE_ERROR_END_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   id="Definitions_err" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_err" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:endEvent id="End_Error" name="Rejeté">
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_1" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="End_Error" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+// Fork parallèle où une branche (Flow_A, traitée en premier — voir l'ordre
+// des <bpmn:sequenceFlow> ci-dessous) crée une tâche en attente, tandis que
+// l'autre (Flow_toError) atteint directement une fin d'erreur : sert à
+// vérifier qu'une fin d'erreur interrompt bien l'instance même si une
+// branche sœur a encore une tâche non traitée.
+const FORK_THEN_ERROR_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_forkerr" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_forkerr" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:parallelGateway id="Fork" name="Fork" />
+    <bpmn:userTask id="Task_A" name="Tâche A" bpm:assigneeRole="OPERATOR" />
+    <bpmn:endEvent id="End_Error" name="Rejeté">
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_1" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Fork" />
+    <bpmn:sequenceFlow id="Flow_A" sourceRef="Fork" targetRef="Task_A" />
+    <bpmn:sequenceFlow id="Flow_toError" sourceRef="Fork" targetRef="End_Error" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+describe('workflowEngine — error/cancel end event', () => {
+  it('marks the instance CANCELLED (not COMPLETED) and records a PROCESS_CANCELLED audit entry', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, SIMPLE_ERROR_END_XML, adminId);
+
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      expect(instance.status).toBe('CANCELLED');
+      expect(instance.current_step_name).toBe('Rejeté');
+
+      const { rows: auditRows } = await client.query<{ action: string }>(
+        `SELECT action FROM audit_logs WHERE entity_type = 'process_instance' AND entity_id = $1 ORDER BY created_at`,
+        [instance.id]
+      );
+      expect(auditRows.map((r) => r.action)).toContain('PROCESS_CANCELLED');
+      expect(auditRows.map((r) => r.action)).not.toContain('PROCESS_COMPLETED');
+    });
+  });
+
+  it('reaching an error end event on one parallel branch cancels the instance and any still-pending task from a sibling branch', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, FORK_THEN_ERROR_XML, adminId);
+
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      expect(instance.status).toBe('CANCELLED');
+
+      const pending = await pendingTasks(client, instance.id);
+      expect(pending).toHaveLength(0);
+
+      const { rows: taskARows } = await client.query<TaskRow>(
+        `SELECT * FROM tasks WHERE instance_id = $1 AND step_name = 'Tâche A'`,
+        [instance.id]
+      );
+      expect(taskARows[0]?.status).toBe('CANCELLED');
+    });
+  });
+});
