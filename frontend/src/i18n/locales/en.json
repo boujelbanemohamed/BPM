@@ -98,6 +98,56 @@
       "submit": "Start instance"
     }
   },
+  "profile": {
+    "title": "My profile",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "myInfo": {
+      "heading": "My information",
+      "changePhotoTitle": "Change profile picture",
+      "uploading": "Uploading photo…",
+      "photoHint": "PNG, JPEG or WebP, 5 MB max.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "phone": "Phone",
+      "email": "Email",
+      "emailNotifications": "Receive workflow notifications by email (tasks, completed processes, deactivated account)"
+    },
+    "delegation": {
+      "heading": "My delegation & leave",
+      "description": "If your account is deactivated or you are on leave during the period below, your pending tasks will be automatically reassigned to Backup 1, then to Backup 2 if they are also unavailable.",
+      "delegate1": "Backup 1 (priority)",
+      "delegate2": "Backup 2 (secondary)",
+      "none": "— none —",
+      "absenceStart": "Leave start",
+      "absenceEnd": "Leave end"
+    },
+    "password": {
+      "heading": "Change my password",
+      "current": "Current password",
+      "new": "New password (8 characters min.)",
+      "update": "Update",
+      "changed": "Password changed"
+    },
+    "twoFactor": {
+      "heading": "Two-factor authentication (2FA)",
+      "enabledNote": "2FA enabled. Write down these backup codes somewhere safe: they won't be shown again.",
+      "notedCodes": "I've saved my codes",
+      "enabledSimple": "2FA is enabled on your account.",
+      "disable": "Disable 2FA",
+      "confirmWithPassword": "Confirm with your password",
+      "disabling": "Disabling…",
+      "confirmDisable": "Confirm disabling",
+      "setupDescription": "Add an extra verification step at login via an authenticator app (Google Authenticator, Authy...).",
+      "enable": "Enable 2FA",
+      "scanQr": "Scan this QR code with your authenticator app, then enter the generated 6-digit code to confirm.",
+      "sixDigitCode": "6-digit code",
+      "verifying": "Verifying…",
+      "confirm": "Confirm"
+    }
+  },
   "auth": {
     "email": "Email",
     "password": "Password",

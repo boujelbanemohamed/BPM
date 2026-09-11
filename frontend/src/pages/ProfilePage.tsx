@@ -1,10 +1,12 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Camera, CheckCircle2, KeyRound, Mail, Save, ShieldCheck, ShieldOff, User as UserIcon, Users } from 'lucide-react';
 import { api } from '../api/client';
 import { MinimalUser, PublicUser } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 export function ProfilePage() {
+  const { t } = useTranslation();
   const { user, refreshUser } = useAuth();
   const [delegation, setDelegation] = useState<PublicUser | null>(null);
   const [users, setUsers] = useState<MinimalUser[]>([]);
@@ -63,11 +65,11 @@ export function ProfilePage() {
   async function saveInfo(e: FormEvent) {
     e.preventDefault();
     setInfoError(null);
-    setInfoStatus('Enregistrement…');
+    setInfoStatus(t('profile.saving'));
     try {
       await api.updateMyProfile({ firstName, lastName, phone: phone || null, email, emailNotificationsEnabled });
       await refreshUser();
-      setInfoStatus('Enregistré');
+      setInfoStatus(t('profile.saved'));
       setTimeout(() => setInfoStatus(null), 1500);
     } catch (err) {
       setInfoError((err as Error).message);
@@ -94,7 +96,7 @@ export function ProfilePage() {
   async function save(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setStatus('Enregistrement…');
+    setStatus(t('profile.saving'));
     try {
       const { delegation } = await api.updateMyDelegation({
         delegateUser1Id: delegate1 || null,
@@ -103,7 +105,7 @@ export function ProfilePage() {
         absenceEnd: absenceEnd || null,
       });
       setDelegation(delegation);
-      setStatus('Enregistré');
+      setStatus(t('profile.saved'));
       setTimeout(() => setStatus(null), 1500);
     } catch (err) {
       setError((err as Error).message);
@@ -114,12 +116,12 @@ export function ProfilePage() {
   async function changePassword(e: FormEvent) {
     e.preventDefault();
     setPwError(null);
-    setPwStatus('Enregistrement…');
+    setPwStatus(t('profile.saving'));
     try {
       await api.changePassword(currentPassword, newPassword);
       setCurrentPassword('');
       setNewPassword('');
-      setPwStatus('Mot de passe modifié');
+      setPwStatus(t('profile.password.changed'));
       setTimeout(() => setPwStatus(null), 1500);
     } catch (err) {
       setPwError((err as Error).message);
@@ -171,17 +173,17 @@ export function ProfilePage() {
     }
   }
 
-  if (!delegation) return <div className="p-6 text-slate-400">Chargement…</div>;
+  if (!delegation) return <div className="p-6 text-slate-400">{t('documents.loading')}</div>;
 
   const otherUsers = users.filter((u) => u.id !== user?.id);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6">
-      <h1 className="text-2xl font-bold text-slate-800">Mon profil</h1>
+      <h1 className="text-2xl font-bold text-slate-800">{t('profile.title')}</h1>
 
       <div className="card space-y-4">
         <h2 className="flex items-center gap-2 font-semibold text-slate-700">
-          <UserIcon size={18} /> Mes informations
+          <UserIcon size={18} /> {t('profile.myInfo.heading')}
         </h2>
 
         <div className="flex items-center gap-4">
@@ -189,7 +191,7 @@ export function ProfilePage() {
             {user?.avatarUrl ? (
               <img
                 src={user.avatarUrl}
-                alt="Photo de profil"
+                alt=""
                 className="h-20 w-20 rounded-full object-cover ring-2 ring-slate-100"
               />
             ) : (
@@ -203,7 +205,7 @@ export function ProfilePage() {
               onClick={() => avatarInputRef.current?.click()}
               disabled={avatarUploading}
               className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-brand-600 text-white shadow hover:bg-brand-700 disabled:opacity-50"
-              title="Changer la photo de profil"
+              title={t('profile.myInfo.changePhotoTitle')}
             >
               <Camera size={14} />
             </button>
@@ -216,7 +218,7 @@ export function ProfilePage() {
             />
           </div>
           <div className="text-sm text-slate-500">
-            <p>{avatarUploading ? 'Envoi de la photo…' : 'PNG, JPEG ou WebP, 5 Mo max.'}</p>
+            <p>{avatarUploading ? t('profile.myInfo.uploading') : t('profile.myInfo.photoHint')}</p>
             {avatarError && <p className="text-rose-600">{avatarError}</p>}
           </div>
         </div>
@@ -224,17 +226,17 @@ export function ProfilePage() {
         <form onSubmit={saveInfo} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Prénom</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.myInfo.firstName')}</span>
               <input required className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Nom</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.myInfo.lastName')}</span>
               <input required className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </label>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Téléphone</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.myInfo.phone')}</span>
               <input
                 type="tel"
                 className="input"
@@ -244,7 +246,7 @@ export function ProfilePage() {
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Email</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.myInfo.email')}</span>
               <input type="email" required className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
           </div>
@@ -255,13 +257,13 @@ export function ProfilePage() {
               onChange={(e) => setEmailNotificationsEnabled(e.target.checked)}
             />
             <Mail size={15} className="text-slate-400" />
-            Recevoir les notifications de workflow par email (tâches, processus terminés, compte désactivé)
+            {t('profile.myInfo.emailNotifications')}
           </label>
 
           {infoError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{infoError}</p>}
           <div className="flex items-center gap-3">
             <button type="submit" className="btn-primary">
-              <Save size={16} /> Enregistrer
+              <Save size={16} /> {t('profile.save')}
             </button>
             {infoStatus && <span className="text-sm text-slate-400">{infoStatus}</span>}
           </div>
@@ -270,18 +272,14 @@ export function ProfilePage() {
 
       <form onSubmit={save} className="card space-y-4">
         <h2 className="flex items-center gap-2 font-semibold text-slate-700">
-          <Users size={18} /> Mes délégations &amp; congés
+          <Users size={18} /> {t('profile.delegation.heading')}
         </h2>
-        <p className="text-sm text-slate-500">
-          Si votre compte est désactivé ou que vous êtes en congé sur la période ci-dessous, vos tâches en attente
-          seront automatiquement réassignées à votre Suppléant 1, puis à votre Suppléant 2 si celui-ci est
-          également indisponible.
-        </p>
+        <p className="text-sm text-slate-500">{t('profile.delegation.description')}</p>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Suppléant 1 (prioritaire)</span>
+          <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.delegation.delegate1')}</span>
           <select className="input" value={delegate1} onChange={(e) => setDelegate1(e.target.value)}>
-            <option value="">— aucun —</option>
+            <option value="">{t('profile.delegation.none')}</option>
             {otherUsers.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.fullName} ({u.roles.join(', ')})
@@ -291,9 +289,9 @@ export function ProfilePage() {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Suppléant 2 (backup secondaire)</span>
+          <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.delegation.delegate2')}</span>
           <select className="input" value={delegate2} onChange={(e) => setDelegate2(e.target.value)}>
-            <option value="">— aucun —</option>
+            <option value="">{t('profile.delegation.none')}</option>
             {otherUsers.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.fullName} ({u.roles.join(', ')})
@@ -304,11 +302,11 @@ export function ProfilePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Début de congé</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.delegation.absenceStart')}</span>
             <input type="date" className="input" value={absenceStart} onChange={(e) => setAbsenceStart(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Fin de congé</span>
+            <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.delegation.absenceEnd')}</span>
             <input type="date" className="input" value={absenceEnd} onChange={(e) => setAbsenceEnd(e.target.value)} />
           </label>
         </div>
@@ -316,7 +314,7 @@ export function ProfilePage() {
         {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
         <div className="flex items-center gap-3">
           <button type="submit" className="btn-primary">
-            <Save size={16} /> Enregistrer
+            <Save size={16} /> {t('profile.save')}
           </button>
           {status && <span className="text-sm text-slate-400">{status}</span>}
         </div>
@@ -324,10 +322,10 @@ export function ProfilePage() {
 
       <form onSubmit={changePassword} className="card space-y-4">
         <h2 className="flex items-center gap-2 font-semibold text-slate-700">
-          <KeyRound size={18} /> Changer mon mot de passe
+          <KeyRound size={18} /> {t('profile.password.heading')}
         </h2>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Mot de passe actuel</span>
+          <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.password.current')}</span>
           <input
             type="password"
             required
@@ -337,7 +335,7 @@ export function ProfilePage() {
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Nouveau mot de passe (8 caractères min.)</span>
+          <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.password.new')}</span>
           <input
             type="password"
             required
@@ -350,7 +348,7 @@ export function ProfilePage() {
         {pwError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{pwError}</p>}
         <div className="flex items-center gap-3">
           <button type="submit" className="btn-primary">
-            <Save size={16} /> Mettre à jour
+            <Save size={16} /> {t('profile.password.update')}
           </button>
           {pwStatus && <span className="text-sm text-slate-400">{pwStatus}</span>}
         </div>
@@ -358,14 +356,13 @@ export function ProfilePage() {
 
       <div className="card space-y-4">
         <h2 className="flex items-center gap-2 font-semibold text-slate-700">
-          <ShieldCheck size={18} /> Authentification à deux facteurs (2FA)
+          <ShieldCheck size={18} /> {t('profile.twoFactor.heading')}
         </h2>
 
         {backupCodes ? (
           <div className="space-y-3">
             <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-              <CheckCircle2 size={16} /> 2FA activée. Notez ces codes de secours dans un endroit sûr : ils ne seront plus
-              affichés.
+              <CheckCircle2 size={16} /> {t('profile.twoFactor.enabledNote')}
             </p>
             <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3 font-mono text-sm text-slate-700">
               {backupCodes.map((code) => (
@@ -373,22 +370,22 @@ export function ProfilePage() {
               ))}
             </div>
             <button onClick={() => setBackupCodes(null)} className="btn-secondary">
-              J'ai noté mes codes
+              {t('profile.twoFactor.notedCodes')}
             </button>
           </div>
         ) : user?.twoFactorEnabled ? (
           <div className="space-y-3">
             <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-              <CheckCircle2 size={16} /> La 2FA est activée sur votre compte.
+              <CheckCircle2 size={16} /> {t('profile.twoFactor.enabledSimple')}
             </p>
             {!disabling ? (
               <button onClick={() => setDisabling(true)} className="flex items-center gap-2 text-sm font-medium text-rose-600 hover:underline">
-                <ShieldOff size={14} /> Désactiver la 2FA
+                <ShieldOff size={14} /> {t('profile.twoFactor.disable')}
               </button>
             ) : (
               <form onSubmit={confirmTwoFactorDisable} className="space-y-3">
                 <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-slate-500">Confirmez avec votre mot de passe</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.twoFactor.confirmWithPassword')}</span>
                   <input
                     type="password"
                     required
@@ -401,7 +398,7 @@ export function ProfilePage() {
                 {disableError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{disableError}</p>}
                 <div className="flex items-center gap-3">
                   <button type="submit" disabled={twoFactorBusy} className="btn-secondary border-rose-200 text-rose-600 hover:bg-rose-50">
-                    {twoFactorBusy ? 'Désactivation…' : 'Confirmer la désactivation'}
+                    {twoFactorBusy ? t('profile.twoFactor.disabling') : t('profile.twoFactor.confirmDisable')}
                   </button>
                   <button
                     type="button"
@@ -412,7 +409,7 @@ export function ProfilePage() {
                     }}
                     className="text-sm text-slate-500 hover:text-slate-700"
                   >
-                    Annuler
+                    {t('profile.cancel')}
                   </button>
                 </div>
               </form>
@@ -420,25 +417,19 @@ export function ProfilePage() {
           </div>
         ) : !twoFactorSetup ? (
           <div className="space-y-3">
-            <p className="text-sm text-slate-500">
-              Ajoutez une étape de vérification supplémentaire à la connexion via une application d'authentification
-              (Google Authenticator, Authy...).
-            </p>
+            <p className="text-sm text-slate-500">{t('profile.twoFactor.setupDescription')}</p>
             {twoFactorError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{twoFactorError}</p>}
             <button onClick={startTwoFactorSetup} className="btn-primary">
-              <ShieldCheck size={16} /> Activer la 2FA
+              <ShieldCheck size={16} /> {t('profile.twoFactor.enable')}
             </button>
           </div>
         ) : (
           <form onSubmit={confirmTwoFactorEnable} className="space-y-4">
-            <p className="text-sm text-slate-500">
-              Scannez ce QR code avec votre application d'authentification, puis saisissez le code à 6 chiffres généré
-              pour confirmer.
-            </p>
-            <img src={twoFactorSetup.qrCodeDataUrl} alt="QR code 2FA" className="mx-auto h-40 w-40 rounded-lg border border-slate-200" />
+            <p className="text-sm text-slate-500">{t('profile.twoFactor.scanQr')}</p>
+            <img src={twoFactorSetup.qrCodeDataUrl} alt="" className="mx-auto h-40 w-40 rounded-lg border border-slate-200" />
             <p className="text-center font-mono text-xs text-slate-400">{twoFactorSetup.secret}</p>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Code à 6 chiffres</span>
+              <span className="mb-1 block text-xs font-medium text-slate-500">{t('profile.twoFactor.sixDigitCode')}</span>
               <input
                 autoFocus
                 required
@@ -451,7 +442,7 @@ export function ProfilePage() {
             {twoFactorError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{twoFactorError}</p>}
             <div className="flex items-center gap-3">
               <button type="submit" disabled={twoFactorBusy} className="btn-primary">
-                {twoFactorBusy ? 'Vérification…' : 'Confirmer'}
+                {twoFactorBusy ? t('profile.twoFactor.verifying') : t('profile.twoFactor.confirm')}
               </button>
               <button
                 type="button"
@@ -462,7 +453,7 @@ export function ProfilePage() {
                 }}
                 className="text-sm text-slate-500 hover:text-slate-700"
               >
-                Annuler
+                {t('profile.cancel')}
               </button>
             </div>
           </form>

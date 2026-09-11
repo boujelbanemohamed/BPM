@@ -98,6 +98,56 @@
       "submit": "Démarrer l'instance"
     }
   },
+  "profile": {
+    "title": "Mon profil",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "cancel": "Annuler",
+    "myInfo": {
+      "heading": "Mes informations",
+      "changePhotoTitle": "Changer la photo de profil",
+      "uploading": "Envoi de la photo…",
+      "photoHint": "PNG, JPEG ou WebP, 5 Mo max.",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "phone": "Téléphone",
+      "email": "Email",
+      "emailNotifications": "Recevoir les notifications de workflow par email (tâches, processus terminés, compte désactivé)"
+    },
+    "delegation": {
+      "heading": "Mes délégations & congés",
+      "description": "Si votre compte est désactivé ou que vous êtes en congé sur la période ci-dessous, vos tâches en attente seront automatiquement réassignées à votre Suppléant 1, puis à votre Suppléant 2 si celui-ci est également indisponible.",
+      "delegate1": "Suppléant 1 (prioritaire)",
+      "delegate2": "Suppléant 2 (backup secondaire)",
+      "none": "— aucun —",
+      "absenceStart": "Début de congé",
+      "absenceEnd": "Fin de congé"
+    },
+    "password": {
+      "heading": "Changer mon mot de passe",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe (8 caractères min.)",
+      "update": "Mettre à jour",
+      "changed": "Mot de passe modifié"
+    },
+    "twoFactor": {
+      "heading": "Authentification à deux facteurs (2FA)",
+      "enabledNote": "2FA activée. Notez ces codes de secours dans un endroit sûr : ils ne seront plus affichés.",
+      "notedCodes": "J'ai noté mes codes",
+      "enabledSimple": "La 2FA est activée sur votre compte.",
+      "disable": "Désactiver la 2FA",
+      "confirmWithPassword": "Confirmez avec votre mot de passe",
+      "disabling": "Désactivation…",
+      "confirmDisable": "Confirmer la désactivation",
+      "setupDescription": "Ajoutez une étape de vérification supplémentaire à la connexion via une application d'authentification (Google Authenticator, Authy...).",
+      "enable": "Activer la 2FA",
+      "scanQr": "Scannez ce QR code avec votre application d'authentification, puis saisissez le code à 6 chiffres généré pour confirmer.",
+      "sixDigitCode": "Code à 6 chiffres",
+      "verifying": "Vérification…",
+      "confirm": "Confirmer"
+    }
+  },
   "auth": {
     "email": "Email",
     "password": "Mot de passe",
