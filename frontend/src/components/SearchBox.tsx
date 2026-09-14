@@ -19,6 +19,7 @@ export function SearchBox() {
   const [loading, setLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const latestQueryRef = useRef('');
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -41,6 +42,7 @@ export function SearchBox() {
 
   useEffect(() => {
     const trimmed = query.trim();
+    latestQueryRef.current = trimmed;
     if (trimmed.length < MIN_LENGTH) {
       setResults(EMPTY_RESULTS);
       setLoading(false);
@@ -50,11 +52,13 @@ export function SearchBox() {
     const timer = setTimeout(async () => {
       try {
         const data = await api.search(trimmed);
+        if (latestQueryRef.current !== trimmed) return;
         setResults(data);
       } catch {
+        if (latestQueryRef.current !== trimmed) return;
         setResults(EMPTY_RESULTS);
       } finally {
-        setLoading(false);
+        if (latestQueryRef.current === trimmed) setLoading(false);
       }
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
@@ -152,7 +156,7 @@ export function SearchBox() {
             </div>
           )}
           {!loading && results.documents.length > 0 && (
-            <div>
+            <div className="mb-2">
               <div className="px-2 py-1 text-xs font-semibold uppercase text-slate-400">{t('common.search.documents')}</div>
               {results.documents.map((d) => (
                 <button

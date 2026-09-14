@@ -15,11 +15,16 @@ export function ClientPicker({ value, onChange }: { value: unknown; onChange: (v
   const [newPhone, setNewPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const latestQueryRef = useRef('');
 
   useEffect(() => {
     if (!open) return;
     const handle = setTimeout(() => {
-      api.listClients(query).then(({ clients }) => setClients(clients));
+      latestQueryRef.current = query;
+      api.listClients(query).then(({ clients }) => {
+        if (latestQueryRef.current !== query) return;
+        setClients(clients);
+      });
     }, 200);
     return () => clearTimeout(handle);
   }, [query, open]);

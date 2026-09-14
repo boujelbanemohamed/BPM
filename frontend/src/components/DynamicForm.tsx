@@ -82,7 +82,11 @@ export function DynamicForm({
         return;
       }
     }
-    await onSubmit(formData);
+    try {
+      await onSubmit(formData);
+    } catch (err) {
+      setError((err as Error).message);
+    }
   }
 
   return (

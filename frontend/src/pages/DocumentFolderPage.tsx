@@ -21,10 +21,13 @@ export function DocumentFolderPage() {
   const [documents, setDocuments] = useState<LibraryDocumentItem[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const latestIdRef = useRef<string | undefined>(id);
 
   async function refresh() {
     if (!id) return;
+    latestIdRef.current = id;
     const { folder, documents } = await api.getFolder(id);
+    if (latestIdRef.current !== id) return;
     setFolder(folder);
     setDocuments(documents);
   }

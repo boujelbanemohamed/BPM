@@ -26,13 +26,21 @@ export function NotificationsPage() {
   }, [offset]);
 
   async function markRead(id: string) {
-    await api.markNotificationRead(id);
-    refresh();
+    try {
+      await api.markNotificationRead(id);
+      refresh();
+    } catch (err) {
+      window.alert((err as Error).message);
+    }
   }
 
   async function markAllRead() {
-    await api.markAllNotificationsRead();
-    refresh();
+    try {
+      await api.markAllNotificationsRead();
+      refresh();
+    } catch (err) {
+      window.alert((err as Error).message);
+    }
   }
 
   return (

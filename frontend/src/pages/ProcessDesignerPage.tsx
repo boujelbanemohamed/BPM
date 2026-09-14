@@ -66,8 +66,8 @@ export function ProcessDesignerPage() {
     api.listPublishedProcessesMinimal().then(({ processes }) => setPublishedProcesses(processes));
   }, [id]);
 
-  async function save() {
-    if (!process || !designerRef.current) return;
+  async function save(): Promise<boolean> {
+    if (!process || !designerRef.current) return false;
     setStatus(t('profile.saving'));
     setError(null);
     try {
@@ -76,9 +76,11 @@ export function ProcessDesignerPage() {
       setProcess(updated);
       setStatus(t('profile.saved'));
       setTimeout(() => setStatus(null), 1500);
+      return true;
     } catch (err) {
       setError((err as Error).message);
       setStatus(null);
+      return false;
     }
   }
 
@@ -159,7 +161,8 @@ export function ProcessDesignerPage() {
 
   async function publish() {
     if (!process) return;
-    await save();
+    const saved = await save();
+    if (!saved) return;
     try {
       const { process: updated } = await api.publishProcess(process.id);
       setProcess(updated);

@@ -35,14 +35,17 @@ export function InstanceDetailPage() {
   const [commentTaskId, setCommentTaskId] = useState('');
   const [commentError, setCommentError] = useState<string | null>(null);
   const [postingComment, setPostingComment] = useState(false);
+  const latestIdRef = useRef<string | undefined>(id);
 
   async function refresh() {
     if (!id) return;
+    latestIdRef.current = id;
     const [detail, docs, commentsRes] = await Promise.all([
       api.getInstance(id),
       api.listDocuments(id).catch(() => ({ documents: [] })),
       api.listComments(id).catch(() => ({ comments: [] })),
     ]);
+    if (latestIdRef.current !== id) return;
     setInstance(detail.instance);
     setTasks(detail.tasks);
     setEvents(detail.events);

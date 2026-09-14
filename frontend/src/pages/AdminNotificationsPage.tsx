@@ -317,6 +317,11 @@ function TemplatesTab() {
               <iframe
                 title={t('adminNotifications.templates.previewTitle') as string}
                 srcDoc={preview.html}
+                // Aperçu HTML d'un modèle éditable par un admin : sandbox vide
+                // (ni scripts, ni same-origin, ni formulaires) pour qu'un
+                // <script> injecté dans le modèle ne puisse pas s'exécuter
+                // avec accès à l'origine de l'app (localStorage, cookies...).
+                sandbox=""
                 className="h-[420px] w-full rounded-lg border border-slate-200"
               />
             </div>

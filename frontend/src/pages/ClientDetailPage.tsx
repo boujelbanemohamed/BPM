@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Eye, Save } from 'lucide-react';
@@ -19,10 +19,13 @@ export function ClientDetailPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', notes: '' });
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const latestIdRef = useRef<string | undefined>(id);
 
   async function refresh() {
     if (!id) return;
+    latestIdRef.current = id;
     const { client, instances } = await api.getClient(id);
+    if (latestIdRef.current !== id) return;
     setClient(client);
     setInstances(instances);
     setForm({
