@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FileText, FolderOpen, Loader2, PlayCircle, Search, Workflow, X } from 'lucide-react';
+import { FileText, FolderOpen, Loader2, PlayCircle, Search, Users, Workflow, X } from 'lucide-react';
 import { api } from '../api/client';
 import { SearchResults } from '../types';
 
 const DEBOUNCE_MS = 300;
 const MIN_LENGTH = 2;
 
-const EMPTY_RESULTS: SearchResults = { processes: [], instances: [], documents: [] };
+const EMPTY_RESULTS: SearchResults = { processes: [], instances: [], documents: [], clients: [] };
 
 export function SearchBox() {
   const { t } = useTranslation();
@@ -69,7 +69,11 @@ export function SearchBox() {
 
   const trimmed = query.trim();
   const hasQuery = trimmed.length >= MIN_LENGTH;
-  const hasResults = results.processes.length > 0 || results.instances.length > 0 || results.documents.length > 0;
+  const hasResults =
+    results.processes.length > 0 ||
+    results.instances.length > 0 ||
+    results.documents.length > 0 ||
+    results.clients.length > 0;
 
   return (
     <div className="relative" ref={ref}>
@@ -163,6 +167,22 @@ export function SearchBox() {
                   )}
                   <span className="truncate">{d.label}</span>
                   {d.type === 'document' && <span className="ml-auto shrink-0 text-xs text-slate-400">{d.folderName}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {!loading && results.clients.length > 0 && (
+            <div>
+              <div className="px-2 py-1 text-xs font-semibold uppercase text-slate-400">{t('common.search.clients')}</div>
+              {results.clients.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => goTo(`/clients/${c.id}`)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  <Users size={15} className="shrink-0 text-brand-600" />
+                  <span className="truncate">{c.name}</span>
+                  {c.email && <span className="ml-auto shrink-0 text-xs text-slate-400">{c.email}</span>}
                 </button>
               ))}
             </div>

@@ -25,7 +25,8 @@
       "noResults": "No results for « {{query}} »",
       "processes": "Processes",
       "instances": "Instances",
-      "documents": "Documents"
+      "documents": "Documents",
+      "clients": "Clients"
     },
     "sending": "Sending…",
     "language": "Language",

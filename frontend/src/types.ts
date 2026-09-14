@@ -247,10 +247,17 @@ export type SearchDocumentResult =
   | { type: 'folder'; id: string; label: string }
   | { type: 'document'; id: string; label: string; folderId: string; folderName: string };
 
+export interface SearchClientResult {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
 export interface SearchResults {
   processes: SearchProcessResult[];
   instances: SearchInstanceResult[];
   documents: SearchDocumentResult[];
+  clients: SearchClientResult[];
 }
 
 export interface PermissionMatrixRow {

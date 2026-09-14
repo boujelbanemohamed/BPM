@@ -58,7 +58,7 @@ describe('searchService — performSearch', () => {
         documentsAccessLevel: 'FULL',
       });
 
-      expect(results).toEqual({ processes: [], instances: [], documents: [] });
+      expect(results).toEqual({ processes: [], instances: [], documents: [], clients: [] });
     });
   });
 
@@ -172,6 +172,45 @@ describe('searchService — performSearch', () => {
       });
 
       expect(results.documents).toEqual([{ type: 'folder', id: rows[0].id, label: `Dossier ${UNIQUE}` }]);
+    });
+  });
+
+  it('finds a client by (partial, case-insensitive) name', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const admin = await findUserById(client, adminId);
+      const { rows } = await client.query(`INSERT INTO clients (name, created_by) VALUES ($1, $2) RETURNING id`, [
+        `Client ${UNIQUE} SARL`,
+        adminId,
+      ]);
+
+      const results = await performSearch(client, {
+        query: UNIQUE.toLowerCase(),
+        user: admin!,
+        documentsAccessLevel: 'FULL',
+      });
+
+      expect(results.clients.map((c) => c.id)).toContain(rows[0].id);
+    });
+  });
+
+  it('finds a client by email', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const admin = await findUserById(client, adminId);
+      const emailLocalPart = `contact-${UNIQUE}`;
+      const { rows } = await client.query(
+        `INSERT INTO clients (name, email, created_by) VALUES ($1, $2, $3) RETURNING id`,
+        ['Une Société', `${emailLocalPart}@example.com`, adminId]
+      );
+
+      const results = await performSearch(client, {
+        query: emailLocalPart,
+        user: admin!,
+        documentsAccessLevel: 'FULL',
+      });
+
+      expect(results.clients.map((c) => c.id)).toContain(rows[0].id);
     });
   });
 });

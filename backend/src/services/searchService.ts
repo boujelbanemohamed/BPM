@@ -22,26 +22,34 @@ export type SearchDocumentResult =
   | { type: 'folder'; id: string; label: string }
   | { type: 'document'; id: string; label: string; folderId: string; folderName: string };
 
+export interface SearchClientResult {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
 export interface SearchResults {
   processes: SearchProcessResult[];
   instances: SearchInstanceResult[];
   documents: SearchDocumentResult[];
+  clients: SearchClientResult[];
 }
 
 /**
- * Recherche globale sur les processus, les instances et la bibliothèque de
- * documents. Reprend exactement les mêmes règles de visibilité que les
- * endpoints de liste existants, pour ne jamais faire remonter à un
- * utilisateur un résultat qu'il ne pourrait pas voir en naviguant
- * normalement (GET /processes, GET /instances, GET /library/*) :
+ * Recherche globale sur les processus, les instances, la bibliothèque de
+ * documents et les clients. Reprend exactement les mêmes règles de
+ * visibilité que les endpoints de liste existants, pour ne jamais faire
+ * remonter à un utilisateur un résultat qu'il ne pourrait pas voir en
+ * naviguant normalement (GET /processes, GET /instances, GET /library/*,
+ * GET /clients) :
  *   - instances : administrateur = tout ; sinon uniquement les instances
  *     démarrées par l'utilisateur ou comportant une tâche qui lui est
  *     assignée (directement ou via son rôle) — même clause que GET /instances.
  *   - documents (dossiers + fichiers) : uniquement si l'utilisateur a au
  *     moins un accès VIEW sur la page DOCUMENTS (matrice de droits par
  *     rôle) — sinon la catégorie est simplement vide, sans erreur.
- *   - processus : pas de restriction (déjà consultables par tout
- *     utilisateur connecté via GET /processes).
+ *   - processus et clients : pas de restriction (déjà consultables par tout
+ *     utilisateur connecté via GET /processes et GET /clients).
  */
 export async function performSearch(
   client: Pool | PoolClient,
@@ -128,5 +136,14 @@ export async function performSearch(
     ];
   }
 
-  return { processes: processRows, instances, documents };
+  const { rows: clientRows } = await client.query<SearchClientResult>(
+    `SELECT id, name, email
+     FROM clients
+     WHERE name ILIKE $1 OR email ILIKE $1 OR phone ILIKE $1
+     ORDER BY name ASC
+     LIMIT $2`,
+    [like, RESULT_LIMIT]
+  );
+
+  return { processes: processRows, instances, documents, clients: clientRows };
 }

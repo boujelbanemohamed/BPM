@@ -462,6 +462,24 @@ const FORK_THEN_ERROR_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </bpmn:process>
 </bpmn:definitions>`;
 
+// Même forme que FORK_THEN_ERROR_XML, mais avec une fin NORMALE : sert à
+// vérifier que le nettoyage des tâches orphelines ne se limite plus à la
+// fin d'erreur (régression couverte, cf. workflowEngine.ts).
+const FORK_THEN_NORMAL_END_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_forknormal" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_forknormal" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:parallelGateway id="Fork" name="Fork" />
+    <bpmn:userTask id="Task_A" name="Tâche A" bpm:assigneeRole="OPERATOR" />
+    <bpmn:endEvent id="End_Normal" name="Fin" />
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Fork" />
+    <bpmn:sequenceFlow id="Flow_A" sourceRef="Fork" targetRef="Task_A" />
+    <bpmn:sequenceFlow id="Flow_toEnd" sourceRef="Fork" targetRef="End_Normal" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
 describe('workflowEngine — error/cancel end event', () => {
   it('marks the instance CANCELLED (not COMPLETED) and records a PROCESS_CANCELLED audit entry', async () => {
     await withRollback(async (client) => {
@@ -490,6 +508,26 @@ describe('workflowEngine — error/cancel end event', () => {
       const instance = await startProcessInstance(client, { process, startedById: adminId });
 
       expect(instance.status).toBe('CANCELLED');
+
+      const pending = await pendingTasks(client, instance.id);
+      expect(pending).toHaveLength(0);
+
+      const { rows: taskARows } = await client.query<TaskRow>(
+        `SELECT * FROM tasks WHERE instance_id = $1 AND step_name = 'Tâche A'`,
+        [instance.id]
+      );
+      expect(taskARows[0]?.status).toBe('CANCELLED');
+    });
+  });
+
+  it('reaching a NORMAL (non-error) end event on one parallel branch also cancels a still-pending task from a sibling branch (no orphaned task on a finished instance)', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, FORK_THEN_NORMAL_END_XML, adminId);
+
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      expect(instance.status).toBe('COMPLETED');
 
       const pending = await pendingTasks(client, instance.id);
       expect(pending).toHaveLength(0);

@@ -346,12 +346,14 @@ async function advanceViaFlow(
   }
 
   if (targetNode.type === 'endEvent') {
-    // Un événement de fin d'erreur/annulation interrompt l'instance : elle
-    // passe à CANCELLED plutôt que COMPLETED, et toute tâche encore en
-    // attente sur une autre branche (ex. une passerelle parallèle dont
-    // une seule branche a atteint cette sortie) est elle-même annulée,
-    // pour ne pas laisser de tâche orpheline sans instance active à faire
-    // progresser.
+    // Tout événement de fin (erreur ou non) interrompt l'instance ENTIÈRE
+    // dans ce moteur (pas de suivi de "jeton" par branche) : dès qu'une
+    // branche l'atteint, plus rien d'autre ne doit rester actif dessus.
+    // Toute tâche encore en attente sur une autre branche (ex. une
+    // passerelle parallèle dont une seule branche a atteint cette sortie,
+    // sans être repassée par une jointure) est donc systématiquement
+    // annulée — pas seulement pour une fin d'erreur — pour ne jamais
+    // laisser de tâche orpheline sur une instance déjà terminée.
     const finalStatus = targetNode.isError ? 'CANCELLED' : 'COMPLETED';
 
     const { rows } = await client.query<ProcessInstanceRow>(
@@ -362,12 +364,10 @@ async function advanceViaFlow(
     );
     const updated = rows[0];
 
-    if (targetNode.isError) {
-      await client.query(`UPDATE tasks SET status = 'CANCELLED' WHERE instance_id = $1 AND status = 'PENDING'`, [
-        instance.id,
-      ]);
-      await client.query(`DELETE FROM scheduled_timers WHERE instance_id = $1`, [instance.id]);
-    }
+    await client.query(`UPDATE tasks SET status = 'CANCELLED' WHERE instance_id = $1 AND status = 'PENDING'`, [
+      instance.id,
+    ]);
+    await client.query(`DELETE FROM scheduled_timers WHERE instance_id = $1`, [instance.id]);
 
     await writeAuditLogTx(client, {
       userId: null,

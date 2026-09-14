@@ -87,6 +87,16 @@ libraryRouter.post(
   })
 );
 
+// Liste non paginée (comme /users) : sert de sélecteur "pièce jointe" pour
+// un processus (ProcessDesignerPage/ProcessesPage), qui a besoin de
+// l'ensemble des documents pour permettre d'en choisir n'importe lequel —
+// une vraie pagination y casserait la sélection, exactement comme pour
+// listUsersMinimal. Plafond de sécurité (LIMIT) plutôt qu'une troncature
+// arbitraire par date : au-delà de 1000 documents dans la bibliothèque
+// (cas non réaliste pour cet usage), il faudra transformer ce sélecteur en
+// recherche serveur plutôt que d'augmenter encore la limite.
+const LIBRARY_DOCUMENTS_PICKER_LIMIT = 1000;
+
 libraryRouter.get(
   '/documents',
   requirePageAccess('DOCUMENTS', 'VIEW'),
@@ -95,7 +105,9 @@ libraryRouter.get(
       `SELECT d.*, f.name AS folder_name
        FROM library_documents d
        JOIN document_folders f ON f.id = d.folder_id
-       ORDER BY f.name ASC, d.filename ASC`
+       ORDER BY f.name ASC, d.filename ASC
+       LIMIT $1`,
+      [LIBRARY_DOCUMENTS_PICKER_LIMIT]
     );
     res.json({ documents: rows });
   })
