@@ -16,13 +16,14 @@ import {
   ScrollText,
   Settings,
   Shield,
+  User,
   UserCog,
   Users,
   Workflow,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
-import { PageAccessLevel, PageKey } from '../types';
+import { PageAccessLevel, PageKey, PublicUser } from '../types';
 import { SearchBox } from './SearchBox';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
@@ -88,6 +89,59 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
               <item.icon size={16} /> {item.label}
             </NavLink>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProfileMenu({ user, logout }: { user: PublicUser | null; logout: () => void }) {
+  const { t } = useTranslation();
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
+      >
+        {user?.avatarUrl ? (
+          <img src={user.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+        ) : (
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+            {(user?.firstName?.[0] ?? user?.fullName?.[0] ?? '?').toUpperCase()}
+          </span>
+        )}
+        <span className="hidden max-w-[10rem] truncate lg:inline">
+          {user?.fullName} <span className="text-slate-400">· {user?.roles.join(', ')}</span>
+        </span>
+        <ChevronDown size={14} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-10 mt-1 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+          <NavLink to="/profile" className={dropdownLinkClass}>
+            <User size={16} /> {t('profile.title')}
+          </NavLink>
+          <button
+            onClick={logout}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            <LogOut size={16} /> {t('common.nav.logout')}
+          </button>
         </div>
       )}
     </div>
@@ -164,24 +218,7 @@ export function Layout() {
               </span>
             )}
           </NavLink>
-          <NavLink to="/profile" className="flex items-center gap-2 text-sm text-slate-600 hover:text-brand-700">
-            {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
-            ) : (
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
-                {(user?.firstName?.[0] ?? user?.fullName?.[0] ?? '?').toUpperCase()}
-              </span>
-            )}
-            <span>
-              {user?.fullName} <span className="text-slate-400">· {user?.roles.join(', ')}</span>
-            </span>
-          </NavLink>
-          <button
-            onClick={logout}
-            className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
-          >
-            <LogOut size={16} /> {t('common.nav.logout')}
-          </button>
+          <ProfileMenu user={user} logout={logout} />
         </div>
       </header>
       <main className="flex-1">
