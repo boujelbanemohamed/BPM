@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Bell,
@@ -52,14 +53,40 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
   const { t } = useTranslation();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const configItems = useConfigItems();
   const visibleItems = configItems.filter((item) => hasAccess(item.pageKey, 'VIEW'));
   const isActive = visibleItems.some((item) => location.pathname.startsWith(item.path));
 
+  useLayoutEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setPosition({ top: rect.bottom + 4, left: rect.left });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function reposition() {
+      if (!buttonRef.current) return;
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({ top: rect.bottom + 4, left: rect.left });
+    }
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open]);
+
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener('mousedown', onClickOutside);
     return () => document.removeEventListener('mousedown', onClickOutside);
@@ -72,8 +99,9 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
   if (visibleItems.length === 0) return null;
 
   return (
-    <div className="relative" ref={ref}>
+    <>
       <button
+        ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
         className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
           isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
@@ -82,16 +110,23 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
         <Settings size={16} /> {t('common.nav.configuration')}
         <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-10 mt-1 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
-          {visibleItems.map((item) => (
-            <NavLink key={item.path} to={item.path} className={dropdownLinkClass}>
-              <item.icon size={16} /> {item.label}
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
+      {open &&
+        position &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{ position: 'fixed', top: position.top, left: position.left }}
+            className="z-20 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+          >
+            {visibleItems.map((item) => (
+              <NavLink key={item.path} to={item.path} className={dropdownLinkClass}>
+                <item.icon size={16} /> {item.label}
+              </NavLink>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 
