@@ -76,6 +76,21 @@ describe('dashboardService — getDashboardSummary', () => {
       const adminId = await seedUserId(client, 'admin@bpm.local');
       const operatorId = await seedUserId(client, 'operator@bpm.local');
       const operator = await findUserById(client, operatorId);
+
+      // La préview est plafonnée (LIMIT 5, plus anciennes en premier) : sur
+      // une base de dev réelle et persistante (pas remise à zéro entre les
+      // sessions), d'autres tâches PENDING déjà anciennes peuvent occuper
+      // les 5 places et masquer celle créée par ce test. On neutralise ce
+      // risque en soldant les tâches PENDING préexistantes d'operator (rôle
+      // ou affectation directe) — sans effet hors de cette transaction,
+      // annulée en sortie par withRollback.
+      await client.query(
+        `UPDATE tasks SET status = 'CANCELLED'
+         WHERE status = 'PENDING'
+           AND (effective_assignee_id = $1 OR (effective_assignee_id IS NULL AND assignee_role_id = ANY($2::int[])))`,
+        [operatorId, operator!.roleIds]
+      );
+
       const process = await createTestProcess(client, SIMPLE_XML, adminId);
       await client.query(`UPDATE processes SET name = $1 WHERE id = $2`, [`Processus ${UNIQUE}`, process.id]);
       const updatedProcess = { ...process, name: `Processus ${UNIQUE}` };
