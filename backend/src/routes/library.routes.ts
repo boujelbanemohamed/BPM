@@ -11,6 +11,7 @@ import { requirePageAccess } from '../middleware/pageAccess';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { writeAuditLog } from '../lib/audit';
+import { extensionForMimeType } from '../lib/uploads';
 import { DocumentFolderRow, LibraryDocumentRow } from '../types';
 
 export const libraryRouter = Router();
@@ -18,22 +19,22 @@ libraryRouter.use(requireAuth);
 
 fs.mkdirSync(env.UPLOAD_DIR, { recursive: true });
 
-const ALLOWED_MIME_TYPES = new Set([
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/plain',
-  'text/csv',
-]);
+const MIME_TO_EXTENSION: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+  'text/plain': '.txt',
+  'text/csv': '.csv',
+};
+const ALLOWED_MIME_TYPES = new Set(Object.keys(MIME_TO_EXTENSION));
 
 const upload = multer({
   storage: multer.diskStorage({
     destination: env.UPLOAD_DIR,
     filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).slice(0, 10);
-      cb(null, `${crypto.randomUUID()}${ext}`);
+      cb(null, `${crypto.randomUUID()}${extensionForMimeType(file.mimetype, MIME_TO_EXTENSION)}`);
     },
   }),
   limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024 },

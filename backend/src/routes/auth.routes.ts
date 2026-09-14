@@ -147,7 +147,7 @@ authRouter.post(
 
     let payload: PendingTwoFactorPayload;
     try {
-      payload = jwt.verify(pendingToken, env.JWT_SECRET) as PendingTwoFactorPayload;
+      payload = jwt.verify(pendingToken, env.JWT_SECRET, { algorithms: ['HS256'] }) as PendingTwoFactorPayload;
     } catch {
       res.status(401).json({ error: 'Session de connexion expirée, recommencez.' });
       return;

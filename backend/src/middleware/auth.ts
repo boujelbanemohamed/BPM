@@ -19,7 +19,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    const payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
     // Un token émis en attente de vérification 2FA (purpose: 'pending_2fa')
     // ne doit jamais être accepté comme jeton d'accès complet : sans cette
     // vérification, connaître le mot de passe suffirait à contourner la 2FA.

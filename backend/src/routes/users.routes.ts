@@ -10,6 +10,7 @@ import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { findUserById, listUsers, toPublicUser } from '../db/usersRepo';
 import { writeAuditLog } from '../lib/audit';
+import { extensionForMimeType } from '../lib/uploads';
 import { HttpError } from '../middleware/errorHandler';
 
 export const usersRouter = Router();
@@ -18,14 +19,18 @@ usersRouter.use(requireAuth);
 const AVATAR_DIR = path.join(env.UPLOAD_DIR, 'avatars');
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 
-const AVATAR_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const AVATAR_MIME_TO_EXTENSION: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+};
+const AVATAR_MIME_TYPES = new Set(Object.keys(AVATAR_MIME_TO_EXTENSION));
 
 const avatarUpload = multer({
   storage: multer.diskStorage({
     destination: AVATAR_DIR,
     filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).slice(0, 10) || '.jpg';
-      cb(null, `${crypto.randomUUID()}${ext}`);
+      cb(null, `${crypto.randomUUID()}${extensionForMimeType(file.mimetype, AVATAR_MIME_TO_EXTENSION)}`);
     },
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
