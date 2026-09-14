@@ -79,6 +79,10 @@
   },
   "processes": {
     "title": "Processes",
+    "searchPlaceholder": "Search a process (name, reference)…",
+    "filters": {
+      "allStatuses": "All statuses"
+    },
     "trash": "Trash",
     "downloadTemplate": "XML template",
     "importing": "Importing…",
@@ -256,9 +260,11 @@
   "notifications": {
     "title": "Notifications",
     "markAllRead": "Mark all as read",
+    "unreadOnly": "Unread only",
     "open": "Open",
     "markRead": "Mark read",
-    "empty": "No notifications."
+    "empty": "No notifications.",
+    "emptyUnread": "No unread notifications."
   },
   "clients": {
     "title": "Clients",
@@ -302,6 +308,9 @@
   "documents": {
     "title": "Documents",
     "newFolder": "New folder",
+    "searchPlaceholder": "Search a folder…",
+    "searchFilesPlaceholder": "Search a file…",
+    "noSearchResults": "No results for this search.",
     "folderCount_one": "{{count}} document",
     "folderCount_other": "{{count}} documents",
     "empty": "No folders yet.",
@@ -338,6 +347,12 @@
   },
   "adminUsers": {
     "title": "User administration",
+    "searchPlaceholder": "Search a user (name, email)…",
+    "filters": {
+      "allRoles": "All roles",
+      "allStatuses": "All statuses"
+    },
+    "empty": "No user matches these criteria.",
     "twoFactorCount": "{{count}} / {{total}} user(s) with 2FA enabled",
     "downloadTemplate": "CSV template",
     "importing": "Importing…",
@@ -459,6 +474,8 @@
   },
   "trash": {
     "title": "Trash",
+    "searchPlaceholder": "Search a process (name, reference)…",
+    "noSearchResults": "No results for this search.",
     "table": {
       "reference": "Reference",
       "name": "Name",
@@ -507,6 +524,8 @@
   },
   "database": {
     "title": "Database",
+    "searchPlaceholder": "Search a table or column…",
+    "noSearchResults": "No table matches this search.",
     "description_one": "Current PostgreSQL schema structure ({{count}} table) — read-only.",
     "description_other": "Current PostgreSQL schema structure ({{count}} tables) — read-only.",
     "rowCount_one": "{{count}} row",

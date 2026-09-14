@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { pool } from '../db/pool';
 import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
@@ -9,19 +10,24 @@ import { NotificationRow } from '../types';
 export const notificationsRouter = Router();
 notificationsRouter.use(requireAuth);
 
+const listNotificationsQuerySchema = paginationQuerySchema.extend({
+  unreadOnly: z.coerce.boolean().optional(),
+});
+
 notificationsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const pagination = paginationQuerySchema.parse(req.query);
+    const { unreadOnly, ...pagination } = listNotificationsQuerySchema.parse(req.query);
+    const where = unreadOnly ? `WHERE user_id = $1 AND is_read = FALSE` : `WHERE user_id = $1`;
     const params: unknown[] = [req.user!.id];
 
     const { rows } = await pool.query<NotificationRow>(
-      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC ${paginationClause(params, pagination)}`,
+      `SELECT * FROM notifications ${where} ORDER BY created_at DESC ${paginationClause(params, pagination)}`,
       params
     );
 
     const { rows: countRows } = await pool.query<{ count: string }>(
-      `SELECT count(*)::text FROM notifications WHERE user_id = $1`,
+      `SELECT count(*)::text FROM notifications ${where}`,
       [req.user!.id]
     );
 

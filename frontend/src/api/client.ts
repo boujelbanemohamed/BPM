@@ -13,6 +13,7 @@ import {
   NotificationTemplate,
   PageAccessLevel,
   PageKey,
+  ProcessStatus,
   PermissionMatrixRow,
   DashboardSummary,
   InstanceSummary,
@@ -219,10 +220,15 @@ export const api = {
     absenceEnd: string | null;
   }) => request<{ delegation: PublicUser }>('/users/me/delegation', { method: 'PUT', body: payload }),
 
-  adminListUsers: (params: { limit?: number; offset?: number } = {}) => {
+  adminListUsers: (
+    params: { limit?: number; offset?: number; q?: string; role?: string; status?: 'active' | 'inactive' } = {}
+  ) => {
     const query = new URLSearchParams();
     if (params.limit !== undefined) query.set('limit', String(params.limit));
     if (params.offset !== undefined) query.set('offset', String(params.offset));
+    if (params.q) query.set('q', params.q);
+    if (params.role) query.set('role', params.role);
+    if (params.status) query.set('status', params.status);
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return request<{ users: PublicUser[]; total: number; twoFactorEnabledCount: number }>(`/admin/users${suffix}`);
   },
@@ -290,11 +296,15 @@ export const api = {
     URL.revokeObjectURL(url);
   },
 
-  listProcesses: (params: { limit?: number; offset?: number; processKey?: string } = {}) => {
+  listProcesses: (
+    params: { limit?: number; offset?: number; processKey?: string; q?: string; status?: ProcessStatus } = {}
+  ) => {
     const query = new URLSearchParams();
     if (params.limit !== undefined) query.set('limit', String(params.limit));
     if (params.offset !== undefined) query.set('offset', String(params.offset));
     if (params.processKey !== undefined) query.set('processKey', params.processKey);
+    if (params.q) query.set('q', params.q);
+    if (params.status) query.set('status', params.status);
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return request<{ processes: ProcessDefinition[]; total: number }>(`/processes${suffix}`);
   },
@@ -540,10 +550,11 @@ export const api = {
     }
   },
 
-  listNotifications: (params: { limit?: number; offset?: number } = {}) => {
+  listNotifications: (params: { limit?: number; offset?: number; unreadOnly?: boolean } = {}) => {
     const query = new URLSearchParams();
     if (params.limit !== undefined) query.set('limit', String(params.limit));
     if (params.offset !== undefined) query.set('offset', String(params.offset));
+    if (params.unreadOnly) query.set('unreadOnly', 'true');
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return request<{ notifications: NotificationItem[]; total: number }>(`/notifications${suffix}`);
   },

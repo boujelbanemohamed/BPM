@@ -79,6 +79,10 @@
   },
   "processes": {
     "title": "Processus",
+    "searchPlaceholder": "Rechercher un processus (nom, référence)…",
+    "filters": {
+      "allStatuses": "Tous les statuts"
+    },
     "trash": "Corbeille",
     "downloadTemplate": "Modèle XML",
     "importing": "Import en cours…",
@@ -256,9 +260,11 @@
   "notifications": {
     "title": "Notifications",
     "markAllRead": "Tout marquer comme lu",
+    "unreadOnly": "Non lues uniquement",
     "open": "Ouvrir",
     "markRead": "Marquer lu",
-    "empty": "Aucune notification."
+    "empty": "Aucune notification.",
+    "emptyUnread": "Aucune notification non lue."
   },
   "clients": {
     "title": "Clients",
@@ -302,6 +308,9 @@
   "documents": {
     "title": "Documents",
     "newFolder": "Nouveau dossier",
+    "searchPlaceholder": "Rechercher un dossier…",
+    "searchFilesPlaceholder": "Rechercher un fichier…",
+    "noSearchResults": "Aucun résultat pour cette recherche.",
     "folderCount_one": "{{count}} document",
     "folderCount_other": "{{count}} documents",
     "empty": "Aucun dossier pour l'instant.",
@@ -338,6 +347,12 @@
   },
   "adminUsers": {
     "title": "Administration des utilisateurs",
+    "searchPlaceholder": "Rechercher un utilisateur (nom, email)…",
+    "filters": {
+      "allRoles": "Tous les rôles",
+      "allStatuses": "Tous les statuts"
+    },
+    "empty": "Aucun utilisateur ne correspond à ces critères.",
     "twoFactorCount": "{{count}} / {{total}} utilisateur(s) avec la 2FA activée",
     "downloadTemplate": "Modèle CSV",
     "importing": "Import en cours…",
@@ -459,6 +474,8 @@
   },
   "trash": {
     "title": "Corbeille",
+    "searchPlaceholder": "Rechercher un processus (nom, référence)…",
+    "noSearchResults": "Aucun résultat pour cette recherche.",
     "table": {
       "reference": "Référence",
       "name": "Nom",
@@ -507,6 +524,8 @@
   },
   "database": {
     "title": "Base de données",
+    "searchPlaceholder": "Rechercher une table ou une colonne…",
+    "noSearchResults": "Aucune table ne correspond à cette recherche.",
     "description_one": "Structure actuelle du schéma PostgreSQL ({{count}} table) — lecture seule.",
     "description_other": "Structure actuelle du schéma PostgreSQL ({{count}} tables) — lecture seule.",
     "rowCount_one": "{{count}} ligne",

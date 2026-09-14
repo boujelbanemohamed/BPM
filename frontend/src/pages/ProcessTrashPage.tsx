@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
 
 export function ProcessTrashPage() {
   const { t } = useTranslation();
   const [processes, setProcesses] = useState<ProcessDefinition[]>([]);
+  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
@@ -22,6 +23,12 @@ export function ProcessTrashPage() {
   useEffect(() => {
     refresh();
   }, []);
+
+  const filteredProcesses = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return processes;
+    return processes.filter((p) => p.name.toLowerCase().includes(q) || p.reference.toLowerCase().includes(q));
+  }, [processes, query]);
 
   async function restore(p: ProcessDefinition) {
     try {
@@ -53,6 +60,18 @@ export function ProcessTrashPage() {
 
       {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
 
+      {processes.length > 0 && (
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            className="input pl-9"
+            placeholder={t('trash.searchPlaceholder') as string}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
@@ -66,7 +85,7 @@ export function ProcessTrashPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {processes.map((p) => (
+            {filteredProcesses.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-mono text-xs text-slate-400">{p.reference}</td>
                 <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
@@ -97,6 +116,13 @@ export function ProcessTrashPage() {
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                   {t('trash.empty')}
+                </td>
+              </tr>
+            )}
+            {processes.length > 0 && filteredProcesses.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                  {t('trash.noSearchResults')}
                 </td>
               </tr>
             )}

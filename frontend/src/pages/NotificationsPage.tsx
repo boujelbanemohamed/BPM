@@ -13,9 +13,10 @@ export function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
+  const [unreadOnly, setUnreadOnly] = useState(false);
 
   async function refresh() {
-    const { notifications, total } = await api.listNotifications({ limit: LIMIT, offset });
+    const { notifications, total } = await api.listNotifications({ limit: LIMIT, offset, unreadOnly });
     setNotifications(notifications);
     setTotal(total);
   }
@@ -23,7 +24,12 @@ export function NotificationsPage() {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset]);
+  }, [offset, unreadOnly]);
+
+  function toggleUnreadOnly() {
+    setOffset(0);
+    setUnreadOnly((prev) => !prev);
+  }
 
   async function markRead(id: string) {
     try {
@@ -54,6 +60,11 @@ export function NotificationsPage() {
         </button>
       </div>
 
+      <label className="mb-4 flex w-fit items-center gap-2 text-sm text-slate-600">
+        <input type="checkbox" checked={unreadOnly} onChange={toggleUnreadOnly} />
+        {t('notifications.unreadOnly')}
+      </label>
+
       <div className="space-y-2">
         {notifications.map((n) => (
           <div
@@ -82,7 +93,11 @@ export function NotificationsPage() {
             </div>
           </div>
         ))}
-        {notifications.length === 0 && <div className="card text-center text-slate-400">{t('notifications.empty')}</div>}
+        {notifications.length === 0 && (
+          <div className="card text-center text-slate-400">
+            {unreadOnly ? t('notifications.emptyUnread') : t('notifications.empty')}
+          </div>
+        )}
       </div>
       <Pagination offset={offset} limit={LIMIT} total={total} onOffsetChange={setOffset} />
     </div>

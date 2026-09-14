@@ -186,18 +186,28 @@ const listProcessesQuerySchema = paginationQuerySchema.extend({
   // par la pagination de la liste principale (une famille de versions reste
   // par nature un petit ensemble, contrairement à la table complète).
   processKey: z.string().optional(),
+  q: z.string().trim().min(1).optional(),
+  status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
 });
 
 processesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { processKey, ...pagination } = listProcessesQuerySchema.parse(req.query);
+    const { processKey, q, status, ...pagination } = listProcessesQuerySchema.parse(req.query);
 
     const params: unknown[] = [];
     let where = 'WHERE p.deleted_at IS NULL';
     if (processKey) {
       params.push(processKey);
       where += ` AND p.process_key = $${params.length}`;
+    }
+    if (q) {
+      params.push(`%${q}%`);
+      where += ` AND (p.name ILIKE $${params.length} OR p.reference ILIKE $${params.length})`;
+    }
+    if (status) {
+      params.push(status);
+      where += ` AND p.status = $${params.length}`;
     }
     const filterParamCount = params.length;
     const limitClause = processKey ? '' : paginationClause(params, pagination);

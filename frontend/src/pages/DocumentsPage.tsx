@@ -1,7 +1,7 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Folder, FolderPlus, X } from 'lucide-react';
+import { Folder, FolderPlus, Search, X } from 'lucide-react';
 import { api } from '../api/client';
 import { DocumentFolder } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,7 @@ export function DocumentsPage() {
   const { hasAccess } = useAuth();
   const canManage = hasAccess('DOCUMENTS', 'FULL');
   const [folders, setFolders] = useState<DocumentFolder[]>([]);
+  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createName, setCreateName] = useState('');
@@ -29,6 +30,12 @@ export function DocumentsPage() {
   useEffect(() => {
     refresh();
   }, []);
+
+  const filteredFolders = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return folders;
+    return folders.filter((f) => f.name.toLowerCase().includes(q));
+  }, [folders, query]);
 
   function openCreateModal() {
     setCreateName('');
@@ -72,8 +79,20 @@ export function DocumentsPage() {
 
       {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
 
+      {folders.length > 0 && (
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            className="input pl-9"
+            placeholder={t('documents.searchPlaceholder') as string}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {folders.map((f) => (
+        {filteredFolders.map((f) => (
           <Link
             key={f.id}
             to={`/documents/${f.id}`}
@@ -92,6 +111,9 @@ export function DocumentsPage() {
         ))}
         {folders.length === 0 && (
           <p className="col-span-full py-8 text-center text-slate-400">{t('documents.empty')}</p>
+        )}
+        {folders.length > 0 && filteredFolders.length === 0 && (
+          <p className="col-span-full py-8 text-center text-slate-400">{t('documents.noSearchResults')}</p>
         )}
       </div>
 

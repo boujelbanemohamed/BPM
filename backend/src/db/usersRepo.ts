@@ -77,22 +77,57 @@ export interface UsersPage {
   twoFactorEnabledCount: number;
 }
 
+export interface ListUsersFilters {
+  q?: string;
+  role?: string;
+  status?: 'active' | 'inactive';
+}
+
 /**
- * Page de la liste complète des utilisateurs (table d'administration),
- * avec le total global et le nombre d'utilisateurs 2FA activée sur
- * l'ensemble des comptes (pas seulement la page courante), pour que les
- * statistiques affichées restent correctes une fois la liste paginée.
+ * Page de la liste des utilisateurs (table d'administration), filtrable par
+ * recherche nom/email, rôle et statut actif/inactif. Le total et le compte
+ * 2FA reflètent l'ensemble des comptes correspondant aux filtres (pas
+ * seulement la page courante), pour que les statistiques affichées restent
+ * correctes une fois la liste paginée.
  */
 export async function listUsersPage(
   executor: Executor,
-  pagination: { limit: number; offset: number }
+  pagination: { limit: number; offset: number },
+  filters: ListUsersFilters = {}
 ): Promise<UsersPage> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (filters.q) {
+    params.push(`%${filters.q}%`);
+    conditions.push(`(u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length})`);
+  }
+  if (filters.status) {
+    params.push(filters.status === 'active');
+    conditions.push(`u.is_active = $${params.length}`);
+  }
+  if (filters.role) {
+    params.push(filters.role);
+    conditions.push(
+      `EXISTS (SELECT 1 FROM user_roles ur2 JOIN roles r2 ON r2.id = ur2.role_id WHERE ur2.user_id = u.id AND r2.name = $${params.length})`
+    );
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const filterParamCount = params.length;
+
+  params.push(pagination.limit);
+  const limitParam = params.length;
+  params.push(pagination.offset);
+  const offsetParam = params.length;
+
   const { rows } = await executor.query<UserWithRoles>(
-    `${BASE_SELECT} GROUP BY u.id ORDER BY u.full_name ASC LIMIT $1 OFFSET $2`,
-    [pagination.limit, pagination.offset]
+    `${BASE_SELECT} ${where} GROUP BY u.id ORDER BY u.full_name ASC LIMIT $${limitParam} OFFSET $${offsetParam}`,
+    params
   );
   const { rows: countRows } = await executor.query<{ total: string; two_factor_count: string }>(
-    `SELECT count(*)::text AS total, count(*) FILTER (WHERE two_factor_enabled)::text AS two_factor_count FROM users`
+    `SELECT count(*)::text AS total, count(*) FILTER (WHERE two_factor_enabled)::text AS two_factor_count
+     FROM users u ${where}`,
+    params.slice(0, filterParamCount)
   );
   return {
     users: rows.map(toAuthenticatedUser),

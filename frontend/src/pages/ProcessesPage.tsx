@@ -11,6 +11,7 @@ import {
   Folder,
   GitCompare,
   Plus,
+  Search,
   Settings,
   Play,
   PencilLine,
@@ -19,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from '../api/client';
-import { DocumentFolder, LibraryDocumentItem, ProcessDefinition } from '../types';
+import { DocumentFolder, LibraryDocumentItem, ProcessDefinition, ProcessStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { DynamicForm, extractFormFields } from '../components/DynamicForm';
 import { processStatusLabel } from '../lib/processStatus';
@@ -47,6 +48,8 @@ export function ProcessesPage() {
   const [processes, setProcesses] = useState<ProcessDefinition[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ProcessStatus | ''>('');
   const [error, setError] = useState<string | null>(null);
   const [startModalProcess, setStartModalProcess] = useState<ProcessDefinition | null>(null);
   const [startBusy, setStartBusy] = useState(false);
@@ -65,9 +68,14 @@ export function ProcessesPage() {
   const xmlInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  async function refresh() {
+  async function refresh(offsetOverride?: number) {
     try {
-      const { processes, total } = await api.listProcesses({ limit: LIMIT, offset });
+      const { processes, total } = await api.listProcesses({
+        limit: LIMIT,
+        offset: offsetOverride ?? offset,
+        q: query || undefined,
+        status: statusFilter || undefined,
+      });
       setProcesses(processes);
       setTotal(total);
     } catch (err) {
@@ -79,6 +87,15 @@ export function ProcessesPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setOffset(0);
+      refresh(0);
+    }, 250);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, statusFilter]);
 
   function openCreateModal() {
     setCreateName('');
@@ -294,6 +311,28 @@ export function ProcessesPage() {
           )}
         </div>
       )}
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            className="input w-64 pl-9"
+            placeholder={t('processes.searchPlaceholder') as string}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <select
+          className="input w-auto"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as ProcessStatus | '')}
+        >
+          <option value="">{t('processes.filters.allStatuses')}</option>
+          <option value="DRAFT">{processStatusLabel('DRAFT')}</option>
+          <option value="PUBLISHED">{processStatusLabel('PUBLISHED')}</option>
+          <option value="ARCHIVED">{processStatusLabel('ARCHIVED')}</option>
+        </select>
+      </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">

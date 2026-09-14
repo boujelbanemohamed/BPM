@@ -1,16 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Database } from 'lucide-react';
+import { Database, Search } from 'lucide-react';
 import { api } from '../api/client';
 import { DatabaseTable } from '../types';
 
 export function DatabaseSchemaPage() {
   const { t } = useTranslation();
   const [tables, setTables] = useState<DatabaseTable[]>([]);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     api.getDatabaseSchema().then(({ tables }) => setTables(tables));
   }, []);
+
+  const filteredTables = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return tables;
+    return tables.filter(
+      (t2) => t2.name.toLowerCase().includes(q) || t2.columns.some((c) => c.name.toLowerCase().includes(q))
+    );
+  }, [tables, query]);
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -19,8 +28,20 @@ export function DatabaseSchemaPage() {
       </h1>
       <p className="mb-4 text-sm text-slate-500">{t('database.description', { count: tables.length })}</p>
 
+      {tables.length > 0 && (
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            className="input pl-9"
+            placeholder={t('database.searchPlaceholder') as string}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2">
-        {tables.map((t2) => (
+        {filteredTables.map((t2) => (
           <div key={t2.name} className="card">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-mono text-sm font-bold text-slate-800">{t2.name}</h2>
@@ -53,6 +74,9 @@ export function DatabaseSchemaPage() {
           </div>
         ))}
         {tables.length === 0 && <div className="card text-center text-slate-400 md:col-span-2">{t('database.loading')}</div>}
+        {tables.length > 0 && filteredTables.length === 0 && (
+          <div className="card text-center text-slate-400 md:col-span-2">{t('database.noSearchResults')}</div>
+        )}
       </div>
     </div>
   );

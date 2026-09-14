@@ -1,7 +1,7 @@
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Download, Eye, FileText, Folder, UploadCloud } from 'lucide-react';
+import { ArrowLeft, Download, Eye, FileText, Folder, Search, UploadCloud } from 'lucide-react';
 import { api } from '../api/client';
 import { DocumentFolder, LibraryDocumentItem } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,7 @@ export function DocumentFolderPage() {
   const { id } = useParams<{ id: string }>();
   const [folder, setFolder] = useState<DocumentFolder | null>(null);
   const [documents, setDocuments] = useState<LibraryDocumentItem[]>([]);
+  const [query, setQuery] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const latestIdRef = useRef<string | undefined>(id);
@@ -36,6 +37,12 @@ export function DocumentFolderPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const filteredDocuments = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return documents;
+    return documents.filter((d) => d.filename.toLowerCase().includes(q));
+  }, [documents, query]);
 
   async function onFileSelected(e: ChangeEvent<HTMLInputElement>) {
     if (!id || !e.target.files?.[0]) return;
@@ -74,8 +81,19 @@ export function DocumentFolderPage() {
           )}
         </div>
         {uploadError && <p className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{uploadError}</p>}
+        {documents.length > 0 && (
+          <div className="relative mb-3">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              className="input pl-8 text-sm"
+              placeholder={t('documents.searchFilesPlaceholder') as string}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        )}
         <ul className="divide-y divide-slate-100 text-sm">
-          {documents.map((d) => (
+          {filteredDocuments.map((d) => (
             <li key={d.id} className="flex items-center justify-between py-2">
               <span className="flex items-center gap-2 text-slate-700">
                 <FileText size={14} className="text-slate-400" /> {d.filename}
@@ -100,6 +118,9 @@ export function DocumentFolderPage() {
             </li>
           ))}
           {documents.length === 0 && <li className="py-2 text-slate-400">{t('documents.emptyFiles')}</li>}
+          {documents.length > 0 && filteredDocuments.length === 0 && (
+            <li className="py-2 text-slate-400">{t('documents.noSearchResults')}</li>
+          )}
         </ul>
       </div>
     </div>

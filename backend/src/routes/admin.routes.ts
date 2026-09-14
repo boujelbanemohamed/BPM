@@ -19,11 +19,17 @@ import { notifyAccountDeactivated, notifyPasswordChanged, notifyTaskAssigned, no
 export const adminUsersRouter = Router();
 adminUsersRouter.use(requireAuth, requirePageAccess('USERS', 'VIEW'));
 
+const listUsersQuerySchema = paginationQuerySchema.extend({
+  q: z.string().trim().min(1).optional(),
+  role: z.string().trim().min(1).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+});
+
 adminUsersRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const pagination = paginationQuerySchema.parse(req.query);
-    const { users, total, twoFactorEnabledCount } = await listUsersPage(pool, pagination);
+    const { q, role, status, ...pagination } = listUsersQuerySchema.parse(req.query);
+    const { users, total, twoFactorEnabledCount } = await listUsersPage(pool, pagination, { q, role, status });
     res.json({ users: users.map(toPublicUser), total, twoFactorEnabledCount });
   })
 );

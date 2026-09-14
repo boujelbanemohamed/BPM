@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, FileUp, PlusCircle, PowerOff, Power, PencilLine, ShieldCheck, ShieldOff, X } from 'lucide-react';
+import { Download, FileUp, PlusCircle, PowerOff, Power, PencilLine, Search, ShieldCheck, ShieldOff, X } from 'lucide-react';
 import { api } from '../api/client';
 import { MinimalUser, PublicUser, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -56,6 +56,9 @@ export function AdminUsersPage() {
   const [total, setTotal] = useState(0);
   const [twoFactorEnabledCount, setTwoFactorEnabledCount] = useState(0);
   const [offset, setOffset] = useState(0);
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
   const [roles, setRoles] = useState<Role[]>([]);
   const [form, setForm] = useState<FormState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,9 +67,16 @@ export function AdminUsersPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  async function refresh() {
+  async function refresh(offsetOverride?: number) {
+    const off = offsetOverride ?? offset;
     const [usersRes, rolesRes, minimalRes] = await Promise.all([
-      api.adminListUsers({ limit: LIMIT, offset }),
+      api.adminListUsers({
+        limit: LIMIT,
+        offset: off,
+        q: query || undefined,
+        role: roleFilter || undefined,
+        status: statusFilter || undefined,
+      }),
       api.listRoles(),
       api.listUsersMinimal(),
     ]);
@@ -81,6 +91,15 @@ export function AdminUsersPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setOffset(0);
+      refresh(0);
+    }, 250);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, roleFilter, statusFilter]);
 
   function openCreate() {
     setForm({ ...EMPTY_FORM });
@@ -376,6 +395,35 @@ export function AdminUsersPage() {
         </form>
       )}
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            className="input w-64 pl-9"
+            placeholder={t('adminUsers.searchPlaceholder') as string}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <select className="input w-auto" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+          <option value="">{t('adminUsers.filters.allRoles')}</option>
+          {roles.map((r) => (
+            <option key={r.id} value={r.name}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="input w-auto"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+        >
+          <option value="">{t('adminUsers.filters.allStatuses')}</option>
+          <option value="active">{t('adminUsers.active')}</option>
+          <option value="inactive">{t('adminUsers.inactive')}</option>
+        </select>
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
@@ -445,6 +493,13 @@ export function AdminUsersPage() {
                 </td>
               </tr>
             ))}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                  {t('adminUsers.empty')}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
