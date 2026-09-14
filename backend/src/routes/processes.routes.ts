@@ -257,6 +257,24 @@ processesRouter.get(
 );
 
 // Enregistrée avant GET /:id pour ne pas être interceptée par ce paramètre de route.
+// Liste non paginée (une seule ligne par process_key, dernière version publiée)
+// pour le sélecteur de sous-processus (bpmn:callActivity) du designer — même
+// principe que /users (liste minimale dédiée aux sélecteurs, indépendante de
+// la pagination de la liste principale).
+processesRouter.get(
+  '/published-minimal',
+  requirePageAccess('PROCESSES_DESIGN', 'VIEW'),
+  asyncHandler(async (_req, res) => {
+    const { rows } = await pool.query<{ process_key: string; name: string }>(
+      `SELECT DISTINCT ON (process_key) process_key, name
+       FROM processes
+       WHERE status = 'PUBLISHED' AND deleted_at IS NULL
+       ORDER BY process_key, version DESC`
+    );
+    res.json({ processes: rows });
+  })
+);
+
 processesRouter.get(
   '/import-template',
   requirePageAccess('PROCESSES_DESIGN', 'FULL'),

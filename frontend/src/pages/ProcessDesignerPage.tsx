@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from '../api/client';
-import { DocumentFolder, LibraryDocumentItem, MinimalUser, ProcessDefinition, Role } from '../types';
+import { DocumentFolder, LibraryDocumentItem, MinimalUser, ProcessDefinition, PublishedProcessOption, Role } from '../types';
 import { BpmnDesigner, BpmnDesignerHandle } from '../components/BpmnDesigner';
 import { useAuth } from '../context/AuthContext';
 import { processStatusLabel } from '../lib/processStatus';
@@ -46,6 +46,7 @@ export function ProcessDesignerPage() {
   const [process, setProcess] = useState<ProcessDefinition | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [users, setUsers] = useState<MinimalUser[]>([]);
+  const [publishedProcesses, setPublishedProcesses] = useState<PublishedProcessOption[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const designerRef = useRef<BpmnDesignerHandle>(null);
@@ -62,6 +63,7 @@ export function ProcessDesignerPage() {
     api.getProcess(id).then(({ process }) => setProcess(process));
     api.listRoles().then(({ roles }) => setRoles(roles));
     api.listUsersMinimal().then(({ users }) => setUsers(users));
+    api.listPublishedProcessesMinimal().then(({ processes }) => setPublishedProcesses(processes));
   }, [id]);
 
   async function save() {
@@ -387,7 +389,15 @@ export function ProcessDesignerPage() {
         </p>
       )}
 
-      <BpmnDesigner ref={designerRef} initialXml={process.bpmn_xml} readOnly={readOnly} roles={roles} users={users} />
+      <BpmnDesigner
+        ref={designerRef}
+        initialXml={process.bpmn_xml}
+        readOnly={readOnly}
+        roles={roles}
+        users={users}
+        publishedProcesses={publishedProcesses}
+        currentProcessKey={process.process_key}
+      />
     </div>
   );
 }

@@ -153,6 +153,8 @@ export interface ProcessInstanceRow {
   started_by: string;
   started_at: string;
   completed_at: string | null;
+  parent_instance_id: string | null;
+  parent_element_id: string | null;
 }
 
 export interface TaskRow {

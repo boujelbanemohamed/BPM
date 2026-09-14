@@ -1,10 +1,10 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Download, Eye, FileText, MessageSquare, Paperclip, Send, UploadCloud, Users } from 'lucide-react';
+import { ArrowLeft, Download, Eye, FileText, GitBranch, MessageSquare, Paperclip, Send, UploadCloud, Users } from 'lucide-react';
 import i18n from '../i18n';
 import { api } from '../api/client';
-import { AuditLogEntry, CommentItem, DocumentItem, ProcessInstance, TaskItem } from '../types';
+import { AuditLogEntry, CommentItem, DocumentItem, InstanceSummary, ProcessInstance, TaskItem } from '../types';
 
 const statusBadge: Record<string, string> = {
   RUNNING: 'bg-brand-100 text-brand-700',
@@ -25,6 +25,8 @@ export function InstanceDetailPage() {
   const [instance, setInstance] = useState<ProcessInstance | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [events, setEvents] = useState<AuditLogEntry[]>([]);
+  const [parentInstance, setParentInstance] = useState<InstanceSummary | null>(null);
+  const [childInstances, setChildInstances] = useState<InstanceSummary[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,6 +46,8 @@ export function InstanceDetailPage() {
     setInstance(detail.instance);
     setTasks(detail.tasks);
     setEvents(detail.events);
+    setParentInstance(detail.parentInstance);
+    setChildInstances(detail.childInstances);
     setDocuments(docs.documents);
     setComments(commentsRes.comments);
   }
@@ -90,6 +94,14 @@ export function InstanceDetailPage() {
       <Link to="/instances" className="mb-1 flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600">
         <ArrowLeft size={14} /> {t('instanceDetail.backToInstances')}
       </Link>
+      {parentInstance && (
+        <Link
+          to={`/instances/${parentInstance.id}`}
+          className="mb-1 flex items-center gap-1 text-sm text-brand-600 hover:underline"
+        >
+          <GitBranch size={14} /> {t('instanceDetail.parentInstanceLink', { name: parentInstance.process_name })}
+        </Link>
+      )}
       <div className="mb-6 flex items-center gap-2">
         <h1 className="text-xl font-bold text-slate-800">{instance.process_name}</h1>
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[instance.status]}`}>{instance.status}</span>
@@ -144,6 +156,27 @@ export function InstanceDetailPage() {
           </tbody>
         </table>
       </div>
+
+      {childInstances.length > 0 && (
+        <div className="mb-4 card">
+          <h2 className="mb-2 flex items-center gap-2 font-semibold text-slate-700">
+            <GitBranch size={16} /> {t('instanceDetail.subprocessesHeading')}
+          </h2>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {childInstances.map((child) => (
+              <li key={child.id} className="flex items-center justify-between py-2">
+                <Link to={`/instances/${child.id}`} className="font-medium text-brand-600 hover:underline">
+                  {child.process_name}
+                </Link>
+                <span className="flex items-center gap-2 text-xs text-slate-500">
+                  {child.current_step_name && <span>{child.current_step_name}</span>}
+                  <span className={`rounded-full px-2 py-0.5 font-semibold ${statusBadge[child.status]}`}>{child.status}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mb-4 card">
         <div className="mb-2 flex items-center justify-between">

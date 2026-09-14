@@ -148,3 +148,36 @@ describe('parseBpmnXml — inclusiveGateway', () => {
     expect(flows.map((f) => f.id).sort()).toEqual(['Flow_default', 'Flow_toA']);
   });
 });
+
+const CALL_ACTIVITY_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   id="Definitions_call" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_call" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:callActivity id="Call1" name="Sous-dossier" calledElement="onboarding-client" />
+    <bpmn:endEvent id="End" name="Fin" />
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Call1" />
+    <bpmn:sequenceFlow id="Flow_end" sourceRef="Call1" targetRef="End" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+describe('parseBpmnXml — callActivity (sous-processus)', () => {
+  it('parses a callActivity element as a node of type "callActivity", with its calledProcessKey', () => {
+    const graph = parseBpmnXml(CALL_ACTIVITY_XML);
+    const node = findNode(graph, 'Call1');
+    expect(node.type).toBe('callActivity');
+    expect(node.name).toBe('Sous-dossier');
+    expect(node.calledProcessKey).toBe('onboarding-client');
+  });
+
+  it('still parses all pre-existing node types alongside a callActivity (no regression)', () => {
+    const graph = parseBpmnXml(CALL_ACTIVITY_XML);
+    expect(findNode(graph, 'Start').type).toBe('startEvent');
+    expect(findNode(graph, 'End').type).toBe('endEvent');
+  });
+
+  it('rejects a callActivity with no calledElement', () => {
+    const xml = CALL_ACTIVITY_XML.replace(' calledElement="onboarding-client"', '');
+    expect(() => parseBpmnXml(xml)).toThrow(/doit référencer un processus/);
+  });
+});

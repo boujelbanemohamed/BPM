@@ -10,7 +10,8 @@ export type BpmnNodeType =
   | 'parallelGateway'
   | 'inclusiveGateway'
   | 'endEvent'
-  | 'timerCatchEvent';
+  | 'timerCatchEvent'
+  | 'callActivity';
 
 export interface BpmnNode {
   id: string;
@@ -24,6 +25,8 @@ export interface BpmnNode {
   isError?: boolean;
   /** Uniquement pour un timerCatchEvent : délai en millisecondes avant relance automatique par le poller. */
   timerDurationMs?: number;
+  /** Uniquement pour un callActivity : process_key du sous-processus (autre processus publié) à instancier. */
+  calledProcessKey?: string;
 }
 
 export interface BpmnFlow {
@@ -173,6 +176,20 @@ export function parseBpmnXml(xml: string): BpmnGraph {
       name: el['@_name'] ?? 'Minuteur',
       formFields: [],
       timerDurationMs,
+    });
+  }
+
+  for (const el of asArray(process.callActivity)) {
+    const calledProcessKey = el['@_calledElement'];
+    if (!calledProcessKey) {
+      throw new HttpError(400, `Le sous-processus "${el['@_id']}" doit référencer un processus (bpmn:calledElement)`);
+    }
+    nodes.push({
+      id: el['@_id'],
+      type: 'callActivity',
+      name: el['@_name'] ?? 'Sous-processus',
+      formFields: [],
+      calledProcessKey,
     });
   }
 

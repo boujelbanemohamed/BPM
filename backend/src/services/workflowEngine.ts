@@ -153,6 +153,122 @@ async function scheduleTimer(
 }
 
 /**
+ * Remonte la chaîne parent_instance_id depuis `parentInstanceId` (inclus) et
+ * indique si `calledProcessId` y apparaît déjà — c'est-à-dire si démarrer ce
+ * sous-processus créerait un appel circulaire (direct ou indirect, via
+ * plusieurs niveaux d'imbrication). Appelé avant toute création d'instance
+ * enfant : sans cette garde, un cycle A→B→A bouclerait indéfiniment.
+ */
+async function wouldCreateCycle(
+  client: PoolClient,
+  parentInstanceId: string,
+  calledProcessId: string
+): Promise<boolean> {
+  const { rows } = await client.query<{ process_id: string }>(
+    `WITH RECURSIVE ancestors AS (
+       SELECT id, process_id, parent_instance_id FROM process_instances WHERE id = $1
+       UNION ALL
+       SELECT pi.id, pi.process_id, pi.parent_instance_id
+       FROM process_instances pi
+       JOIN ancestors a ON pi.id = a.parent_instance_id
+     )
+     SELECT process_id FROM ancestors`,
+    [parentInstanceId]
+  );
+  return rows.some((r) => r.process_id === calledProcessId);
+}
+
+/**
+ * Sous-processus réutilisable (bpmn:callActivity) : instancie le processus
+ * publié référencé par targetNode.calledProcessKey comme instance ENFANT de
+ * `parentInstance` (même form_data en contexte initial), puis met le parent
+ * en pause à ce nœud — comme pour un minuteur — jusqu'à ce que l'enfant
+ * atteigne son propre événement de fin (voir resumeParentAfterChildCompletion,
+ * appelée depuis la branche endEvent de advanceViaFlow). Si l'enfant se
+ * termine de façon synchrone dans cet appel même (ex. un sous-processus
+ * Début→Fin sans tâche humaine), le parent est déjà relancé au retour :
+ * on relit donc son état à jour plutôt que de renvoyer la ligne "en pause"
+ * écrite plus haut.
+ */
+async function startSubProcess(
+  client: PoolClient,
+  parentInstance: ProcessInstanceRow,
+  targetNode: BpmnNode
+): Promise<ProcessInstanceRow> {
+  const { rows: childProcRows } = await client.query<ProcessRow>(
+    `SELECT * FROM processes WHERE process_key = $1 AND status = 'PUBLISHED' AND deleted_at IS NULL
+     ORDER BY version DESC LIMIT 1`,
+    [targetNode.calledProcessKey]
+  );
+  const childProcess = childProcRows[0];
+  if (!childProcess) {
+    throw new HttpError(
+      400,
+      `Sous-processus introuvable ou non publié : "${targetNode.calledProcessKey}" (nœud ${targetNode.id})`
+    );
+  }
+
+  if (await wouldCreateCycle(client, parentInstance.id, childProcess.id)) {
+    throw new HttpError(
+      400,
+      `Appel de sous-processus circulaire détecté sur "${targetNode.calledProcessKey}" (nœud ${targetNode.id})`
+    );
+  }
+
+  const childGraph = parseBpmnXml(childProcess.bpmn_xml);
+  const childStartNode = childGraph.nodes.find((n) => n.type === 'startEvent');
+  if (!childStartNode) {
+    throw new HttpError(400, `Le sous-processus "${targetNode.calledProcessKey}" ne contient pas d'événement de début`);
+  }
+
+  const { rows: childRows } = await client.query<ProcessInstanceRow>(
+    `INSERT INTO process_instances
+       (process_id, client_id, current_step_name, current_element_id, form_data, started_by, parent_instance_id, parent_element_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [
+      childProcess.id,
+      parentInstance.client_id,
+      childStartNode.name,
+      childStartNode.id,
+      JSON.stringify(parentInstance.form_data),
+      parentInstance.started_by,
+      parentInstance.id,
+      targetNode.id,
+    ]
+  );
+  const childInstance = childRows[0];
+
+  await client.query(`UPDATE process_instances SET current_step_name = $1, current_element_id = $2 WHERE id = $3`, [
+    targetNode.name,
+    targetNode.id,
+    parentInstance.id,
+  ]);
+
+  await writeAuditLogTx(client, {
+    userId: null,
+    action: 'SUBPROCESS_STARTED',
+    entityType: 'process_instance',
+    entityId: parentInstance.id,
+    details: { childInstanceId: childInstance.id, calledProcessKey: targetNode.calledProcessKey, elementId: targetNode.id },
+  });
+  await writeAuditLogTx(client, {
+    userId: null,
+    action: 'INSTANCE_STARTED',
+    entityType: 'process_instance',
+    entityId: childInstance.id,
+    details: { processName: childProcess.name, parentInstanceId: parentInstance.id },
+  });
+
+  await advance(client, childGraph, childProcess, childInstance, childStartNode.id);
+
+  const { rows: freshParentRows } = await client.query<ProcessInstanceRow>(
+    `SELECT * FROM process_instances WHERE id = $1`,
+    [parentInstance.id]
+  );
+  return freshParentRows[0];
+}
+
+/**
  * Fait progresser un unique token le long de `flow` jusqu'à son nœud
  * cible, et traite ce nœud. Une passerelle parallèle "diverge" (fan-out)
  * en appelant cette fonction une fois par flux sortant ; elle "converge"
@@ -209,28 +325,41 @@ async function advanceViaFlow(
       details: { endEvent: targetNode.name },
     });
 
-    const starter = await findUserById(client, instance.started_by);
-    if (starter) {
-      const notifyParams = {
-        userId: starter.id,
-        email: starter.email,
-        fullName: starter.fullName,
-        processName: process.name,
-        outcome: targetNode.name,
-        instanceId: instance.id,
-      };
-      if (targetNode.isError) {
-        await notifyProcessCancelled(client, notifyParams);
-      } else {
-        await notifyProcessCompleted(client, notifyParams);
+    if (!instance.parent_instance_id) {
+      // Un sous-processus (instance enfant d'un callActivity) ne notifie pas
+      // son créateur ici : ce n'est pas "son" processus mais un détail
+      // d'implémentation de celui du parent — c'est ce dernier qui
+      // notifiera, une fois relancé (ou annulé en cascade, voir
+      // resumeParentAfterChildCompletion ci-dessous).
+      const starter = await findUserById(client, instance.started_by);
+      if (starter) {
+        const notifyParams = {
+          userId: starter.id,
+          email: starter.email,
+          fullName: starter.fullName,
+          processName: process.name,
+          outcome: targetNode.name,
+          instanceId: instance.id,
+        };
+        if (targetNode.isError) {
+          await notifyProcessCancelled(client, notifyParams);
+        } else {
+          await notifyProcessCompleted(client, notifyParams);
+        }
       }
     }
+
+    await resumeParentAfterChildCompletion(client, updated, finalStatus);
 
     return updated;
   }
 
   if (targetNode.type === 'timerCatchEvent') {
     return scheduleTimer(client, instance, targetNode);
+  }
+
+  if (targetNode.type === 'callActivity') {
+    return startSubProcess(client, instance, targetNode);
   }
 
   if (targetNode.type === 'exclusiveGateway') {
@@ -474,6 +603,85 @@ async function advance(
     throw new HttpError(400, `Aucune transition sortante valide depuis le nœud "${fromNode.id}" (impasse BPMN)`);
   }
   return advanceViaFlow(client, graph, process, instance, flow);
+}
+
+/**
+ * Relance l'instance PARENTE d'une instance enfant (sous-processus) qui
+ * vient d'atteindre son propre événement de fin. Un enfant COMPLETED fait
+ * reprendre le parent à la suite de son nœud callActivity ; un enfant
+ * CANCELLED (erreur) propage l'annulation au parent — même sémantique qu'une
+ * erreur locale — et remonte récursivement la chaîne parent_instance_id si
+ * ce parent est lui-même une instance enfant. No-op silencieux si le parent
+ * n'est plus RUNNING (déjà finalisé par un autre chemin) : cas normal, pas
+ * une anomalie à remonter.
+ */
+async function resumeParentAfterChildCompletion(
+  client: PoolClient,
+  childInstance: ProcessInstanceRow,
+  childFinalStatus: 'COMPLETED' | 'CANCELLED'
+): Promise<void> {
+  if (!childInstance.parent_instance_id || !childInstance.parent_element_id) return;
+
+  const { rows: parentRows } = await client.query<ProcessInstanceRow>(
+    `SELECT * FROM process_instances WHERE id = $1 FOR UPDATE`,
+    [childInstance.parent_instance_id]
+  );
+  const parent = parentRows[0];
+  if (!parent || parent.status !== 'RUNNING') return;
+
+  const { rows: parentProcRows } = await client.query<ProcessRow>('SELECT * FROM processes WHERE id = $1', [
+    parent.process_id,
+  ]);
+  const parentProcess = parentProcRows[0];
+  if (!parentProcess) return;
+
+  await writeAuditLogTx(client, {
+    userId: null,
+    action: childFinalStatus === 'COMPLETED' ? 'SUBPROCESS_COMPLETED' : 'SUBPROCESS_CANCELLED',
+    entityType: 'process_instance',
+    entityId: parent.id,
+    details: { childInstanceId: childInstance.id, elementId: childInstance.parent_element_id },
+  });
+
+  if (childFinalStatus === 'CANCELLED') {
+    const { rows } = await client.query<ProcessInstanceRow>(
+      `UPDATE process_instances SET status = 'CANCELLED', completed_at = now() WHERE id = $1 RETURNING *`,
+      [parent.id]
+    );
+    const cancelledParent = rows[0];
+    await client.query(`UPDATE tasks SET status = 'CANCELLED' WHERE instance_id = $1 AND status = 'PENDING'`, [
+      parent.id,
+    ]);
+    await client.query(`DELETE FROM scheduled_timers WHERE instance_id = $1`, [parent.id]);
+
+    await writeAuditLogTx(client, {
+      userId: null,
+      action: 'PROCESS_CANCELLED',
+      entityType: 'process_instance',
+      entityId: parent.id,
+      details: { reason: 'sous-processus en erreur', childInstanceId: childInstance.id },
+    });
+
+    if (!parent.parent_instance_id) {
+      const starter = await findUserById(client, parent.started_by);
+      if (starter) {
+        await notifyProcessCancelled(client, {
+          userId: starter.id,
+          email: starter.email,
+          fullName: starter.fullName,
+          processName: parentProcess.name,
+          outcome: cancelledParent.current_step_name ?? parentProcess.name,
+          instanceId: parent.id,
+        });
+      }
+    }
+
+    await resumeParentAfterChildCompletion(client, cancelledParent, 'CANCELLED');
+    return;
+  }
+
+  const parentGraph = parseBpmnXml(parentProcess.bpmn_xml);
+  await advance(client, parentGraph, parentProcess, parent, childInstance.parent_element_id);
 }
 
 export async function startProcessInstance(

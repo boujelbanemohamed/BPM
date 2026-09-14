@@ -13,9 +13,11 @@ import {
   PageAccessLevel,
   PageKey,
   PermissionMatrixRow,
+  InstanceSummary,
   ProcessDefinition,
   ProcessInstance,
   PublicUser,
+  PublishedProcessOption,
   Role,
   RoleWithUsers,
   SearchResults,
@@ -277,6 +279,8 @@ export const api = {
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return request<{ processes: ProcessDefinition[]; total: number }>(`/processes${suffix}`);
   },
+  listPublishedProcessesMinimal: () =>
+    request<{ processes: PublishedProcessOption[] }>('/processes/published-minimal'),
   getProcess: (id: string) => request<{ process: ProcessDefinition }>(`/processes/${id}`),
   createProcess: (payload: {
     name: string;
@@ -367,7 +371,13 @@ export const api = {
     return request<{ instances: ProcessInstance[]; total: number }>(`/instances${suffix}`);
   },
   getInstance: (id: string) =>
-    request<{ instance: ProcessInstance; tasks: TaskItem[]; events: AuditLogEntry[] }>(`/instances/${id}`),
+    request<{
+      instance: ProcessInstance;
+      tasks: TaskItem[];
+      events: AuditLogEntry[];
+      parentInstance: InstanceSummary | null;
+      childInstances: InstanceSummary[];
+    }>(`/instances/${id}`),
 
   myTasks: () => request<{ tasks: TaskItem[] }>('/tasks/my-tasks'),
   completeTask: (id: string, formData: Record<string, unknown>) =>

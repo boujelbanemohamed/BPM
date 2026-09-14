@@ -141,7 +141,36 @@ instancesRouter.get(
       [instance.id, taskIds]
     );
 
-    res.json({ instance: { ...instance, form_data: visibleFormData }, tasks, events });
+    let parentInstance: { id: string; process_name: string } | null = null;
+    if (instance.parent_instance_id) {
+      const { rows: parentRows } = await pool.query<{ id: string; process_name: string }>(
+        `SELECT pi.id, p.name AS process_name FROM process_instances pi JOIN processes p ON p.id = pi.process_id WHERE pi.id = $1`,
+        [instance.parent_instance_id]
+      );
+      parentInstance = parentRows[0] ?? null;
+    }
+
+    const { rows: childInstances } = await pool.query<{
+      id: string;
+      process_name: string;
+      status: string;
+      current_step_name: string | null;
+    }>(
+      `SELECT pi.id, p.name AS process_name, pi.status, pi.current_step_name
+       FROM process_instances pi
+       JOIN processes p ON p.id = pi.process_id
+       WHERE pi.parent_instance_id = $1
+       ORDER BY pi.started_at ASC`,
+      [instance.id]
+    );
+
+    res.json({
+      instance: { ...instance, form_data: visibleFormData },
+      tasks,
+      events,
+      parentInstance,
+      childInstances,
+    });
   })
 );
 

@@ -207,12 +207,18 @@ CREATE TABLE process_instances (
   form_data          JSONB NOT NULL DEFAULT '{}'::jsonb,
   started_by         UUID NOT NULL REFERENCES users(id),
   started_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-  completed_at       TIMESTAMPTZ
+  completed_at       TIMESTAMPTZ,
+  -- Sous-processus (bpmn:callActivity) : instance enfant lancée par une
+  -- autre instance (parent_instance_id) au nœud parent_element_id, qui se
+  -- met en pause jusqu'à la fin de celle-ci.
+  parent_instance_id UUID REFERENCES process_instances(id) ON DELETE CASCADE,
+  parent_element_id  VARCHAR(255)
 );
 
 CREATE INDEX idx_instances_process ON process_instances(process_id);
 CREATE INDEX idx_instances_status ON process_instances(status);
 CREATE INDEX idx_instances_started_by ON process_instances(started_by);
+CREATE INDEX idx_instances_parent ON process_instances(parent_instance_id);
 CREATE INDEX idx_instances_client ON process_instances(client_id);
 
 -- ---------------------------------------------------------------------

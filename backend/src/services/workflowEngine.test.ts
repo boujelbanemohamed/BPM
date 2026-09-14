@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { pool, withTransaction } from '../db/pool';
 import { completeTaskAndAdvance, fireDueTimer, startProcessInstance } from './workflowEngine';
 import { createTestProcess, seedUserId, withRollback } from '../test/dbTestHelpers';
-import { TaskRow } from '../types';
+import { ProcessRow, TaskRow } from '../types';
 
 const FORK_JOIN_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -641,6 +641,223 @@ describe('workflowEngine — timer catch event', () => {
         [instance.id]
       );
       expect(timerRows).toHaveLength(1);
+    });
+  });
+});
+
+// Sous-processus réutilisable (bpmn:callActivity) : un processus PARENT
+// délègue une portion de son flux à un AUTRE processus, publié séparément
+// et référencé par sa process_key. Le parent se met en pause au nœud
+// callActivity jusqu'à ce que l'instance enfant se termine.
+function parentXmlCallingChild(calledProcessKey: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   id="Definitions_parent" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_parent" isExecutable="true">
+    <bpmn:startEvent id="ParentStart" name="Début parent" />
+    <bpmn:callActivity id="Call1" name="Sous-processus" calledElement="${calledProcessKey}" />
+    <bpmn:endEvent id="ParentEnd" name="Fin parent" />
+    <bpmn:sequenceFlow id="Flow1" sourceRef="ParentStart" targetRef="Call1" />
+    <bpmn:sequenceFlow id="Flow2" sourceRef="Call1" targetRef="ParentEnd" />
+  </bpmn:process>
+</bpmn:definitions>`;
+}
+
+const CHILD_WITH_TASK_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_childtask" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_childtask" isExecutable="true">
+    <bpmn:startEvent id="ChildStart" name="Début enfant" />
+    <bpmn:userTask id="ChildTask" name="Tâche enfant" bpm:assigneeRole="OPERATOR" />
+    <bpmn:endEvent id="ChildEnd" name="Fin enfant" />
+    <bpmn:sequenceFlow id="Flow1" sourceRef="ChildStart" targetRef="ChildTask" />
+    <bpmn:sequenceFlow id="Flow2" sourceRef="ChildTask" targetRef="ChildEnd" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+const CHILD_WITH_ERROR_END_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_childerr" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_childerr" isExecutable="true">
+    <bpmn:startEvent id="ChildStart" name="Début enfant" />
+    <bpmn:userTask id="ChildTask" name="Tâche enfant" bpm:assigneeRole="OPERATOR" />
+    <bpmn:endEvent id="ChildErrorEnd" name="Enfant en erreur">
+      <bpmn:errorEventDefinition />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow1" sourceRef="ChildStart" targetRef="ChildTask" />
+    <bpmn:sequenceFlow id="Flow2" sourceRef="ChildTask" targetRef="ChildErrorEnd" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+const CHILD_TRIVIAL_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   id="Definitions_childtrivial" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_childtrivial" isExecutable="true">
+    <bpmn:startEvent id="ChildStart" name="Début enfant" />
+    <bpmn:endEvent id="ChildEnd" name="Fin enfant" />
+    <bpmn:sequenceFlow id="Flow1" sourceRef="ChildStart" targetRef="ChildEnd" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+/** Comme createTestProcess, mais avec une process_key choisie (nécessaire pour les tests de cycle A<->B). */
+async function createTestProcessWithKey(
+  client: PoolClient,
+  processKey: string,
+  bpmnXml: string,
+  createdBy: string
+): Promise<ProcessRow> {
+  const { rows } = await client.query<ProcessRow>(
+    `INSERT INTO processes (process_key, name, bpmn_xml, status, created_by)
+     VALUES ($1, $2, $3, 'PUBLISHED', $4) RETURNING *`,
+    [processKey, 'Processus de test (clé fixe)', bpmnXml, createdBy]
+  );
+  return rows[0];
+}
+
+describe('workflowEngine — callActivity (sous-processus réutilisable)', () => {
+  it('starting the parent creates a RUNNING child instance and pauses the parent at the callActivity node', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const childProcess = await createTestProcess(client, CHILD_WITH_TASK_XML, adminId);
+      const parentProcess = await createTestProcess(client, parentXmlCallingChild(childProcess.process_key), adminId);
+
+      const parentInstance = await startProcessInstance(client, { process: parentProcess, startedById: adminId });
+
+      expect(parentInstance.status).toBe('RUNNING');
+      expect(parentInstance.current_element_id).toBe('Call1');
+
+      const { rows: childRows } = await client.query(`SELECT * FROM process_instances WHERE parent_instance_id = $1`, [
+        parentInstance.id,
+      ]);
+      expect(childRows).toHaveLength(1);
+      expect(childRows[0].status).toBe('RUNNING');
+      expect(childRows[0].parent_element_id).toBe('Call1');
+
+      const childPending = await pendingTasks(client, childRows[0].id);
+      expect(childPending.map((t) => t.step_name)).toEqual(['Tâche enfant']);
+
+      const parentPending = await pendingTasks(client, parentInstance.id);
+      expect(parentPending).toHaveLength(0);
+    });
+  });
+
+  it('completing the child task through to its end event resumes the parent past the callActivity', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const childProcess = await createTestProcess(client, CHILD_WITH_TASK_XML, adminId);
+      const parentProcess = await createTestProcess(client, parentXmlCallingChild(childProcess.process_key), adminId);
+
+      const parentInstance = await startProcessInstance(client, { process: parentProcess, startedById: adminId });
+      const { rows: childRows } = await client.query(`SELECT * FROM process_instances WHERE parent_instance_id = $1`, [
+        parentInstance.id,
+      ]);
+      const childInstance = childRows[0];
+      const childTask = (await pendingTasks(client, childInstance.id))[0];
+
+      await completeTaskAndAdvance(client, {
+        task: childTask,
+        instance: childInstance,
+        process: childProcess,
+        completedById: adminId,
+        formData: {},
+      });
+
+      const { rows: finalParentRows } = await client.query('SELECT * FROM process_instances WHERE id = $1', [
+        parentInstance.id,
+      ]);
+      expect(finalParentRows[0].status).toBe('COMPLETED');
+      expect(finalParentRows[0].current_step_name).toBe('Fin parent');
+
+      const { rows: auditRows } = await client.query<{ action: string }>(
+        `SELECT action FROM audit_logs WHERE entity_type = 'process_instance' AND entity_id = $1 ORDER BY created_at`,
+        [parentInstance.id]
+      );
+      expect(auditRows.map((r) => r.action)).toContain('SUBPROCESS_COMPLETED');
+    });
+  });
+
+  it('the child reaching an error end event cascades cancellation to the parent', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const childProcess = await createTestProcess(client, CHILD_WITH_ERROR_END_XML, adminId);
+      const parentProcess = await createTestProcess(client, parentXmlCallingChild(childProcess.process_key), adminId);
+
+      const parentInstance = await startProcessInstance(client, { process: parentProcess, startedById: adminId });
+      const { rows: childRows } = await client.query(`SELECT * FROM process_instances WHERE parent_instance_id = $1`, [
+        parentInstance.id,
+      ]);
+      const childInstance = childRows[0];
+      const childTask = (await pendingTasks(client, childInstance.id))[0];
+
+      await completeTaskAndAdvance(client, {
+        task: childTask,
+        instance: childInstance,
+        process: childProcess,
+        completedById: adminId,
+        formData: {},
+      });
+
+      const { rows: finalParentRows } = await client.query('SELECT * FROM process_instances WHERE id = $1', [
+        parentInstance.id,
+      ]);
+      expect(finalParentRows[0].status).toBe('CANCELLED');
+
+      const { rows: auditRows } = await client.query<{ action: string }>(
+        `SELECT action FROM audit_logs WHERE entity_type = 'process_instance' AND entity_id = $1 ORDER BY created_at`,
+        [parentInstance.id]
+      );
+      expect(auditRows.map((r) => r.action)).toContain('SUBPROCESS_CANCELLED');
+      expect(auditRows.map((r) => r.action)).toContain('PROCESS_CANCELLED');
+    });
+  });
+
+  it('a trivial sub-process with no user task resumes the parent synchronously, within the same call', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const childProcess = await createTestProcess(client, CHILD_TRIVIAL_XML, adminId);
+      const parentProcess = await createTestProcess(client, parentXmlCallingChild(childProcess.process_key), adminId);
+
+      const parentInstance = await startProcessInstance(client, { process: parentProcess, startedById: adminId });
+
+      expect(parentInstance.status).toBe('COMPLETED');
+      expect(parentInstance.current_step_name).toBe('Fin parent');
+    });
+  });
+
+  it('rejects a callActivity referencing an unknown or unpublished process_key', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const parentProcess = await createTestProcess(client, parentXmlCallingChild('does-not-exist'), adminId);
+
+      await expect(startProcessInstance(client, { process: parentProcess, startedById: adminId })).rejects.toThrow(
+        /introuvable ou non publié/
+      );
+    });
+  });
+
+  it('rejects a direct self-referencing callActivity (cycle)', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const selfKey = `test-self-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const process = await createTestProcessWithKey(client, selfKey, parentXmlCallingChild(selfKey), adminId);
+
+      await expect(startProcessInstance(client, { process, startedById: adminId })).rejects.toThrow(/circulaire/);
+    });
+  });
+
+  it('rejects an indirect cycle (A calls B, B calls A)', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const keyA = `test-cycle-a-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const keyB = `test-cycle-b-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const processA = await createTestProcessWithKey(client, keyA, parentXmlCallingChild(keyB), adminId);
+      await createTestProcessWithKey(client, keyB, parentXmlCallingChild(keyA), adminId);
+
+      await expect(startProcessInstance(client, { process: processA, startedById: adminId })).rejects.toThrow(
+        /circulaire/
+      );
     });
   });
 });

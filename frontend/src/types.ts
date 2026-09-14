@@ -143,6 +143,19 @@ export interface ProcessInstance {
   started_by: string;
   started_at: string;
   completed_at: string | null;
+  parent_instance_id: string | null;
+}
+
+export interface InstanceSummary {
+  id: string;
+  process_name: string;
+  status: InstanceStatus;
+  current_step_name: string | null;
+}
+
+export interface PublishedProcessOption {
+  process_key: string;
+  name: string;
 }
 
 export interface TaskItem {

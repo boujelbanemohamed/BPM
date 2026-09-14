@@ -5,7 +5,7 @@ import NavigatedViewer from 'bpmn-js/lib/NavigatedViewer';
 import { Plus, Trash2 } from 'lucide-react';
 import bpmPlatformModdle from '../bpmn/bpmPlatformModdle.json';
 import { frTranslationsModule } from '../bpmn/frTranslations';
-import { FormField, MinimalUser, Role } from '../types';
+import { FormField, MinimalUser, PublishedProcessOption, Role } from '../types';
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 import 'bpmn-js/dist/assets/bpmn-js.css';
@@ -20,6 +20,8 @@ interface Props {
   readOnly: boolean;
   roles: Role[];
   users: MinimalUser[];
+  publishedProcesses: PublishedProcessOption[];
+  currentProcessKey?: string;
 }
 
 let elementCounter = 0;
@@ -39,7 +41,7 @@ function parseFormFields(raw: unknown): FormField[] {
 }
 
 export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnDesigner(
-  { initialXml, readOnly, roles, users },
+  { initialXml, readOnly, roles, users, publishedProcesses, currentProcessKey },
   ref
 ) {
   const { t } = useTranslation();
@@ -142,6 +144,10 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
     });
   }
 
+  function addCallActivity() {
+    addElement('bpmn:CallActivity', 'Sous-processus');
+  }
+
   return (
     <div className="flex h-[calc(100vh-190px)] overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-1 flex-col">
@@ -154,6 +160,7 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
             <ToolbarButton onClick={() => addElement('bpmn:EndEvent', 'Fin')}>{t('bpmnDesigner.toolbar.addEndEvent')}</ToolbarButton>
             <ToolbarButton onClick={addErrorEndEvent}>{t('bpmnDesigner.toolbar.addErrorEndEvent')}</ToolbarButton>
             <ToolbarButton onClick={addTimerCatchEvent}>{t('bpmnDesigner.toolbar.addTimerCatchEvent')}</ToolbarButton>
+            <ToolbarButton onClick={addCallActivity}>{t('bpmnDesigner.toolbar.addCallActivity')}</ToolbarButton>
             <span className="ml-2 self-center text-xs text-slate-400">{t('bpmnDesigner.toolbar.paletteHint')}</span>
           </div>
         )}
@@ -164,7 +171,15 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
         <div className="w-80 overflow-y-auto border-l border-slate-200 bg-white p-4">
           {!selected && <p className="text-sm text-slate-400">{t('bpmnDesigner.noSelection')}</p>}
           {selected && (
-            <ElementPanel key={selected.id} element={selected} modelerRef={modelerRef} roles={roles} users={users} />
+            <ElementPanel
+              key={selected.id}
+              element={selected}
+              modelerRef={modelerRef}
+              roles={roles}
+              users={users}
+              publishedProcesses={publishedProcesses}
+              currentProcessKey={currentProcessKey}
+            />
           )}
         </div>
       )}
@@ -189,11 +204,15 @@ function ElementPanel({
   modelerRef,
   roles,
   users,
+  publishedProcesses,
+  currentProcessKey,
 }: {
   element: any;
   modelerRef: React.MutableRefObject<any>;
   roles: Role[];
   users: MinimalUser[];
+  publishedProcesses: PublishedProcessOption[];
+  currentProcessKey?: string;
 }) {
   const { t } = useTranslation();
   const bo = element.businessObject;
@@ -230,6 +249,17 @@ function ElementPanel({
 
   if (type === 'bpmn:IntermediateCatchEvent') {
     return <TimerCatchEventPanel element={element} modelerRef={modelerRef} bo={bo} onChange={updateProps} />;
+  }
+
+  if (type === 'bpmn:CallActivity') {
+    return (
+      <CallActivityPanel
+        bo={bo}
+        onChange={updateProps}
+        publishedProcesses={publishedProcesses}
+        currentProcessKey={currentProcessKey}
+      />
+    );
   }
 
   if (type === 'bpmn:EndEvent' || type === 'bpmn:ExclusiveGateway') {
@@ -420,6 +450,45 @@ function TimerCatchEventPanel({
         />
       </Field>
       <p className="text-xs text-slate-500">{t('bpmnDesigner.timerDurationHint')}</p>
+    </div>
+  );
+}
+
+function CallActivityPanel({
+  bo,
+  onChange,
+  publishedProcesses,
+  currentProcessKey,
+}: {
+  bo: any;
+  onChange: (props: Record<string, unknown>) => void;
+  publishedProcesses: PublishedProcessOption[];
+  currentProcessKey?: string;
+}) {
+  const { t } = useTranslation();
+  const options = publishedProcesses.filter((p) => p.process_key !== currentProcessKey);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs font-semibold uppercase text-slate-400">{t('bpmnDesigner.callActivityTitle')}</p>
+      <Field label={t('bpmnDesigner.fieldLabel')}>
+        <input className="input" defaultValue={bo.name ?? ''} onBlur={(e) => onChange({ name: e.target.value })} />
+      </Field>
+      <Field label={t('bpmnDesigner.callActivityProcessLabel')}>
+        <select
+          className="input"
+          defaultValue={bo.calledElement ?? ''}
+          onChange={(e) => onChange({ calledElement: e.target.value || undefined })}
+        >
+          <option value="">{t('bpmnDesigner.noneOption')}</option>
+          {options.map((p) => (
+            <option key={p.process_key} value={p.process_key}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <p className="text-xs text-slate-500">{t('bpmnDesigner.callActivityHint')}</p>
     </div>
   );
 }
