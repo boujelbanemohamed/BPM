@@ -71,6 +71,15 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+// Hash bcrypt factice, comparée en lieu et place du hash réel quand l'email
+// est inconnu : sans elle, la réponse pour un email inconnu revient
+// immédiatement alors qu'un mot de passe erroné sur un compte existant
+// attend le temps d'un bcrypt.compare (~50-100ms) — un tiers mesurant la
+// latence de /login pourrait ainsi découvrir quels emails sont enregistrés,
+// exactement ce que /forgot-password évite déjà en renvoyant une réponse
+// identique dans les deux cas. Ne correspond jamais à un vrai mot de passe.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('dummy-password-for-constant-time-login', env.BCRYPT_ROUNDS);
+
 authRouter.post(
   '/login',
   loginLimiter,
@@ -78,20 +87,18 @@ authRouter.post(
     const { email, password } = loginSchema.parse(req.body);
 
     const record = await findUserByEmail(pool, email);
-    if (!record) {
-      res.status(401).json({ error: 'Identifiants invalides' });
-      return;
-    }
+    const passwordOk = await bcrypt.compare(password, record?.password_hash ?? DUMMY_PASSWORD_HASH);
 
-    const passwordOk = await bcrypt.compare(password, record.password_hash);
-    if (!passwordOk) {
-      await writeAuditLog({
-        userId: record.id,
-        action: 'LOGIN_FAILED',
-        entityType: 'user',
-        entityId: record.id,
-        ipAddress: req.ip,
-      });
+    if (!record || !passwordOk) {
+      if (record) {
+        await writeAuditLog({
+          userId: record.id,
+          action: 'LOGIN_FAILED',
+          entityType: 'user',
+          entityId: record.id,
+          ipAddress: req.ip,
+        });
+      }
       res.status(401).json({ error: 'Identifiants invalides' });
       return;
     }

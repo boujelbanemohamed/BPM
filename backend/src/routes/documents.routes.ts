@@ -48,8 +48,14 @@ const upload = multer({
 
 documentsRouter.post(
   '/instances/:instanceId/documents',
-  upload.single('file'),
-  asyncHandler(async (req, res) => {
+  // Vérifie l'accès à l'instance et le droit de dépôt à cette étape AVANT
+  // upload.single('file') : multer écrit le fichier sur disque dès qu'il
+  // reçoit la requête multipart, donc le placer avant ce contrôle laisserait
+  // n'importe quel utilisateur authentifié faire écrire des fichiers pour une
+  // instance à laquelle il n'a pas accès (rejetés ensuite par le handler,
+  // mais déjà présents sur disque, sans ligne en base et donc jamais
+  // nettoyés — épuisement d'espace disque). Même ordre que library.routes.ts.
+  asyncHandler(async (req, _res, next) => {
     const { instance, tasks } = await loadInstanceContext(pool, req.params.instanceId);
     if (!isInstanceParticipant(instance, tasks, req.user!)) {
       throw new HttpError(403, "Vous n'avez pas accès à cette instance");
@@ -61,6 +67,10 @@ documentsRouter.post(
       if (!allowed) throw new HttpError(403, "Vous n'avez pas le droit de déposer un document à cette étape");
     }
 
+    next();
+  }),
+  upload.single('file'),
+  asyncHandler(async (req, res) => {
     if (!req.file) throw new HttpError(400, 'Aucun fichier fourni (champ "file" attendu)');
 
     const taskId = typeof req.body?.taskId === 'string' && req.body.taskId ? req.body.taskId : null;
@@ -68,7 +78,7 @@ documentsRouter.post(
     const { rows } = await pool.query<DocumentRow>(
       `INSERT INTO documents (instance_id, task_id, filename, mime_type, size_bytes, storage_path, uploaded_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [instance.id, taskId, req.file.originalname, req.file.mimetype, req.file.size, req.file.filename, req.user!.id]
+      [req.params.instanceId, taskId, req.file.originalname, req.file.mimetype, req.file.size, req.file.filename, req.user!.id]
     );
 
     await writeAuditLog({
@@ -76,7 +86,7 @@ documentsRouter.post(
       action: 'DOCUMENT_UPLOADED',
       entityType: 'document',
       entityId: rows[0].id,
-      details: { instanceId: instance.id, filename: req.file.originalname },
+      details: { instanceId: req.params.instanceId, filename: req.file.originalname },
       ipAddress: req.ip,
     });
 
