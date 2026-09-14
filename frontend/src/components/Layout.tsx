@@ -29,7 +29,7 @@ import { SearchBox } from './SearchBox';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+  `flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-xs font-medium transition-colors ${
     isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
   }`;
 
@@ -103,12 +103,12 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
       <button
         ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
-        className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+        className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-xs font-medium transition-colors ${
           isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
         }`}
       >
-        <Settings size={16} /> {t('common.nav.configuration')}
-        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        <Settings size={15} /> {t('common.nav.configuration')}
+        <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open &&
         position &&
@@ -213,34 +213,34 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="flex items-center gap-4 border-b border-slate-200 bg-white px-6 py-3 shadow-sm">
-        <span className="flex shrink-0 items-center gap-2 text-lg font-bold text-brand-700">
+      <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+        <span className="flex shrink-0 items-center gap-1.5 text-lg font-bold text-brand-700">
           <Workflow size={22} /> {t('common.appName')}
         </span>
-        <nav className="scrollbar-hide flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+        <nav className="scrollbar-hide flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
           <NavLink to="/dashboard" className={navLinkClass}>
-            <LayoutDashboard size={16} /> {t('common.nav.dashboard')}
+            <LayoutDashboard size={15} /> {t('common.nav.dashboard')}
           </NavLink>
           <NavLink to="/processes" className={navLinkClass}>
-            <LayoutGrid size={16} /> {t('common.nav.processes')}
+            <LayoutGrid size={15} /> {t('common.nav.processes')}
           </NavLink>
           <NavLink to="/tasks" className={navLinkClass}>
-            <ClipboardList size={16} /> {t('common.nav.myTasks')}
+            <ClipboardList size={15} /> {t('common.nav.myTasks')}
           </NavLink>
           <NavLink to="/instances" className={navLinkClass}>
-            <PlayCircle size={16} /> {t('common.nav.instances')}
+            <PlayCircle size={15} /> {t('common.nav.instances')}
           </NavLink>
           <NavLink to="/clients" className={navLinkClass}>
-            <Users size={16} /> {t('common.nav.clients')}
+            <Users size={15} /> {t('common.nav.clients')}
           </NavLink>
           {hasAccess('DOCUMENTS', 'VIEW') && (
             <NavLink to="/documents" className={navLinkClass}>
-              <FolderOpen size={16} /> {t('common.nav.documents')}
+              <FolderOpen size={15} /> {t('common.nav.documents')}
             </NavLink>
           )}
           {hasAccess('FIELDS_REGISTRY', 'VIEW') && (
             <NavLink to="/admin/fields" className={navLinkClass}>
-              <ListTree size={16} /> {t('common.nav.fields')}
+              <ListTree size={15} /> {t('common.nav.fields')}
             </NavLink>
           )}
           <ConfigMenu hasAccess={hasAccess} />
