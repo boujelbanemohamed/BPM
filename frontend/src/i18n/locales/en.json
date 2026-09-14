@@ -2,6 +2,7 @@
   "common": {
     "appName": "BPM Platform",
     "nav": {
+      "dashboard": "Dashboard",
       "processes": "Processes",
       "myTasks": "My tasks",
       "instances": "Instances",
@@ -37,6 +38,43 @@
       "previous": "Previous",
       "next": "Next",
       "range": "{{from}}–{{to}} / {{total}}"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "kpis": {
+      "runningInstances": "Running instances",
+      "myPendingTasks": "My pending tasks",
+      "publishedProcesses": "Published processes",
+      "clients": "Clients"
+    },
+    "statusBreakdown": {
+      "title": "Instance breakdown",
+      "empty": "No instances yet.",
+      "labels": {
+        "RUNNING": "Running",
+        "COMPLETED": "Completed",
+        "CANCELLED": "Cancelled"
+      }
+    },
+    "weeklyVolume": {
+      "title": "Instances started (last 8 weeks)",
+      "hint": "Number of instances started per week (Monday to Sunday)."
+    },
+    "myTasks": {
+      "title": "My pending tasks",
+      "viewAll": "View all",
+      "empty": "No pending tasks. Well done!"
+    },
+    "recentActivity": {
+      "title": "Recent activity",
+      "empty": "No recent activity.",
+      "systemActor": "System",
+      "events": {
+        "STARTED": "Instance started: {{process}}",
+        "COMPLETED": "Process completed: {{process}}",
+        "CANCELLED": "Process cancelled: {{process}}"
+      }
     }
   },
   "processes": {

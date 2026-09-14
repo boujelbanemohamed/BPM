@@ -2,6 +2,7 @@
   "common": {
     "appName": "BPM Platform",
     "nav": {
+      "dashboard": "Tableau de bord",
       "processes": "Processus",
       "myTasks": "Mes tâches",
       "instances": "Instances",
@@ -37,6 +38,43 @@
       "previous": "Précédent",
       "next": "Suivant",
       "range": "{{from}}–{{to}} / {{total}}"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "kpis": {
+      "runningInstances": "Instances en cours",
+      "myPendingTasks": "Mes tâches en attente",
+      "publishedProcesses": "Processus publiés",
+      "clients": "Clients"
+    },
+    "statusBreakdown": {
+      "title": "Répartition des instances",
+      "empty": "Aucune instance pour le moment.",
+      "labels": {
+        "RUNNING": "En cours",
+        "COMPLETED": "Terminées",
+        "CANCELLED": "Annulées"
+      }
+    },
+    "weeklyVolume": {
+      "title": "Instances démarrées (8 dernières semaines)",
+      "hint": "Nombre d'instances démarrées par semaine (lundi au dimanche)."
+    },
+    "myTasks": {
+      "title": "Mes tâches en attente",
+      "viewAll": "Voir tout",
+      "empty": "Aucune tâche en attente. Bien joué !"
+    },
+    "recentActivity": {
+      "title": "Activité récente",
+      "empty": "Aucune activité récente.",
+      "systemActor": "Système",
+      "events": {
+        "STARTED": "Instance démarrée : {{process}}",
+        "COMPLETED": "Processus terminé : {{process}}",
+        "CANCELLED": "Processus annulé : {{process}}"
+      }
     }
   },
   "processes": {

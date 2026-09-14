@@ -11,6 +11,47 @@ export type NotificationType =
 
 export type PageAccessLevel = 'NONE' | 'VIEW' | 'FULL';
 
+export interface DashboardKpis {
+  runningInstances: number;
+  myPendingTasks: number;
+  publishedProcesses: number;
+  clients: number;
+}
+
+export interface StatusBreakdownEntry {
+  status: InstanceStatus;
+  count: number;
+}
+
+export interface WeeklyVolumePoint {
+  weekStart: string;
+  count: number;
+}
+
+export interface DashboardTaskPreview {
+  id: string;
+  stepName: string;
+  processName: string;
+  instanceId: string;
+  createdAt: string;
+}
+
+export interface DashboardActivityItem {
+  instanceId: string;
+  processName: string;
+  event: 'STARTED' | 'COMPLETED' | 'CANCELLED';
+  at: string;
+  actorName: string | null;
+}
+
+export interface DashboardSummary {
+  kpis: DashboardKpis;
+  statusBreakdown: StatusBreakdownEntry[];
+  weeklyVolume: WeeklyVolumePoint[];
+  myTasks: DashboardTaskPreview[];
+  recentActivity: DashboardActivityItem[];
+}
+
 export const PAGE_KEYS = [
   'PROCESSES_DESIGN',
   'PERMISSIONS_MATRIX',

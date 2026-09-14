@@ -22,6 +22,7 @@ import { clientsRouter } from './routes/clients.routes';
 import { adminMetaRouter } from './routes/adminMeta.routes';
 import { adminSettingsRouter } from './routes/adminSettings.routes';
 import { searchRouter } from './routes/search.routes';
+import { dashboardRouter } from './routes/dashboard.routes';
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use('/api/clients', clientsRouter);
 app.use('/api/admin', adminMetaRouter);
 app.use('/api/admin', adminSettingsRouter);
 app.use('/api/search', searchRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

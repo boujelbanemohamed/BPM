@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Database,
   FolderOpen,
+  LayoutDashboard,
   LayoutGrid,
   ListTree,
   LogOut,
@@ -124,6 +125,9 @@ export function Layout() {
             <Workflow size={22} /> {t('common.appName')}
           </span>
           <nav className="flex items-center gap-1">
+            <NavLink to="/dashboard" className={navLinkClass}>
+              <LayoutDashboard size={16} /> {t('common.nav.dashboard')}
+            </NavLink>
             <NavLink to="/processes" className={navLinkClass}>
               <LayoutGrid size={16} /> {t('common.nav.processes')}
             </NavLink>

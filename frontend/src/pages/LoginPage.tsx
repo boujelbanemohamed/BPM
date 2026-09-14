@@ -25,7 +25,7 @@ export function LoginPage() {
       if (result.requiresTwoFactor && result.pendingToken) {
         setPendingToken(result.pendingToken);
       } else {
-        navigate('/processes');
+        navigate('/dashboard');
       }
     } catch (err) {
       setError((err as Error).message);
@@ -41,7 +41,7 @@ export function LoginPage() {
     setBusy(true);
     try {
       await verifyTwoFactor(pendingToken, code.trim());
-      navigate('/processes');
+      navigate('/dashboard');
     } catch (err) {
       setError((err as Error).message);
     } finally {

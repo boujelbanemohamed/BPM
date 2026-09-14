@@ -4,6 +4,7 @@ import { ProtectedRoute, RequirePageAccess } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { ProcessesPage } from './pages/ProcessesPage';
 import { ProcessTrashPage } from './pages/ProcessTrashPage';
 import { ProcessDesignerPage } from './pages/ProcessDesignerPage';
@@ -38,7 +39,8 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/processes" replace />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/processes" element={<ProcessesPage />} />
         <Route path="/processes/trash" element={<ProcessTrashPage />} />
         <Route path="/processes/:id" element={<ProcessDesignerPage />} />
@@ -123,7 +125,7 @@ export default function App() {
           }
         />
       </Route>
-      <Route path="*" element={<Navigate to="/processes" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

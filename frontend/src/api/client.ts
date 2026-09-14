@@ -13,6 +13,7 @@ import {
   PageAccessLevel,
   PageKey,
   PermissionMatrixRow,
+  DashboardSummary,
   InstanceSummary,
   ProcessDefinition,
   ProcessInstance,
@@ -521,6 +522,7 @@ export const api = {
     return request<{ clients: ClientItem[]; total: number }>(`/clients${suffix}`);
   },
   search: (q: string) => request<SearchResults>(`/search?q=${encodeURIComponent(q)}`),
+  getDashboard: () => request<DashboardSummary>('/dashboard'),
   getClient: (id: string) => request<{ client: ClientItem; instances: ProcessInstance[] }>(`/clients/${id}`),
   createClient: (payload: { name: string; email?: string; phone?: string; address?: string; notes?: string }) =>
     request<{ client: ClientItem }>('/clients', { method: 'POST', body: payload }),
