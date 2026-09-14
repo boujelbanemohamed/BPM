@@ -148,6 +148,30 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
     addElement('bpmn:CallActivity', 'Sous-processus');
   }
 
+  function addBoundaryTimerEvent() {
+    const modeler = modelerRef.current;
+    if (!modeler) return;
+    if (!selected || selected.type !== 'bpmn:UserTask') {
+      setError(t('bpmnDesigner.boundaryTimerRequiresTaskSelected'));
+      return;
+    }
+    setError(null);
+    const host = selected;
+    const elementFactory = modeler.get('elementFactory');
+    const modeling = modeler.get('modeling');
+    const bpmnFactory = modeler.get('bpmnFactory');
+
+    const shape = elementFactory.createShape({
+      type: 'bpmn:BoundaryEvent',
+      host,
+      eventDefinitions: [bpmnFactory.create('bpmn:TimerEventDefinition', {})],
+    });
+    const position = { x: host.x + host.width, y: host.y + host.height };
+    modeling.createShape(shape, position, host, { attach: true });
+    modeling.updateProperties(shape, { name: 'Échéance', id: nextId('BoundaryEvent') });
+    setSelected(shape);
+  }
+
   return (
     <div className="flex h-[calc(100vh-190px)] overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-1 flex-col">
@@ -161,6 +185,7 @@ export const BpmnDesigner = forwardRef<BpmnDesignerHandle, Props>(function BpmnD
             <ToolbarButton onClick={addErrorEndEvent}>{t('bpmnDesigner.toolbar.addErrorEndEvent')}</ToolbarButton>
             <ToolbarButton onClick={addTimerCatchEvent}>{t('bpmnDesigner.toolbar.addTimerCatchEvent')}</ToolbarButton>
             <ToolbarButton onClick={addCallActivity}>{t('bpmnDesigner.toolbar.addCallActivity')}</ToolbarButton>
+            <ToolbarButton onClick={addBoundaryTimerEvent}>{t('bpmnDesigner.toolbar.addBoundaryTimerEvent')}</ToolbarButton>
             <span className="ml-2 self-center text-xs text-slate-400">{t('bpmnDesigner.toolbar.paletteHint')}</span>
           </div>
         )}
@@ -248,7 +273,29 @@ function ElementPanel({
   }
 
   if (type === 'bpmn:IntermediateCatchEvent') {
-    return <TimerCatchEventPanel element={element} modelerRef={modelerRef} bo={bo} onChange={updateProps} />;
+    return (
+      <TimerPanel
+        element={element}
+        modelerRef={modelerRef}
+        bo={bo}
+        onChange={updateProps}
+        title={t('bpmnDesigner.timerCatchEventTitle')}
+        hint={t('bpmnDesigner.timerDurationHint')}
+      />
+    );
+  }
+
+  if (type === 'bpmn:BoundaryEvent') {
+    return (
+      <TimerPanel
+        element={element}
+        modelerRef={modelerRef}
+        bo={bo}
+        onChange={updateProps}
+        title={t('bpmnDesigner.boundaryTimerEventTitle')}
+        hint={t('bpmnDesigner.boundaryTimerDurationHint')}
+      />
+    );
   }
 
   if (type === 'bpmn:CallActivity') {
@@ -409,16 +456,20 @@ function StartEventPanel({ bo, onChange }: { bo: any; onChange: (props: Record<s
   );
 }
 
-function TimerCatchEventPanel({
+function TimerPanel({
   element,
   modelerRef,
   bo,
   onChange,
+  title,
+  hint,
 }: {
   element: any;
   modelerRef: React.MutableRefObject<any>;
   bo: any;
   onChange: (props: Record<string, unknown>) => void;
+  title: string;
+  hint: string;
 }) {
   const { t } = useTranslation();
   const timerDef = bo.eventDefinitions?.[0];
@@ -436,7 +487,7 @@ function TimerCatchEventPanel({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-semibold uppercase text-slate-400">{t('bpmnDesigner.timerCatchEventTitle')}</p>
+      <p className="text-xs font-semibold uppercase text-slate-400">{title}</p>
       <Field label={t('bpmnDesigner.fieldLabel')}>
         <input className="input" defaultValue={bo.name ?? ''} onBlur={(e) => onChange({ name: e.target.value })} />
       </Field>
@@ -449,7 +500,7 @@ function TimerCatchEventPanel({
           placeholder="PT30M"
         />
       </Field>
-      <p className="text-xs text-slate-500">{t('bpmnDesigner.timerDurationHint')}</p>
+      <p className="text-xs text-slate-500">{hint}</p>
     </div>
   );
 }

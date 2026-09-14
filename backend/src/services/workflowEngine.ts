@@ -269,6 +269,58 @@ async function startSubProcess(
 }
 
 /**
+ * Programme un minuteur d'échéance (bpmn:boundaryEvent attaché à une
+ * userTask) : à la différence de scheduleTimer (minuteur "normal" qui EST
+ * l'étape courante du flux), celui-ci s'ajoute en parallèle d'une tâche déjà
+ * créée et ne touche donc jamais current_step_name/current_element_id — la
+ * tâche reste l'étape affichée tant que le délai n'est pas écoulé.
+ */
+async function scheduleBoundaryTimer(
+  client: PoolClient,
+  instance: ProcessInstanceRow,
+  boundaryNode: BpmnNode
+): Promise<void> {
+  const fireAt = new Date(Date.now() + boundaryNode.timerDurationMs!);
+  await client.query(
+    `INSERT INTO scheduled_timers (instance_id, element_id, fire_at)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (instance_id, element_id) DO UPDATE SET fire_at = EXCLUDED.fire_at`,
+    [instance.id, boundaryNode.id, fireAt]
+  );
+  await writeAuditLogTx(client, {
+    userId: null,
+    action: 'TIMER_SCHEDULED',
+    entityType: 'process_instance',
+    entityId: instance.id,
+    details: { elementId: boundaryNode.id, fireAt: fireAt.toISOString(), boundaryFor: boundaryNode.attachedToTaskId },
+  });
+}
+
+/**
+ * Annule tout minuteur d'échéance encore programmé pour la tâche
+ * `taskElementId` (un ou plusieurs bpmn:boundaryEvent peuvent y être
+ * attachés) : appelé quand cette tâche est complétée normalement (le délai
+ * ne doit plus jouer), ou quand un premier minuteur d'échéance vient de la
+ * faire expirer (les autres, désormais sans objet, sont nettoyés au passage
+ * plutôt que de laisser des lignes orphelines dans scheduled_timers).
+ */
+async function cancelBoundaryTimers(
+  client: PoolClient,
+  graph: BpmnGraph,
+  taskElementId: string,
+  instanceId: string
+): Promise<void> {
+  const boundaryNodeIds = graph.nodes
+    .filter((n) => n.type === 'boundaryTimerEvent' && n.attachedToTaskId === taskElementId)
+    .map((n) => n.id);
+  if (boundaryNodeIds.length === 0) return;
+  await client.query(`DELETE FROM scheduled_timers WHERE instance_id = $1 AND element_id = ANY($2::text[])`, [
+    instanceId,
+    boundaryNodeIds,
+  ]);
+}
+
+/**
  * Fait progresser un unique token le long de `flow` jusqu'à son nœud
  * cible, et traite ce nœud. Une passerelle parallèle "diverge" (fan-out)
  * en appelant cette fonction une fois par flux sortant ; elle "converge"
@@ -453,6 +505,13 @@ async function advanceViaFlow(
           isDelegated: false,
         });
       }
+    }
+
+    const attachedBoundaryTimers = graph.nodes.filter(
+      (n) => n.type === 'boundaryTimerEvent' && n.attachedToTaskId === targetNode.id
+    );
+    for (const boundaryNode of attachedBoundaryTimers) {
+      await scheduleBoundaryTimer(client, instRows[0], boundaryNode);
     }
 
     return instRows[0];
@@ -757,6 +816,8 @@ export async function completeTaskAndAdvance(
   );
   if (rowCount === 0) throw new HttpError(409, 'Cette tâche a déjà été traitée');
 
+  await cancelBoundaryTimers(client, graph, task.element_id, instance.id);
+
   const mergedContext = { ...instance.form_data, ...formData };
   const { rows } = await client.query<ProcessInstanceRow>(
     `UPDATE process_instances SET form_data = $1 WHERE id = $2 RETURNING *`,
@@ -787,6 +848,13 @@ export async function completeTaskAndAdvance(
  * l'instance n'est plus RUNNING, si le minuteur n'est pas encore dû, ou
  * s'il a déjà été traité — cas normal en cas de concurrence entre deux
  * exécutions du poller, pas une anomalie à remonter.
+ *
+ * Deux natures de minuteur, distinguées ici par le type du nœud rechargé
+ * depuis le XML (pas par une colonne dédiée) : un minuteur "normal"
+ * (timerCatchEvent) EST l'étape courante du flux et relance directement
+ * `advance` depuis lui ; un minuteur d'échéance (boundaryTimerEvent, attaché
+ * à une userTask) annule la tâche encore PENDING puis relance `advance`
+ * depuis le minuteur lui-même, qui a sa propre transition sortante.
  */
 export async function fireDueTimer(
   client: PoolClient,
@@ -812,6 +880,32 @@ export async function fireDueTimer(
   if (!process) return null;
 
   const graph = parseBpmnXml(process.bpmn_xml);
+  const targetNode = findNode(graph, params.elementId);
+
+  if (targetNode.type === 'boundaryTimerEvent') {
+    const { rows: taskRows } = await client.query<TaskRow>(
+      `SELECT * FROM tasks WHERE instance_id = $1 AND element_id = $2 AND status = 'PENDING'`,
+      [instance.id, targetNode.attachedToTaskId]
+    );
+    const task = taskRows[0];
+    // Déjà complétée (ou annulée par un autre minuteur d'échéance sur la
+    // même tâche) entre la programmation et ce déclenchement : plus rien à
+    // interrompre, cas normal de concurrence, pas une anomalie.
+    if (!task) return null;
+
+    await client.query(`UPDATE tasks SET status = 'CANCELLED' WHERE id = $1`, [task.id]);
+    await cancelBoundaryTimers(client, graph, targetNode.attachedToTaskId!, instance.id);
+
+    await writeAuditLogTx(client, {
+      userId: null,
+      action: 'TASK_TIMEOUT',
+      entityType: 'task',
+      entityId: task.id,
+      details: { elementId: targetNode.id, stepName: task.step_name },
+    });
+
+    return advance(client, graph, process, instance, targetNode.id);
+  }
 
   await writeAuditLogTx(client, {
     userId: null,

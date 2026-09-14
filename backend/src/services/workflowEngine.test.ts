@@ -861,3 +861,165 @@ describe('workflowEngine — callActivity (sous-processus réutilisable)', () =>
     });
   });
 });
+
+// Start -> Task1 (avec un boundaryEvent/minuteur d'échéance attaché) -> soit
+// EndNormal (complétion normale de la tâche), soit EndTimeout (si le délai
+// expire avant complétion).
+const BOUNDARY_TIMER_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_boundary" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_boundary" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:userTask id="Task1" name="Tâche avec échéance" bpm:assigneeRole="OPERATOR" />
+    <bpmn:boundaryEvent id="Boundary1" name="Échéance" attachedToRef="Task1">
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration>PT24H</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="EndNormal" name="Fin normale" />
+    <bpmn:endEvent id="EndTimeout" name="Fin timeout" />
+    <bpmn:sequenceFlow id="Flow1" sourceRef="Start" targetRef="Task1" />
+    <bpmn:sequenceFlow id="Flow2" sourceRef="Task1" targetRef="EndNormal" />
+    <bpmn:sequenceFlow id="Flow3" sourceRef="Boundary1" targetRef="EndTimeout" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+// Fork parallèle où Task_A porte un minuteur d'échéance et Task_B n'en a
+// pas : sert à vérifier qu'un timeout sur une branche n'affecte pas sa
+// sœur toujours en attente de complétion humaine.
+const FORK_THEN_BOUNDARY_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_forkboundary" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_forkboundary" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:parallelGateway id="Fork" name="Fork" />
+    <bpmn:userTask id="Task_A" name="Tâche A" bpm:assigneeRole="OPERATOR" />
+    <bpmn:boundaryEvent id="Boundary_A" name="Échéance A" attachedToRef="Task_A">
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration>PT1H</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:userTask id="Task_B" name="Tâche B" bpm:assigneeRole="VALIDATOR" />
+    <bpmn:userTask id="Task_Escalation" name="Escalade" bpm:assigneeRole="ADMIN" />
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Fork" />
+    <bpmn:sequenceFlow id="Flow_A" sourceRef="Fork" targetRef="Task_A" />
+    <bpmn:sequenceFlow id="Flow_B" sourceRef="Fork" targetRef="Task_B" />
+    <bpmn:sequenceFlow id="Flow_boundary" sourceRef="Boundary_A" targetRef="Task_Escalation" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+describe('workflowEngine — boundary timer event (minuteur d\'échéance)', () => {
+  it('scheduling a task with an attached boundary timer does not overwrite current_step_name', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, BOUNDARY_TIMER_XML, adminId);
+
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      expect(instance.status).toBe('RUNNING');
+      expect(instance.current_step_name).toBe('Tâche avec échéance');
+      expect(instance.current_element_id).toBe('Task1');
+
+      const { rows: timerRows } = await client.query(
+        `SELECT * FROM scheduled_timers WHERE instance_id = $1 AND element_id = 'Boundary1'`,
+        [instance.id]
+      );
+      expect(timerRows).toHaveLength(1);
+    });
+  });
+
+  it('completing the task in time cancels the scheduled boundary timer', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, BOUNDARY_TIMER_XML, adminId);
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+      const task = (await pendingTasks(client, instance.id))[0];
+
+      const updated = await completeTaskAndAdvance(client, {
+        task,
+        instance,
+        process,
+        completedById: adminId,
+        formData: {},
+      });
+
+      expect(updated.status).toBe('COMPLETED');
+      expect(updated.current_step_name).toBe('Fin normale');
+
+      const { rows: timerRows } = await client.query(
+        `SELECT * FROM scheduled_timers WHERE instance_id = $1 AND element_id = 'Boundary1'`,
+        [instance.id]
+      );
+      expect(timerRows).toHaveLength(0);
+    });
+  });
+
+  it('fireDueTimer past the deadline cancels the task and routes through the boundary outgoing flow', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, BOUNDARY_TIMER_XML, adminId);
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+      const task = (await pendingTasks(client, instance.id))[0];
+
+      await markTimerDue(client, instance.id, 'Boundary1');
+      const updated = await fireDueTimer(client, { instanceId: instance.id, elementId: 'Boundary1' });
+
+      expect(updated?.status).toBe('COMPLETED');
+      expect(updated?.current_step_name).toBe('Fin timeout');
+
+      const { rows: taskRows } = await client.query<TaskRow>('SELECT * FROM tasks WHERE id = $1', [task.id]);
+      expect(taskRows[0].status).toBe('CANCELLED');
+
+      const { rows: auditRows } = await client.query<{ action: string }>(
+        `SELECT action FROM audit_logs WHERE entity_type = 'task' AND entity_id = $1 ORDER BY created_at`,
+        [task.id]
+      );
+      expect(auditRows.map((r) => r.action)).toContain('TASK_TIMEOUT');
+    });
+  });
+
+  it('fireDueTimer is a no-op (returns null) if the task was already completed before the deadline', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, BOUNDARY_TIMER_XML, adminId);
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+      const task = (await pendingTasks(client, instance.id))[0];
+
+      await completeTaskAndAdvance(client, { task, instance, process, completedById: adminId, formData: {} });
+
+      // Le minuteur a déjà été supprimé par cancelBoundaryTimers, mais on
+      // vérifie que fireDueTimer resterait de toute façon sûr si on
+      // l'invoquait directement (défense en profondeur, comme pour le
+      // minuteur normal).
+      const result = await fireDueTimer(client, { instanceId: instance.id, elementId: 'Boundary1' });
+      expect(result).toBeNull();
+    });
+  });
+
+  it('a timeout on one parallel branch cancels only that branch\'s task, leaving its sibling untouched', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, FORK_THEN_BOUNDARY_XML, adminId);
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      const taskA = (await pendingTasks(client, instance.id)).find((t) => t.step_name === 'Tâche A')!;
+
+      await markTimerDue(client, instance.id, 'Boundary_A');
+      await fireDueTimer(client, { instanceId: instance.id, elementId: 'Boundary_A' });
+
+      const { rows: taskARows } = await client.query<TaskRow>('SELECT * FROM tasks WHERE id = $1', [taskA.id]);
+      expect(taskARows[0].status).toBe('CANCELLED');
+
+      const stillPending = await pendingTasks(client, instance.id);
+      expect(stillPending.map((t) => t.step_name)).toEqual(['Escalade', 'Tâche B']);
+
+      const { rows: instRows } = await client.query<{ status: string }>(
+        'SELECT status FROM process_instances WHERE id = $1',
+        [instance.id]
+      );
+      expect(instRows[0].status).toBe('RUNNING');
+    });
+  });
+});

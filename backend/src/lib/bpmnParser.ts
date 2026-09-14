@@ -11,7 +11,8 @@ export type BpmnNodeType =
   | 'inclusiveGateway'
   | 'endEvent'
   | 'timerCatchEvent'
-  | 'callActivity';
+  | 'callActivity'
+  | 'boundaryTimerEvent';
 
 export interface BpmnNode {
   id: string;
@@ -27,6 +28,8 @@ export interface BpmnNode {
   timerDurationMs?: number;
   /** Uniquement pour un callActivity : process_key du sous-processus (autre processus publié) à instancier. */
   calledProcessKey?: string;
+  /** Uniquement pour un boundaryTimerEvent : id de la userTask à laquelle ce minuteur d'échéance est attaché. */
+  attachedToTaskId?: string;
 }
 
 export interface BpmnFlow {
@@ -190,6 +193,38 @@ export function parseBpmnXml(xml: string): BpmnGraph {
       name: el['@_name'] ?? 'Sous-processus',
       formFields: [],
       calledProcessKey,
+    });
+  }
+
+  for (const el of asArray(process.boundaryEvent)) {
+    if (!('timerEventDefinition' in el)) continue; // seul le minuteur est pris en charge pour l'instant
+    const attachedToTaskId = el['@_attachedToRef'];
+    if (!attachedToTaskId) {
+      throw new HttpError(400, `Le minuteur d'échéance "${el['@_id']}" doit être attaché à une tâche (bpmn:attachedToRef)`);
+    }
+    if (el['@_cancelActivity'] === 'false') {
+      throw new HttpError(
+        400,
+        `Minuteur d'échéance "${el['@_id']}" : seuls les événements interruptifs sont pris en charge (cancelActivity=true, valeur par défaut)`
+      );
+    }
+    const durationRaw = textContent(el.timerEventDefinition?.timeDuration);
+    if (!durationRaw) {
+      throw new HttpError(400, `Le minuteur d'échéance "${el['@_id']}" doit avoir une durée (bpmn:timeDuration, ex. PT24H)`);
+    }
+    let timerDurationMs: number;
+    try {
+      timerDurationMs = parseIsoDurationMs(durationRaw);
+    } catch (err) {
+      throw new HttpError(400, `Minuteur d'échéance "${el['@_id']}" : ${(err as Error).message}`);
+    }
+    nodes.push({
+      id: el['@_id'],
+      type: 'boundaryTimerEvent',
+      name: el['@_name'] ?? 'Échéance',
+      formFields: [],
+      attachedToTaskId,
+      timerDurationMs,
     });
   }
 

@@ -181,3 +181,58 @@ describe('parseBpmnXml — callActivity (sous-processus)', () => {
     expect(() => parseBpmnXml(xml)).toThrow(/doit référencer un processus/);
   });
 });
+
+const BOUNDARY_TIMER_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_boundary" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_boundary" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:userTask id="Task1" name="Tâche avec échéance" bpm:assigneeRole="OPERATOR" />
+    <bpmn:boundaryEvent id="Boundary1" name="Échéance" attachedToRef="Task1">
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDuration>PT24H</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="EndNormal" name="Fin normale" />
+    <bpmn:endEvent id="EndTimeout" name="Fin timeout" />
+    <bpmn:sequenceFlow id="Flow1" sourceRef="Start" targetRef="Task1" />
+    <bpmn:sequenceFlow id="Flow2" sourceRef="Task1" targetRef="EndNormal" />
+    <bpmn:sequenceFlow id="Flow3" sourceRef="Boundary1" targetRef="EndTimeout" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
+describe('parseBpmnXml — boundaryEvent (minuteur d\'échéance)', () => {
+  it('parses a boundaryEvent with a timerEventDefinition as a node of type "boundaryTimerEvent"', () => {
+    const graph = parseBpmnXml(BOUNDARY_TIMER_XML);
+    const node = findNode(graph, 'Boundary1');
+    expect(node.type).toBe('boundaryTimerEvent');
+    expect(node.name).toBe('Échéance');
+    expect(node.attachedToTaskId).toBe('Task1');
+    expect(node.timerDurationMs).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it('the boundary event outgoing flow is parsed like any other node', () => {
+    const graph = parseBpmnXml(BOUNDARY_TIMER_XML);
+    const flows = outgoingFlows(graph, 'Boundary1');
+    expect(flows.map((f) => f.target)).toEqual(['EndTimeout']);
+  });
+
+  it('rejects a boundaryEvent with no attachedToRef', () => {
+    const xml = BOUNDARY_TIMER_XML.replace(' attachedToRef="Task1"', '');
+    expect(() => parseBpmnXml(xml)).toThrow(/doit être attaché à une tâche/);
+  });
+
+  it('rejects a non-interrupting boundaryEvent (cancelActivity=false)', () => {
+    const xml = BOUNDARY_TIMER_XML.replace('attachedToRef="Task1"', 'attachedToRef="Task1" cancelActivity="false"');
+    expect(() => parseBpmnXml(xml)).toThrow(/interruptifs/);
+  });
+
+  it('rejects a boundaryEvent with no timeDuration', () => {
+    const xml = BOUNDARY_TIMER_XML.replace(
+      '<bpmn:timerEventDefinition>\n        <bpmn:timeDuration>PT24H</bpmn:timeDuration>\n      </bpmn:timerEventDefinition>',
+      '<bpmn:timerEventDefinition />'
+    );
+    expect(() => parseBpmnXml(xml)).toThrow(/doit avoir une durée/);
+  });
+});
