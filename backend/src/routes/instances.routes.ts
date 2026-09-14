@@ -11,10 +11,58 @@ import { addComment, listComments } from '../services/commentService';
 import { notifyNewComment } from '../services/notificationService';
 import { writeAuditLog } from '../lib/audit';
 import { paginationClause, paginationQuerySchema } from '../lib/pagination';
+import { toCsv } from '../lib/csv';
 import { AuditLogRow, ProcessInstanceRow, ProcessRow, TaskRow } from '../types';
 
 export const instancesRouter = Router();
 instancesRouter.use(requireAuth);
+
+const instanceFiltersSchema = z.object({
+  status: z.enum(['RUNNING', 'COMPLETED', 'CANCELLED']).optional(),
+  processKey: z.string().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+});
+
+/**
+ * Construit la clause WHERE (visibilité de l'utilisateur + filtres optionnels)
+ * partagée par la liste paginée et l'export CSV, pour ne jamais laisser les
+ * deux diverger sur les règles de visibilité.
+ */
+function buildInstanceFilter(
+  user: { id: string; roleIds: number[]; roles: string[] },
+  filters: z.infer<typeof instanceFiltersSchema>
+): { where: string; params: unknown[] } {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  const isAdmin = user.roles.includes('ADMIN');
+
+  if (!isAdmin) {
+    params.push(user.id, user.roleIds);
+    conditions.push(`(pi.started_by = $${params.length - 1} OR EXISTS (
+      SELECT 1 FROM tasks t WHERE t.instance_id = pi.id
+      AND (t.effective_assignee_id = $${params.length - 1} OR t.assignee_role_id = ANY($${params.length}::int[]))
+    ))`);
+  }
+  if (filters.status) {
+    params.push(filters.status);
+    conditions.push(`pi.status = $${params.length}`);
+  }
+  if (filters.processKey) {
+    params.push(filters.processKey);
+    conditions.push(`p.process_key = $${params.length}`);
+  }
+  if (filters.dateFrom) {
+    params.push(filters.dateFrom);
+    conditions.push(`pi.started_at >= $${params.length}::date`);
+  }
+  if (filters.dateTo) {
+    params.push(filters.dateTo);
+    conditions.push(`pi.started_at < ($${params.length}::date + INTERVAL '1 day')`);
+  }
+
+  return { where: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '', params };
+}
 
 instancesRouter.post(
   '/processes/:processId/start',
@@ -51,16 +99,9 @@ instancesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const pagination = paginationQuerySchema.parse(req.query);
+    const filters = instanceFiltersSchema.parse(req.query);
     const isAdmin = req.user!.roles.includes('ADMIN');
-    const params: unknown[] = [];
-    let where = '';
-    if (!isAdmin) {
-      where = `WHERE pi.started_by = $1 OR EXISTS (
-        SELECT 1 FROM tasks t WHERE t.instance_id = pi.id
-        AND (t.effective_assignee_id = $1 OR t.assignee_role_id = ANY($2::int[]))
-      )`;
-      params.push(req.user!.id, req.user!.roleIds);
-    }
+    const { where, params } = buildInstanceFilter(req.user!, filters);
     const filterParamCount = params.length;
 
     const { rows } = await pool.query<ProcessInstanceRow & { process_name: string; started_by_name: string }>(
@@ -77,6 +118,7 @@ instancesRouter.get(
     const { rows: countRows } = await pool.query<{ count: string }>(
       `SELECT count(*)::text
        FROM process_instances pi
+       JOIN processes p ON p.id = pi.process_id
        ${where}`,
       params.slice(0, filterParamCount)
     );
@@ -91,6 +133,68 @@ instancesRouter.get(
     );
 
     res.json({ instances, total });
+  })
+);
+
+// Liste des processus (regroupés par process_key, indépendamment de la version)
+// ayant au moins une instance visible par l'utilisateur courant, pour peupler
+// le filtre "Processus" de la page Instances sans exiger l'accès à la
+// conception des processus (contrairement à /processes/published-minimal).
+instancesRouter.get(
+  '/filters/processes',
+  asyncHandler(async (req, res) => {
+    const { where, params } = buildInstanceFilter(req.user!, {});
+    const { rows } = await pool.query<{ process_key: string; name: string }>(
+      `SELECT DISTINCT p.process_key, p.name
+       FROM process_instances pi
+       JOIN processes p ON p.id = pi.process_id
+       ${where}
+       ORDER BY p.name ASC`,
+      params
+    );
+    res.json({ processes: rows });
+  })
+);
+
+// Plafond de sécurité sur l'export : au-delà, on retourne quand même un CSV
+// complet des lignes filtrées jusqu'à cette limite plutôt que de bloquer,
+// à affiner en pagination d'export si un déploiement l'atteint un jour.
+const INSTANCE_EXPORT_LIMIT = 5000;
+
+instancesRouter.get(
+  '/export.csv',
+  asyncHandler(async (req, res) => {
+    const filters = instanceFiltersSchema.parse(req.query);
+    const { where, params } = buildInstanceFilter(req.user!, filters);
+
+    const { rows } = await pool.query<
+      ProcessInstanceRow & { process_name: string; started_by_name: string }
+    >(
+      `SELECT pi.*, p.name AS process_name, u.full_name AS started_by_name
+       FROM process_instances pi
+       JOIN processes p ON p.id = pi.process_id
+       JOIN users u ON u.id = pi.started_by
+       ${where}
+       ORDER BY pi.started_at DESC
+       LIMIT ${INSTANCE_EXPORT_LIMIT}`,
+      params
+    );
+
+    const csv = toCsv(
+      ['Processus', 'Statut', 'Étape actuelle', 'Démarrée par', 'Démarrée le', 'Terminée le'],
+      rows.map((r) => [
+        r.process_name,
+        r.status,
+        r.current_step_name ?? '',
+        r.started_by_name,
+        new Date(r.started_at).toLocaleString('fr-FR'),
+        r.completed_at ? new Date(r.completed_at).toLocaleString('fr-FR') : '',
+      ])
+    );
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="instances_export.csv"');
+    res.send(`﻿${csv}`);
   })
 );
 

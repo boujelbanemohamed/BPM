@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollText, Search } from 'lucide-react';
+import { Download, ScrollText, Search } from 'lucide-react';
 import { api } from '../api/client';
 import { AuditLogEntry } from '../types';
 import { Pagination } from '../components/Pagination';
@@ -13,6 +13,7 @@ export function AuditPage() {
   const [total, setTotal] = useState(0);
   const [actionFilter, setActionFilter] = useState('');
   const [offset, setOffset] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   async function refresh() {
     const { logs, total } = await api.listAuditLogs({
@@ -35,11 +36,27 @@ export function AuditPage() {
     refresh();
   }
 
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      await api.exportAuditLogsCsv({ action: actionFilter || undefined });
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl p-6">
-      <h1 className="mb-6 flex items-center gap-2 text-2xl font-bold text-slate-800">
-        <ScrollText size={22} /> {t('audit.title')}
-      </h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
+          <ScrollText size={22} /> {t('audit.title')}
+        </h1>
+        <button onClick={exportCsv} disabled={exporting} className="btn-secondary">
+          <Download size={14} /> {exporting ? t('audit.exporting') : t('audit.export')}
+        </button>
+      </div>
 
       <form onSubmit={applyFilter} className="mb-4 flex items-center gap-2">
         <input

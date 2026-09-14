@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Eye } from 'lucide-react';
+import { Download, Eye } from 'lucide-react';
 import { api } from '../api/client';
-import { ProcessInstance } from '../types';
+import { InstanceStatus, ProcessInstance } from '../types';
 import { ContextLine } from '../components/DynamicForm';
 import { Pagination } from '../components/Pagination';
 
@@ -20,18 +20,103 @@ export function InstancesPage() {
   const [instances, setInstances] = useState<ProcessInstance[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
+  const [status, setStatus] = useState<InstanceStatus | ''>('');
+  const [processKey, setProcessKey] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [processOptions, setProcessOptions] = useState<{ process_key: string; name: string }[]>([]);
+  const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.listInstances({ limit: LIMIT, offset }).then(({ instances, total }) => {
-      setInstances(instances);
-      setTotal(total);
-    });
-  }, [offset]);
+    api.listInstanceProcessFilters().then(({ processes }) => setProcessOptions(processes));
+  }, []);
+
+  useEffect(() => {
+    api
+      .listInstances({
+        limit: LIMIT,
+        offset,
+        status: status || undefined,
+        processKey: processKey || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      })
+      .then(({ instances, total }) => {
+        setInstances(instances);
+        setTotal(total);
+      });
+  }, [offset, status, processKey, dateFrom, dateTo]);
+
+  function resetAndFilter<T>(setter: (v: T) => void, value: T) {
+    setter(value);
+    setOffset(0);
+  }
+
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      await api.exportInstancesCsv({
+        status: status || undefined,
+        processKey: processKey || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl p-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-800">{t('instances.title')}</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-800">{t('instances.title')}</h1>
+        <button onClick={exportCsv} disabled={exporting} className="btn-secondary">
+          <Download size={14} /> {exporting ? t('instances.exporting') : t('instances.export')}
+        </button>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <select
+          className="input w-auto"
+          value={status}
+          onChange={(e) => resetAndFilter(setStatus, e.target.value as InstanceStatus | '')}
+        >
+          <option value="">{t('instances.filters.allStatuses')}</option>
+          <option value="RUNNING">{t('instances.filters.running')}</option>
+          <option value="COMPLETED">{t('instances.filters.completed')}</option>
+          <option value="CANCELLED">{t('instances.filters.cancelled')}</option>
+        </select>
+        <select className="input w-auto" value={processKey} onChange={(e) => resetAndFilter(setProcessKey, e.target.value)}>
+          <option value="">{t('instances.filters.allProcesses')}</option>
+          {processOptions.map((p) => (
+            <option key={p.process_key} value={p.process_key}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1 text-sm text-slate-500">
+          {t('instances.filters.from')}
+          <input
+            type="date"
+            className="input w-auto"
+            value={dateFrom}
+            onChange={(e) => resetAndFilter(setDateFrom, e.target.value)}
+          />
+        </label>
+        <label className="flex items-center gap-1 text-sm text-slate-500">
+          {t('instances.filters.to')}
+          <input
+            type="date"
+            className="input w-auto"
+            value={dateTo}
+            onChange={(e) => resetAndFilter(setDateTo, e.target.value)}
+          />
+        </label>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">

@@ -6,10 +6,41 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { writeAuditLog } from '../lib/audit';
 import { paginationClause, paginationQuerySchema } from '../lib/pagination';
+import { toCsv } from '../lib/csv';
 import { ClientRow, ProcessInstanceRow } from '../types';
 
 export const clientsRouter = Router();
 clientsRouter.use(requireAuth);
+
+const CLIENT_EXPORT_LIMIT = 5000;
+
+// Route statique enregistrée avant GET /:id pour éviter que "export.csv"
+// ne soit interprété comme un identifiant de client.
+clientsRouter.get(
+  '/export.csv',
+  asyncHandler(async (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const { rows } = await pool.query<ClientRow & { instance_count: string }>(
+      `SELECT c.*, count(pi.id)::text AS instance_count
+       FROM clients c
+       LEFT JOIN process_instances pi ON pi.client_id = c.id
+       WHERE $1 = '' OR c.name ILIKE '%' || $1 || '%'
+       GROUP BY c.id
+       ORDER BY c.name ASC
+       LIMIT ${CLIENT_EXPORT_LIMIT}`,
+      [q]
+    );
+
+    const csv = toCsv(
+      ['Nom', 'Email', 'Téléphone', 'Adresse', 'Notes', 'Nombre de dossiers'],
+      rows.map((c) => [c.name, c.email ?? '', c.phone ?? '', c.address ?? '', c.notes ?? '', c.instance_count])
+    );
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="clients_export.csv"');
+    res.send(`﻿${csv}`);
+  })
+);
 
 clientsRouter.get(
   '/',

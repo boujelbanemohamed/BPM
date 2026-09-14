@@ -6,6 +6,7 @@ import {
   DocumentFolder,
   DocumentItem,
   FieldRegistryRow,
+  InstanceStatus,
   LibraryDocumentItem,
   MinimalUser,
   NotificationItem,
@@ -129,6 +130,23 @@ async function request<T>(path: string, options: RequestOptions = {}, retried = 
     throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
   }
   return data as T;
+}
+
+async function downloadFile(path: string, filename: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`/api${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!res.ok) throw new Error(`Échec du téléchargement (${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 type LoginResult =
@@ -364,12 +382,41 @@ export const api = {
       method: 'POST',
       body: { formData },
     }),
-  listInstances: (params: { limit?: number; offset?: number } = {}) => {
+  listInstances: (
+    params: {
+      limit?: number;
+      offset?: number;
+      status?: InstanceStatus;
+      processKey?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    } = {}
+  ) => {
     const query = new URLSearchParams();
     if (params.limit !== undefined) query.set('limit', String(params.limit));
     if (params.offset !== undefined) query.set('offset', String(params.offset));
+    if (params.status) query.set('status', params.status);
+    if (params.processKey) query.set('processKey', params.processKey);
+    if (params.dateFrom) query.set('dateFrom', params.dateFrom);
+    if (params.dateTo) query.set('dateTo', params.dateTo);
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return request<{ instances: ProcessInstance[]; total: number }>(`/instances${suffix}`);
+  },
+  listInstanceProcessFilters: () =>
+    request<{ processes: { process_key: string; name: string }[] }>('/instances/filters/processes'),
+  exportInstancesCsv: async (params: {
+    status?: InstanceStatus;
+    processKey?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }): Promise<void> => {
+    const query = new URLSearchParams();
+    if (params.status) query.set('status', params.status);
+    if (params.processKey) query.set('processKey', params.processKey);
+    if (params.dateFrom) query.set('dateFrom', params.dateFrom);
+    if (params.dateTo) query.set('dateTo', params.dateTo);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    await downloadFile(`/instances/export.csv${suffix}`, 'instances_export.csv');
   },
   getInstance: (id: string) =>
     request<{
@@ -512,6 +559,14 @@ export const api = {
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return request<{ logs: AuditLogEntry[]; total: number }>(`/audit${suffix}`);
   },
+  exportAuditLogsCsv: async (params: { userId?: string; action?: string; entityType?: string } = {}): Promise<void> => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) query.set(key, value);
+    });
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    await downloadFile(`/audit/export.csv${suffix}`, 'audit_export.csv');
+  },
 
   listClients: (q = '', params: { limit?: number; offset?: number } = {}) => {
     const query = new URLSearchParams();
@@ -520,6 +575,10 @@ export const api = {
     if (params.offset !== undefined) query.set('offset', String(params.offset));
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return request<{ clients: ClientItem[]; total: number }>(`/clients${suffix}`);
+  },
+  exportClientsCsv: async (q = ''): Promise<void> => {
+    const suffix = q ? `?q=${encodeURIComponent(q)}` : '';
+    await downloadFile(`/clients/export.csv${suffix}`, 'clients_export.csv');
   },
   search: (q: string) => request<SearchResults>(`/search?q=${encodeURIComponent(q)}`),
   getDashboard: () => request<DashboardSummary>('/dashboard'),

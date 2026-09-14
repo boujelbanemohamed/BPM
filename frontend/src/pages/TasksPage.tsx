@@ -1,15 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Users } from 'lucide-react';
 import { api } from '../api/client';
 import { TaskItem } from '../types';
 import { ContextLine, DynamicForm } from '../components/DynamicForm';
+
+function taskMatches(task: TaskItem, needle: string): boolean {
+  if (task.step_name.toLowerCase().includes(needle)) return true;
+  if ((task.process_name ?? '').toLowerCase().includes(needle)) return true;
+  return Object.values(task.instance_form_data ?? {}).some(
+    (v) => typeof v === 'string' && v.toLowerCase().includes(needle)
+  );
+}
 
 export function TasksPage() {
   const { t } = useTranslation();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const filteredTasks = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return tasks;
+    return tasks.filter((task) => taskMatches(task, needle));
+  }, [tasks, query]);
 
   async function refresh() {
     const { tasks } = await api.myTasks();
@@ -34,8 +49,19 @@ export function TasksPage() {
   return (
     <div className="mx-auto max-w-4xl p-6">
       <h1 className="mb-6 text-2xl font-bold text-slate-800">{t('tasks.title')}</h1>
+      {tasks.length > 0 && (
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            className="input pl-9"
+            placeholder={t('tasks.searchPlaceholder') as string}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      )}
       <div className="space-y-3">
-        {tasks.map((task) => (
+        {filteredTasks.map((task) => (
           <div key={task.id} className="card">
             <div className="flex items-center justify-between">
               <div>
@@ -76,6 +102,9 @@ export function TasksPage() {
           </div>
         ))}
         {tasks.length === 0 && <div className="card text-center text-slate-400">{t('tasks.empty')}</div>}
+        {tasks.length > 0 && filteredTasks.length === 0 && (
+          <div className="card text-center text-slate-400">{t('tasks.noSearchResults')}</div>
+        )}
       </div>
     </div>
   );

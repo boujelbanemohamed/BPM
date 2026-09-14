@@ -226,10 +226,23 @@
     "close": "Fermer",
     "handle": "Traiter",
     "submit": "Valider la tâche",
+    "searchPlaceholder": "Rechercher une tâche (étape, processus, données)…",
+    "noSearchResults": "Aucune tâche ne correspond à cette recherche.",
     "empty": "Aucune tâche en attente."
   },
   "instances": {
     "title": "Instances",
+    "export": "Exporter CSV",
+    "exporting": "Export en cours…",
+    "filters": {
+      "allStatuses": "Tous les statuts",
+      "running": "En cours",
+      "completed": "Terminée",
+      "cancelled": "Annulée",
+      "allProcesses": "Tous les processus",
+      "from": "Du",
+      "to": "Au"
+    },
     "table": {
       "process": "Processus",
       "status": "Statut",
@@ -250,6 +263,8 @@
   "clients": {
     "title": "Clients",
     "new": "Nouveau client",
+    "export": "Exporter CSV",
+    "exporting": "Export en cours…",
     "namePlaceholder": "Nom *",
     "emailPlaceholder": "Email",
     "phonePlaceholder": "Téléphone",
@@ -306,6 +321,8 @@
   },
   "audit": {
     "title": "Audit trail",
+    "export": "Exporter CSV",
+    "exporting": "Export en cours…",
     "filterPlaceholder": "Filtrer par action (ex: TASK_COMPLETED)",
     "filter": "Filtrer",
     "eventCount": "{{count}} événement(s)",

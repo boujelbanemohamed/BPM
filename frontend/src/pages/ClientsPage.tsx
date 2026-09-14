@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Eye, Plus, Search, Users } from 'lucide-react';
+import { Download, Eye, Plus, Search, Users } from 'lucide-react';
 import { api } from '../api/client';
 import { ClientItem } from '../types';
 import { Pagination } from '../components/Pagination';
@@ -19,6 +19,7 @@ export function ClientsPage() {
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
 
   async function refresh(q: string, off: number) {
@@ -65,15 +66,31 @@ export function ClientsPage() {
     }
   }
 
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      await api.exportClientsCsv(query);
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
           <Users size={22} /> {t('clients.title')}
         </h1>
-        <button onClick={() => setCreating(!creating)} className="btn-primary">
-          <Plus size={16} /> {t('clients.new')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCsv} disabled={exporting} className="btn-secondary">
+            <Download size={14} /> {exporting ? t('clients.exporting') : t('clients.export')}
+          </button>
+          <button onClick={() => setCreating(!creating)} className="btn-primary">
+            <Plus size={16} /> {t('clients.new')}
+          </button>
+        </div>
       </div>
 
       {creating && (

@@ -226,10 +226,23 @@
     "close": "Close",
     "handle": "Handle",
     "submit": "Complete task",
+    "searchPlaceholder": "Search a task (step, process, data)…",
+    "noSearchResults": "No task matches this search.",
     "empty": "No pending tasks."
   },
   "instances": {
     "title": "Instances",
+    "export": "Export CSV",
+    "exporting": "Exporting…",
+    "filters": {
+      "allStatuses": "All statuses",
+      "running": "Running",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "allProcesses": "All processes",
+      "from": "From",
+      "to": "To"
+    },
     "table": {
       "process": "Process",
       "status": "Status",
@@ -250,6 +263,8 @@
   "clients": {
     "title": "Clients",
     "new": "New client",
+    "export": "Export CSV",
+    "exporting": "Exporting…",
     "namePlaceholder": "Name *",
     "emailPlaceholder": "Email",
     "phonePlaceholder": "Phone",
@@ -306,6 +321,8 @@
   },
   "audit": {
     "title": "Audit trail",
+    "export": "Export CSV",
+    "exporting": "Exporting…",
     "filterPlaceholder": "Filter by action (e.g. TASK_COMPLETED)",
     "filter": "Filter",
     "eventCount": "{{count}} event(s)",

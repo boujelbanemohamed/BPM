@@ -52,6 +52,22 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => !(r.length === 1 && r[0].trim() === ''));
 }
 
+function csvEscape(value: string): string {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+/** Sérialise des lignes en CSV (RFC 4180, séparateur virgule, fin de ligne CRLF). */
+export function toCsv(headers: string[], rows: (string | number | boolean | null | undefined)[][]): string {
+  const lines = [headers.map(csvEscape).join(',')];
+  for (const row of rows) {
+    lines.push(row.map((v) => csvEscape(v === null || v === undefined ? '' : String(v))).join(','));
+  }
+  return lines.join('\r\n');
+}
+
 export function parseCsvRecords(text: string): Record<string, string>[] {
   const rows = parseCsv(text);
   if (rows.length === 0) return [];
