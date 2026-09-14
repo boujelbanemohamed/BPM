@@ -480,6 +480,28 @@ const FORK_THEN_NORMAL_END_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </bpmn:process>
 </bpmn:definitions>`;
 
+// Même forme que FORK_THEN_NORMAL_END_XML, mais avec le flux vers la fin
+// déclaré AVANT le flux vers la tâche (Flow_toEnd précède Flow_A) : couvre
+// la revue de code ayant relevé que advanceGatewaySync itère les flux
+// sortants dans leur ordre de déclaration XML (bpmnParser.ts) sans
+// s'arrêter dès qu'une branche a terminé l'instance — sans le correctif
+// (arrêt de la boucle dès que l'instance n'est plus RUNNING), ce cas créait
+// une tâche PENDING toute neuve sur une instance déjà COMPLETED.
+const FORK_END_DECLARED_FIRST_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpm="http://bpm-platform.local/schema/1.0"
+                   id="Definitions_forkendfirst" targetNamespace="http://bpm-platform.local/bpmn">
+  <bpmn:process id="Process_forkendfirst" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Début" />
+    <bpmn:parallelGateway id="Fork" name="Fork" />
+    <bpmn:userTask id="Task_A" name="Tâche A" bpm:assigneeRole="OPERATOR" />
+    <bpmn:endEvent id="End_Normal" name="Fin" />
+    <bpmn:sequenceFlow id="Flow_start" sourceRef="Start" targetRef="Fork" />
+    <bpmn:sequenceFlow id="Flow_toEnd" sourceRef="Fork" targetRef="End_Normal" />
+    <bpmn:sequenceFlow id="Flow_A" sourceRef="Fork" targetRef="Task_A" />
+  </bpmn:process>
+</bpmn:definitions>`;
+
 describe('workflowEngine — error/cancel end event', () => {
   it('marks the instance CANCELLED (not COMPLETED) and records a PROCESS_CANCELLED audit entry', async () => {
     await withRollback(async (client) => {
@@ -537,6 +559,24 @@ describe('workflowEngine — error/cancel end event', () => {
         [instance.id]
       );
       expect(taskARows[0]?.status).toBe('CANCELLED');
+    });
+  });
+
+  it('a fork whose end-branch is declared BEFORE its task branch in the XML still finishes cleanly, with no task created on the already-finished instance', async () => {
+    await withRollback(async (client) => {
+      const adminId = await seedUserId(client, 'admin@bpm.local');
+      const process = await createTestProcess(client, FORK_END_DECLARED_FIRST_XML, adminId);
+
+      const instance = await startProcessInstance(client, { process, startedById: adminId });
+
+      expect(instance.status).toBe('COMPLETED');
+      expect(instance.current_step_name).toBe('Fin');
+
+      const { rows: taskARows } = await client.query<TaskRow>(
+        `SELECT * FROM tasks WHERE instance_id = $1 AND step_name = 'Tâche A'`,
+        [instance.id]
+      );
+      expect(taskARows).toHaveLength(0);
     });
   });
 });

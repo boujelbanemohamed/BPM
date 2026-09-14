@@ -59,15 +59,6 @@ export async function performSearch(
   const like = `%${query}%`;
   const isAdmin = user.roles.includes('ADMIN');
 
-  const { rows: processRows } = await client.query<SearchProcessResult>(
-    `SELECT id, reference, name, status
-     FROM processes
-     WHERE deleted_at IS NULL AND (name ILIKE $1 OR reference ILIKE $1)
-     ORDER BY name ASC
-     LIMIT $2`,
-    [like, RESULT_LIMIT]
-  );
-
   const instanceParams: unknown[] = [like, RESULT_LIMIT];
   let instanceVisibility = '';
   if (!isAdmin) {
@@ -77,6 +68,16 @@ export async function performSearch(
     ))`;
     instanceParams.push(user.id, user.roleIds);
   }
+
+  const { rows: processRows } = await client.query<SearchProcessResult>(
+    `SELECT id, reference, name, status
+     FROM processes
+     WHERE deleted_at IS NULL AND (name ILIKE $1 OR reference ILIKE $1)
+     ORDER BY name ASC
+     LIMIT $2`,
+    [like, RESULT_LIMIT]
+  );
+
   const { rows: instanceRows } = await client.query<{
     id: string;
     status: string;
@@ -136,6 +137,12 @@ export async function performSearch(
     ];
   }
 
+  // Volontairement séquentiel plutôt que Promise.all : `client` peut être un
+  // PoolClient unique (tests via withRollback, pour rester dans la même
+  // transaction annulée en sortie) — des requêtes concurrentes sur UN SEUL
+  // client pg sont explicitement dépréciées (suppression prévue en pg@9) et
+  // pas fiables à terme. Le gain de latence resterait de toute façon marginal
+  // pour ces quelques requêtes ILIKE indexées d'un champ de recherche.
   const { rows: clientRows } = await client.query<SearchClientResult>(
     `SELECT id, name, email
      FROM clients

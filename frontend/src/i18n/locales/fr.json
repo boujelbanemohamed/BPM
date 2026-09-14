@@ -32,6 +32,7 @@
     "sending": "Envoi…",
     "language": "Langue",
     "fieldRequired": "Le champ \"{{label}}\" est obligatoire",
+    "choose": "Choisir…",
     "yes": "Oui",
     "no": "Non",
     "pagination": {

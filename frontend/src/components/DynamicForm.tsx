@@ -12,6 +12,7 @@ export function FieldInput({
   value: unknown;
   onChange: (v: unknown) => void;
 }) {
+  const { t } = useTranslation();
   if (field.type === 'client') {
     return <ClientPicker value={value} onChange={onChange} />;
   }
@@ -23,10 +24,10 @@ export function FieldInput({
         onChange={(e) => onChange(e.target.value === 'true')}
       >
         <option value="" disabled>
-          Choisir…
+          {t('common.choose')}
         </option>
-        <option value="true">Oui</option>
-        <option value="false">Non</option>
+        <option value="true">{t('common.yes')}</option>
+        <option value="false">{t('common.no')}</option>
       </select>
     );
   }

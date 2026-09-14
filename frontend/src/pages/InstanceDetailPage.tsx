@@ -5,6 +5,7 @@ import { ArrowLeft, Download, Eye, FileText, GitBranch, MessageSquare, Paperclip
 import i18n from '../i18n';
 import { api } from '../api/client';
 import { AuditLogEntry, CommentItem, DocumentItem, InstanceSummary, ProcessInstance, TaskItem } from '../types';
+import { formatDateTime } from '../lib/dateFormat';
 
 const statusBadge: Record<string, string> = {
   RUNNING: 'bg-brand-100 text-brand-700',
@@ -235,7 +236,7 @@ export function InstanceDetailPage() {
                     {c.task_step_name}
                   </span>
                 )}
-                <span className="text-xs text-slate-400">{new Date(c.created_at).toLocaleString('fr-FR')}</span>
+                <span className="text-xs text-slate-400">{formatDateTime(c.created_at)}</span>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-slate-700">{c.body}</p>
             </li>
@@ -283,7 +284,7 @@ export function InstanceDetailPage() {
             <li key={e.id} className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
               {t(`instanceDetail.eventLabels.${e.action}`, { defaultValue: e.action })}
               {e.actor_name ? ` — ${e.actor_name}` : ''}
-              <span className="ml-2 text-xs text-slate-400">{new Date(e.created_at).toLocaleString('fr-FR')}</span>
+              <span className="ml-2 text-xs text-slate-400">{formatDateTime(e.created_at)}</span>
             </li>
           ))}
         </ul>

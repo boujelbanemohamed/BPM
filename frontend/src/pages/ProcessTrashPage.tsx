@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { api } from '../api/client';
 import { ProcessDefinition } from '../types';
+import { formatDateTime } from '../lib/dateFormat';
 
 export function ProcessTrashPage() {
   const { t } = useTranslation();
@@ -92,7 +93,7 @@ export function ProcessTrashPage() {
                 <td className="px-4 py-3 text-slate-500">v{p.version}</td>
                 <td className="px-4 py-3 text-slate-500">{p.deleted_by_name ?? '—'}</td>
                 <td className="px-4 py-3 text-slate-500">
-                  {p.deleted_at ? new Date(p.deleted_at).toLocaleString('fr-FR') : '—'}
+                  {p.deleted_at ? formatDateTime(p.deleted_at) : '—'}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-2">

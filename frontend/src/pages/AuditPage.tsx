@@ -4,6 +4,7 @@ import { Download, ScrollText, Search } from 'lucide-react';
 import { api } from '../api/client';
 import { AuditLogEntry } from '../types';
 import { Pagination } from '../components/Pagination';
+import { formatDateTime } from '../lib/dateFormat';
 
 const LIMIT = 50;
 
@@ -86,7 +87,7 @@ export function AuditPage() {
           <tbody className="divide-y divide-slate-100">
             {logs.map((l) => (
               <tr key={l.id} className="align-top hover:bg-slate-50">
-                <td className="whitespace-nowrap px-4 py-2 text-slate-500">{new Date(l.created_at).toLocaleString('fr-FR')}</td>
+                <td className="whitespace-nowrap px-4 py-2 text-slate-500">{formatDateTime(l.created_at)}</td>
                 <td className="px-4 py-2 text-slate-700">{l.actor_name ?? '—'}</td>
                 <td className="px-4 py-2 font-mono text-xs text-brand-700">{l.action}</td>
                 <td className="px-4 py-2 text-xs text-slate-400">

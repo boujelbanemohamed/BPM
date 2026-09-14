@@ -5,6 +5,7 @@ import { BellRing, CheckCheck, Circle } from 'lucide-react';
 import { api } from '../api/client';
 import { NotificationItem } from '../types';
 import { Pagination } from '../components/Pagination';
+import { formatDateTime } from '../lib/dateFormat';
 
 const LIMIT = 25;
 
@@ -76,7 +77,7 @@ export function NotificationsPage() {
               <div>
                 <p className="font-medium text-slate-800">{n.title}</p>
                 <p className="text-sm text-slate-500">{n.message}</p>
-                <p className="mt-1 text-xs text-slate-400">{new Date(n.created_at).toLocaleString('fr-FR')}</p>
+                <p className="mt-1 text-xs text-slate-400">{formatDateTime(n.created_at)}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

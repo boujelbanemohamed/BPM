@@ -6,6 +6,7 @@ import { api } from '../api/client';
 import { InstanceStatus, ProcessInstance } from '../types';
 import { ContextLine } from '../components/DynamicForm';
 import { Pagination } from '../components/Pagination';
+import { formatDateTime } from '../lib/dateFormat';
 
 const statusBadge: Record<string, string> = {
   RUNNING: 'bg-brand-100 text-brand-700',
@@ -141,7 +142,7 @@ export function InstancesPage() {
                 </td>
                 <td className="px-4 py-3 text-slate-500">{i.current_step_name ?? '—'}</td>
                 <td className="px-4 py-3 text-slate-500">{i.started_by_name}</td>
-                <td className="px-4 py-3 text-slate-500">{new Date(i.started_at).toLocaleString('fr-FR')}</td>
+                <td className="px-4 py-3 text-slate-500">{formatDateTime(i.started_at)}</td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => navigate(`/instances/${i.id}`)} className="btn-secondary">
                     <Eye size={14} /> {t('instances.view')}

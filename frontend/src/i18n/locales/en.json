@@ -32,6 +32,7 @@
     "sending": "Sending…",
     "language": "Language",
     "fieldRequired": "Field \"{{label}}\" is required",
+    "choose": "Choose…",
     "yes": "Yes",
     "no": "No",
     "pagination": {

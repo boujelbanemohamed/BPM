@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle2, ClipboardList, PlayCircle, Users, Workflow, XCircle } from 'lucide-react';
 import { api } from '../api/client';
 import { DashboardSummary } from '../types';
+import { formatDate, formatDateTime } from '../lib/dateFormat';
 
 const STATUS_FILL: Record<string, string> = {
   RUNNING: 'fill-brand-500',
@@ -89,7 +90,7 @@ function WeeklyVolumeCard({ summary }: { summary: DashboardSummary }) {
       <div className="flex h-32 items-end gap-2">
         {summary.weeklyVolume.map((w) => {
           const heightPct = (w.count / max) * 100;
-          const label = new Date(`${w.weekStart}T00:00:00Z`).toLocaleDateString('fr-FR', {
+          const label = formatDate(`${w.weekStart}T00:00:00Z`, {
             day: 'numeric',
             month: 'short',
             timeZone: 'UTC',
@@ -172,7 +173,7 @@ function RecentActivityCard({ summary }: { summary: DashboardSummary }) {
                   </div>
                   <div className="text-xs text-slate-400">
                     {item.actorName ?? t('dashboard.recentActivity.systemActor')} ·{' '}
-                    {new Date(item.at).toLocaleString('fr-FR')}
+                    {formatDateTime(item.at)}
                   </div>
                 </div>
               </Link>

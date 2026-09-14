@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { formatDateTime } from '../lib/dateFormat';
 import { DocumentFolder, LibraryDocumentItem, MinimalUser, ProcessDefinition, PublishedProcessOption, Role } from '../types';
 import { BpmnDesigner, BpmnDesignerHandle } from '../components/BpmnDesigner';
 import { useAuth } from '../context/AuthContext';
@@ -117,7 +118,7 @@ export function ProcessDesignerPage() {
       const svg = await designerRef.current.getSvg();
       if (!printTab) throw new Error(t('designer.pdfExport.popupBlocked'));
 
-      const exportDate = new Date().toLocaleString('fr-FR');
+      const exportDate = formatDateTime(new Date());
       const statusClass = process.status.toLowerCase();
       printTab.document.write(`<!DOCTYPE html>
 <html lang="fr">

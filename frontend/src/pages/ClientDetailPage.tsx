@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Eye, Save } from 'lucide-react';
 import { api } from '../api/client';
 import { ClientItem, ProcessInstance } from '../types';
+import { formatDate } from '../lib/dateFormat';
 
 const statusBadge: Record<string, string> = {
   RUNNING: 'bg-brand-100 text-brand-700',
@@ -124,7 +125,7 @@ export function ClientDetailPage() {
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge[i.status]}`}>{i.status}</span>
                 </td>
                 <td className="py-1.5 text-slate-500">{i.current_step_name ?? '—'}</td>
-                <td className="py-1.5 text-slate-500">{new Date(i.started_at).toLocaleDateString('fr-FR')}</td>
+                <td className="py-1.5 text-slate-500">{formatDate(i.started_at)}</td>
                 <td className="py-1.5 text-right">
                   <Link to={`/instances/${i.id}`} className="flex items-center justify-end gap-1 text-xs font-semibold text-brand-600 hover:underline">
                     <Eye size={12} /> {t('clients.detail.view')}

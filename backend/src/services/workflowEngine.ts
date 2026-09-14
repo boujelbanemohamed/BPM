@@ -600,6 +600,13 @@ async function advanceGatewaySync(
 
   let current = instance;
   for (const outFlow of outgoing) {
+    // Une branche déjà traitée peut avoir terminé l'INSTANCE ENTIÈRE (elle a
+    // atteint un événement de fin — voir advanceViaFlow) : dans ce moteur, il
+    // n'y a qu'un seul état d'instance, pas un jeton par branche. Continuer à
+    // traiter les branches suivantes créerait alors des tâches PENDING sur
+    // une instance déjà COMPLETED/CANCELLED — l'ordre des flux sortants dans
+    // le XML ne doit pas influencer ce résultat.
+    if (current.status !== 'RUNNING') break;
     current = await advanceViaFlow(client, graph, process, current, outFlow);
   }
   return current;
