@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "BPM Platform",
+    "appName": "BPM",
     "nav": {
       "dashboard": "Tableau de bord",
       "processes": "Processus",

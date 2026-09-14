@@ -28,7 +28,7 @@ import { SearchBox } from './SearchBox';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+  `flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
     isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
   }`;
 
@@ -75,11 +75,12 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+        title={t('common.nav.configuration')}
+        className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
           isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
         }`}
       >
-        <Settings size={16} /> {t('common.nav.configuration')}
+        <Settings size={16} /> <span className="hidden 2xl:inline">{t('common.nav.configuration')}</span>
         <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
@@ -117,16 +118,16 @@ function ProfileMenu({ user, logout }: { user: PublicUser | null; logout: () => 
     <div className="relative shrink-0" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
+        className="flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-sm text-slate-600 hover:bg-slate-100"
       >
         {user?.avatarUrl ? (
-          <img src={user.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+          <img src={user.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
         ) : (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
             {(user?.firstName?.[0] ?? user?.fullName?.[0] ?? '?').toUpperCase()}
           </span>
         )}
-        <span className="hidden w-20 flex-col items-start leading-tight sm:flex">
+        <span className="hidden w-16 flex-col items-start leading-tight md:flex">
           <span className="w-full truncate font-medium text-slate-700">{user?.firstName || user?.fullName}</span>
           {user?.lastName && <span className="w-full truncate text-xs text-slate-400">{user.lastName}</span>}
         </span>
@@ -178,39 +179,39 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="flex items-center gap-4 border-b border-slate-200 bg-white px-6 py-3 shadow-sm">
-        <span className="flex shrink-0 items-center gap-2 text-lg font-bold text-brand-700">
+      <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+        <span className="flex shrink-0 items-center gap-1.5 text-lg font-bold text-brand-700">
           <Workflow size={22} /> {t('common.appName')}
         </span>
-        <nav className="scrollbar-hide flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-          <NavLink to="/dashboard" className={navLinkClass}>
-            <LayoutDashboard size={16} /> {t('common.nav.dashboard')}
+        <nav className="scrollbar-hide flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+          <NavLink to="/dashboard" className={navLinkClass} title={t('common.nav.dashboard')}>
+            <LayoutDashboard size={16} /> <span className="hidden 2xl:inline">{t('common.nav.dashboard')}</span>
           </NavLink>
-          <NavLink to="/processes" className={navLinkClass}>
-            <LayoutGrid size={16} /> {t('common.nav.processes')}
+          <NavLink to="/processes" className={navLinkClass} title={t('common.nav.processes')}>
+            <LayoutGrid size={16} /> <span className="hidden 2xl:inline">{t('common.nav.processes')}</span>
           </NavLink>
-          <NavLink to="/tasks" className={navLinkClass}>
-            <ClipboardList size={16} /> {t('common.nav.myTasks')}
+          <NavLink to="/tasks" className={navLinkClass} title={t('common.nav.myTasks')}>
+            <ClipboardList size={16} /> <span className="hidden 2xl:inline">{t('common.nav.myTasks')}</span>
           </NavLink>
-          <NavLink to="/instances" className={navLinkClass}>
-            <PlayCircle size={16} /> {t('common.nav.instances')}
+          <NavLink to="/instances" className={navLinkClass} title={t('common.nav.instances')}>
+            <PlayCircle size={16} /> <span className="hidden 2xl:inline">{t('common.nav.instances')}</span>
           </NavLink>
-          <NavLink to="/clients" className={navLinkClass}>
-            <Users size={16} /> {t('common.nav.clients')}
+          <NavLink to="/clients" className={navLinkClass} title={t('common.nav.clients')}>
+            <Users size={16} /> <span className="hidden 2xl:inline">{t('common.nav.clients')}</span>
           </NavLink>
           {hasAccess('DOCUMENTS', 'VIEW') && (
-            <NavLink to="/documents" className={navLinkClass}>
-              <FolderOpen size={16} /> {t('common.nav.documents')}
+            <NavLink to="/documents" className={navLinkClass} title={t('common.nav.documents')}>
+              <FolderOpen size={16} /> <span className="hidden 2xl:inline">{t('common.nav.documents')}</span>
             </NavLink>
           )}
           {hasAccess('FIELDS_REGISTRY', 'VIEW') && (
-            <NavLink to="/admin/fields" className={navLinkClass}>
-              <ListTree size={16} /> {t('common.nav.fields')}
+            <NavLink to="/admin/fields" className={navLinkClass} title={t('common.nav.fields')}>
+              <ListTree size={16} /> <span className="hidden 2xl:inline">{t('common.nav.fields')}</span>
             </NavLink>
           )}
           <ConfigMenu hasAccess={hasAccess} />
         </nav>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2">
           <LanguageSwitcher />
           <SearchBox />
           <NavLink to="/notifications" className="relative shrink-0 rounded-full p-2 text-slate-500 hover:bg-slate-100">
