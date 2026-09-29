@@ -14,3 +14,6 @@ uploads/*
 !uploads/.gitkeep
 # Fichiers déposés en développement local (UPLOAD_DIR=./uploads lancé depuis backend/)
 backend/uploads/
+
+# macOS
+.DS_Store
