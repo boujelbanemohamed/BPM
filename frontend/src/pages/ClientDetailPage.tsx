@@ -5,6 +5,7 @@ import { ArrowLeft, Eye, Save } from 'lucide-react';
 import { api } from '../api/client';
 import { ClientItem, ProcessInstance } from '../types';
 import { formatDate } from '../lib/dateFormat';
+import { instanceStatusLabel } from '../lib/instanceStatus';
 
 const statusBadge: Record<string, string> = {
   RUNNING: 'bg-brand-100 text-brand-700',
@@ -122,7 +123,7 @@ export function ClientDetailPage() {
               <tr key={i.id}>
                 <td className="py-1.5 font-medium text-slate-700">{i.process_name}</td>
                 <td className="py-1.5">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge[i.status]}`}>{i.status}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge[i.status]}`}>{instanceStatusLabel(i.status)}</span>
                 </td>
                 <td className="py-1.5 text-slate-500">{i.current_step_name ?? '—'}</td>
                 <td className="py-1.5 text-slate-500">{formatDate(i.started_at)}</td>

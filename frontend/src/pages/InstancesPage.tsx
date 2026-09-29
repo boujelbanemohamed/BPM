@@ -7,6 +7,7 @@ import { InstanceStatus, ProcessInstance } from '../types';
 import { ContextLine } from '../components/DynamicForm';
 import { Pagination } from '../components/Pagination';
 import { formatDateTime } from '../lib/dateFormat';
+import { instanceStatusLabel } from '../lib/instanceStatus';
 
 const statusBadge: Record<string, string> = {
   RUNNING: 'bg-brand-100 text-brand-700',
@@ -138,7 +139,7 @@ export function InstancesPage() {
                   <ContextLine data={i.form_data} />
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[i.status]}`}>{i.status}</span>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[i.status]}`}>{instanceStatusLabel(i.status)}</span>
                 </td>
                 <td className="px-4 py-3 text-slate-500">{i.current_step_name ?? '—'}</td>
                 <td className="px-4 py-3 text-slate-500">{i.started_by_name}</td>

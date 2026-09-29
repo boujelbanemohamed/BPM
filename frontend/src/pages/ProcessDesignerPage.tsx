@@ -38,7 +38,7 @@ function escapeHtml(value: string): string {
 }
 
 export function ProcessDesignerPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasAccess } = useAuth();
@@ -121,7 +121,7 @@ export function ProcessDesignerPage() {
       const exportDate = formatDateTime(new Date());
       const statusClass = process.status.toLowerCase();
       printTab.document.write(`<!DOCTYPE html>
-<html lang="fr">
+<html lang="${i18n.language}">
 <head>
 <meta charset="utf-8" />
 <title>${escapeHtml(t('designer.pdfExport.titleSuffix', { name: process.name }))}</title>

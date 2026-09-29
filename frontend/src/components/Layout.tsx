@@ -49,6 +49,41 @@ function useConfigItems(): { path: string; pageKey: PageKey; label: string; icon
   ];
 }
 
+const MENU_WIDTH = 224;
+const VIEWPORT_MARGIN = 8;
+
+function useMenuDismiss(
+  open: boolean,
+  close: (returnFocus: boolean) => void,
+  containers: React.RefObject<HTMLElement>[],
+) {
+  const location = useLocation();
+
+  useEffect(() => {
+    close(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (containers.some((r) => r.current?.contains(target))) return;
+      close(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') close(true);
+    }
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+}
+
 function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: PageAccessLevel) => boolean }) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -60,19 +95,23 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
   const visibleItems = configItems.filter((item) => hasAccess(item.pageKey, 'VIEW'));
   const isActive = visibleItems.some((item) => location.pathname.startsWith(item.path));
 
-  useLayoutEffect(() => {
-    if (!open || !buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setPosition({ top: rect.bottom + 4, left: rect.left });
-  }, [open]);
+  function close(returnFocus: boolean) {
+    setOpen(false);
+    if (returnFocus) buttonRef.current?.focus();
+  }
 
-  useEffect(() => {
+  useMenuDismiss(open, close, [buttonRef, panelRef]);
+
+  useLayoutEffect(() => {
     if (!open) return;
     function reposition() {
       if (!buttonRef.current) return;
       const rect = buttonRef.current.getBoundingClientRect();
-      setPosition({ top: rect.bottom + 4, left: rect.left });
+      // Le panneau est rendu hors de la barre (portail) : on le garde dans la fenêtre.
+      const maxLeft = window.innerWidth - MENU_WIDTH - VIEWPORT_MARGIN;
+      setPosition({ top: rect.bottom + 4, left: Math.max(VIEWPORT_MARGIN, Math.min(rect.left, maxLeft)) });
     }
+    reposition();
     window.addEventListener('scroll', reposition, true);
     window.addEventListener('resize', reposition);
     return () => {
@@ -81,20 +120,12 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
     };
   }, [open]);
 
+  // Le portail place le panneau en fin de <body> : on y amène le focus pour que
+  // le clavier puisse atteindre les entrées du menu.
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      if (buttonRef.current?.contains(target)) return;
-      if (panelRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, []);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [location.pathname]);
+    if (open && position) panelRef.current?.querySelector<HTMLElement>('a')?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, position !== null]);
 
   if (visibleItems.length === 0) return null;
 
@@ -103,6 +134,8 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
       <button
         ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-xs font-medium transition-colors ${
           isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
         }`}
@@ -115,11 +148,18 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
         createPortal(
           <div
             ref={panelRef}
-            style={{ position: 'fixed', top: position.top, left: position.left }}
-            className="z-20 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+            role="menu"
+            style={{ position: 'fixed', top: position.top, left: position.left, width: MENU_WIDTH }}
+            className="z-20 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
           >
             {visibleItems.map((item) => (
-              <NavLink key={item.path} to={item.path} className={dropdownLinkClass}>
+              <NavLink
+                key={item.path}
+                to={item.path}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className={dropdownLinkClass}
+              >
                 <item.icon size={16} /> {item.label}
               </NavLink>
             ))}
@@ -132,26 +172,25 @@ function ConfigMenu({ hasAccess }: { hasAccess: (pageKey: PageKey, minLevel: Pag
 
 function ProfileMenu({ user, logout }: { user: PublicUser | null; logout: () => void }) {
   const { t } = useTranslation();
-  const location = useLocation();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, []);
-
-  useEffect(() => {
+  function close(returnFocus: boolean) {
     setOpen(false);
-  }, [location.pathname]);
+    if (returnFocus) buttonRef.current?.focus();
+  }
+
+  useMenuDismiss(open, close, [containerRef]);
 
   return (
-    <div className="relative shrink-0" ref={ref}>
+    <div className="relative shrink-0" ref={containerRef}>
       <button
+        ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={user?.fullName}
         className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
       >
         {user?.avatarUrl ? (
@@ -168,15 +207,19 @@ function ProfileMenu({ user, logout }: { user: PublicUser | null; logout: () => 
         <ChevronDown size={14} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-10 mt-1 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-10 mt-1 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+        >
           <div className="border-b border-slate-100 px-3 py-2">
             <p className="truncate text-sm font-semibold text-slate-700">{user?.fullName}</p>
             <p className="truncate text-xs text-slate-400">{user?.roles.join(', ')}</p>
           </div>
-          <NavLink to="/profile" className={dropdownLinkClass}>
+          <NavLink to="/profile" role="menuitem" onClick={() => setOpen(false)} className={dropdownLinkClass}>
             <User size={16} /> {t('profile.title')}
           </NavLink>
           <button
+            role="menuitem"
             onClick={logout}
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
           >
@@ -217,7 +260,7 @@ export function Layout() {
         <span className="flex shrink-0 items-center gap-1.5 text-lg font-bold text-brand-700">
           <Workflow size={22} /> {t('common.appName')}
         </span>
-        <nav className="scrollbar-hide flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+        <nav className="scrollbar-thin flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
           <NavLink to="/dashboard" className={navLinkClass}>
             <LayoutDashboard size={15} /> {t('common.nav.dashboard')}
           </NavLink>

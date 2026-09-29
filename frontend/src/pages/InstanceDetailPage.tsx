@@ -6,6 +6,7 @@ import i18n from '../i18n';
 import { api } from '../api/client';
 import { AuditLogEntry, CommentItem, DocumentItem, InstanceSummary, ProcessInstance, TaskItem } from '../types';
 import { formatDateTime } from '../lib/dateFormat';
+import { instanceStatusLabel, taskStatusLabel } from '../lib/instanceStatus';
 
 const statusBadge: Record<string, string> = {
   RUNNING: 'bg-brand-100 text-brand-700',
@@ -108,7 +109,7 @@ export function InstanceDetailPage() {
       )}
       <div className="mb-6 flex items-center gap-2">
         <h1 className="text-xl font-bold text-slate-800">{instance.process_name}</h1>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[instance.status]}`}>{instance.status}</span>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[instance.status]}`}>{instanceStatusLabel(instance.status)}</span>
         {instance.client_id && (
           <Link to={`/clients/${instance.client_id}`} className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
             <Users size={12} /> {t('instanceDetail.clientSheet')}
@@ -148,7 +149,7 @@ export function InstanceDetailPage() {
               <tr key={task.id}>
                 <td className="py-1.5">{task.step_name}</td>
                 <td className="py-1.5">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge[task.status]}`}>{task.status}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge[task.status]}`}>{taskStatusLabel(task.status)}</span>
                 </td>
                 <td className="py-1.5 text-slate-500">
                   {task.effective_assignee_name ?? task.role_name ?? '—'}
@@ -174,7 +175,7 @@ export function InstanceDetailPage() {
                 </Link>
                 <span className="flex items-center gap-2 text-xs text-slate-500">
                   {child.current_step_name && <span>{child.current_step_name}</span>}
-                  <span className={`rounded-full px-2 py-0.5 font-semibold ${statusBadge[child.status]}`}>{child.status}</span>
+                  <span className={`rounded-full px-2 py-0.5 font-semibold ${statusBadge[child.status]}`}>{instanceStatusLabel(child.status)}</span>
                 </span>
               </li>
             ))}

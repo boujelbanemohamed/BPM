@@ -610,6 +610,16 @@
     "PUBLISHED": "Publié",
     "ARCHIVED": "Archivé"
   },
+  "instanceStatus": {
+    "RUNNING": "En cours",
+    "COMPLETED": "Terminée",
+    "CANCELLED": "Annulée"
+  },
+  "taskStatus": {
+    "PENDING": "En attente",
+    "COMPLETED": "Terminée",
+    "CANCELLED": "Annulée"
+  },
   "instanceDetail": {
     "backToInstances": "Retour aux instances",
     "parentInstanceLink": "◀ Processus parent : {{name}}",
