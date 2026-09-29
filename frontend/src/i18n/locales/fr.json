@@ -495,6 +495,7 @@
     "title": "Matrice de droits — {{name}}",
     "save": "Enregistrer la matrice",
     "noUserTasks": "Aucune tâche utilisateur dans ce processus.",
+    "defaultAccess": "Aucune règle : accès par défaut",
     "table": {
       "role": "Rôle",
       "viewDocuments": "Voir documents",

@@ -52,7 +52,17 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => !(r.length === 1 && r[0].trim() === ''));
 }
 
-function csvEscape(value: string): string {
+// Un tableur interprète comme une formule toute cellule commençant par l'un de
+// ces caractères (injection CSV : =HYPERLINK(...), =cmd|...). Les valeurs
+// exportées viennent en partie des utilisateurs (noms de clients, données de
+// dossier) : on les neutralise par une apostrophe. Une valeur faite uniquement
+// de chiffres (nombre négatif, téléphone "+33 6 12 34 56 78") ne peut appeler
+// aucune fonction et reste donc lisible telle quelle.
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+const PLAIN_NUMBER = /^[+-]?[\d\s().,]+$/;
+
+function csvEscape(raw: string): string {
+  const value = FORMULA_PREFIX.test(raw) && !PLAIN_NUMBER.test(raw) ? `'${raw}` : raw;
   if (/[",\n\r]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
   }

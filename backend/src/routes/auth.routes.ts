@@ -19,9 +19,13 @@ import { AuthenticatedUser, PAGE_KEYS } from '../types';
 
 export const authRouter = Router();
 
+// Seuls les échecs comptent : la protection vise la force brute, et plusieurs
+// collègues derrière la même IP (NAT d'entreprise) doivent pouvoir se
+// connecter normalement sans épuiser le quota les uns des autres.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Trop de tentatives de connexion, réessayez plus tard.' },

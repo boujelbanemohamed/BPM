@@ -12,21 +12,36 @@ interface StepInfo {
   formFields: FormField[];
 }
 
-function extractUserTaskSteps(xml: string): StepInfo[] {
-  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+function parseFormFields(node: Element): FormField[] {
+  const raw = node.getAttribute('bpm:formFields');
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function extractUserTaskSteps(doc: Document): StepInfo[] {
   const nodes = Array.from(doc.getElementsByTagName('bpmn:userTask'));
-  return nodes.map((n) => {
-    const raw = n.getAttribute('bpm:formFields');
-    let formFields: FormField[] = [];
-    if (raw) {
-      try {
-        formFields = JSON.parse(raw);
-      } catch {
-        formFields = [];
-      }
-    }
-    return { id: n.getAttribute('id') ?? '', name: n.getAttribute('name') ?? n.getAttribute('id') ?? '', formFields };
-  });
+  return nodes.map((n) => ({
+    id: n.getAttribute('id') ?? '',
+    name: n.getAttribute('name') ?? n.getAttribute('id') ?? '',
+    formFields: parseFormFields(n),
+  }));
+}
+
+/** Tous les champs du dossier (formulaire de démarrage + toutes les tâches) :
+ * à une étape donnée, un rôle doit pouvoir lire les données saisies aux étapes
+ * précédentes, pas seulement les champs de sa propre étape. */
+function extractAllFields(doc: Document, steps: StepInfo[]): FormField[] {
+  const seen = new Map<string, FormField>();
+  const startFields = Array.from(doc.getElementsByTagName('bpmn:startEvent')).flatMap(parseFormFields);
+  for (const field of [...startFields, ...steps.flatMap((s) => s.formFields)]) {
+    if (!seen.has(field.key)) seen.set(field.key, field);
+  }
+  return [...seen.values()];
 }
 
 interface RowState {
@@ -68,33 +83,61 @@ export function PermissionsMatrixPage() {
     );
   }, [id]);
 
-  const steps = useMemo(() => (process ? extractUserTaskSteps(process.bpmn_xml) : []), [process]);
+  const { steps, allFields } = useMemo(() => {
+    if (!process) return { steps: [], allFields: [] };
+    const doc = new DOMParser().parseFromString(process.bpmn_xml, 'application/xml');
+    const steps = extractUserTaskSteps(doc);
+    return { steps, allFields: extractAllFields(doc, steps) };
+  }, [process]);
   const configurableRoles = roles.filter((r) => r.name !== 'ADMIN');
 
-  function getRow(stepName: string, roleId: number): RowState {
-    return rows[rowKey(stepName, roleId)] ?? { fieldPermissions: {}, canViewDocuments: true, canUploadDocuments: false };
+  function isOwnField(step: StepInfo, key: string): boolean {
+    return step.formFields.some((f) => f.key === key);
   }
 
-  function updateRow(stepName: string, roleId: number, patch: Partial<RowState>) {
-    const key = rowKey(stepName, roleId);
-    setRows((prev) => ({ ...prev, [key]: { ...getRow(stepName, roleId), ...patch } }));
+  /** Sans règle enregistrée, le serveur laisse tout ouvert (lecture de tout le
+   * dossier, écriture des champs de l'étape, documents) : l'affichage par
+   * défaut reflète cet accès réel, et une première modification part de là. */
+  function defaultRow(step: StepInfo): RowState {
+    const fieldPermissions: RowState['fieldPermissions'] = {};
+    for (const field of allFields) fieldPermissions[field.key] = { read: true, write: isOwnField(step, field.key) };
+    return { fieldPermissions, canViewDocuments: true, canUploadDocuments: true };
   }
 
-  function updateFieldPermission(stepName: string, roleId: number, field: string, patch: Partial<{ read: boolean; write: boolean }>) {
-    const current = getRow(stepName, roleId);
+  function isConfigured(stepName: string, roleId: number): boolean {
+    return rowKey(stepName, roleId) in rows;
+  }
+
+  function getRow(step: StepInfo, roleId: number): RowState {
+    return rows[rowKey(step.name, roleId)] ?? defaultRow(step);
+  }
+
+  function updateRow(step: StepInfo, roleId: number, patch: Partial<RowState>) {
+    const key = rowKey(step.name, roleId);
+    setRows((prev) => ({ ...prev, [key]: { ...(prev[key] ?? defaultRow(step)), ...patch } }));
+  }
+
+  function updateFieldPermission(step: StepInfo, roleId: number, field: string, patch: Partial<{ read: boolean; write: boolean }>) {
+    const current = getRow(step, roleId);
     const currentField = current.fieldPermissions[field] ?? { read: false, write: false };
-    updateRow(stepName, roleId, {
-      fieldPermissions: { ...current.fieldPermissions, [field]: { ...currentField, ...patch } },
-    });
+    const next = { ...currentField, ...patch };
+    // Écrire un champ suppose de pouvoir le lire.
+    if (patch.write) next.read = true;
+    if (patch.read === false) next.write = false;
+    updateRow(step, roleId, { fieldPermissions: { ...current.fieldPermissions, [field]: next } });
   }
 
   async function save() {
     if (!process) return;
     setStatus(t('profile.saving'));
+    // Seules les règles réellement définies sont envoyées : une étape/un rôle
+    // jamais configuré garde l'accès par défaut au lieu de recevoir une règle
+    // vide qui interdirait tout (y compris de traiter sa propre tâche).
     const payload: PermissionMatrixRow[] = [];
     for (const step of steps) {
       for (const role of configurableRoles) {
-        const row = getRow(step.name, role.id);
+        if (!isConfigured(step.name, role.id)) continue;
+        const row = getRow(step, role.id);
         payload.push({
           id: '',
           process_id: process.id,
@@ -154,8 +197,8 @@ export function PermissionsMatrixPage() {
                 <thead className="text-left text-xs font-semibold uppercase text-slate-400">
                   <tr>
                     <th className="py-2 pr-4">{t('matrix.table.role')}</th>
-                    {step.formFields.map((f) => (
-                      <th key={f.key} className="px-2 py-2 text-center">
+                    {allFields.map((f) => (
+                      <th key={f.key} className={`px-2 py-2 text-center ${isOwnField(step, f.key) ? '' : 'font-normal'}`}>
                         {f.label}
                       </th>
                     ))}
@@ -165,11 +208,16 @@ export function PermissionsMatrixPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {configurableRoles.map((role) => {
-                    const row = getRow(step.name, role.id);
+                    const row = getRow(step, role.id);
                     return (
                       <tr key={role.id}>
-                        <td className="py-2 pr-4 font-medium text-slate-600">{role.name}</td>
-                        {step.formFields.map((f) => {
+                        <td className="py-2 pr-4 font-medium text-slate-600">
+                          {role.name}
+                          {!isConfigured(step.name, role.id) && (
+                            <span className="block text-xs font-normal text-slate-400">{t('matrix.defaultAccess')}</span>
+                          )}
+                        </td>
+                        {allFields.map((f) => {
                           const perm = row.fieldPermissions[f.key] ?? { read: false, write: false };
                           return (
                             <td key={f.key} className="px-2 py-2 text-center">
@@ -179,19 +227,21 @@ export function PermissionsMatrixPage() {
                                     type="checkbox"
                                     checked={perm.read}
                                     disabled={!canEdit}
-                                    onChange={(e) => updateFieldPermission(step.name, role.id, f.key, { read: e.target.checked })}
+                                    onChange={(e) => updateFieldPermission(step, role.id, f.key, { read: e.target.checked })}
                                   />
                                   {t('matrix.table.read')}
                                 </label>
-                                <label className="flex items-center gap-1 text-xs text-slate-500">
-                                  <input
-                                    type="checkbox"
-                                    checked={perm.write}
-                                    disabled={!canEdit}
-                                    onChange={(e) => updateFieldPermission(step.name, role.id, f.key, { write: e.target.checked })}
-                                  />
-                                  {t('matrix.table.write')}
-                                </label>
+                                {isOwnField(step, f.key) && (
+                                  <label className="flex items-center gap-1 text-xs text-slate-500">
+                                    <input
+                                      type="checkbox"
+                                      checked={perm.write}
+                                      disabled={!canEdit}
+                                      onChange={(e) => updateFieldPermission(step, role.id, f.key, { write: e.target.checked })}
+                                    />
+                                    {t('matrix.table.write')}
+                                  </label>
+                                )}
                               </div>
                             </td>
                           );
@@ -200,16 +250,18 @@ export function PermissionsMatrixPage() {
                           <input
                             type="checkbox"
                             checked={row.canViewDocuments}
+                            aria-label={t('matrix.table.viewDocuments')}
                             disabled={!canEdit}
-                            onChange={(e) => updateRow(step.name, role.id, { canViewDocuments: e.target.checked })}
+                            onChange={(e) => updateRow(step, role.id, { canViewDocuments: e.target.checked })}
                           />
                         </td>
                         <td className="px-2 py-2 text-center">
                           <input
                             type="checkbox"
                             checked={row.canUploadDocuments}
+                            aria-label={t('matrix.table.uploadDocuments')}
                             disabled={!canEdit}
-                            onChange={(e) => updateRow(step.name, role.id, { canUploadDocuments: e.target.checked })}
+                            onChange={(e) => updateRow(step, role.id, { canUploadDocuments: e.target.checked })}
                           />
                         </td>
                       </tr>

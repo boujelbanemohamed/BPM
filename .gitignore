@@ -12,4 +12,5 @@ logs/*
 !logs/.gitkeep
 uploads/*
 !uploads/.gitkeep
-.DS_Store
+# Fichiers déposés en développement local (UPLOAD_DIR=./uploads lancé depuis backend/)
+backend/uploads/

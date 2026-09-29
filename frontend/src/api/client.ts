@@ -133,13 +133,42 @@ async function request<T>(path: string, options: RequestOptions = {}, retried = 
   return data as T;
 }
 
-async function downloadFile(path: string, filename: string): Promise<void> {
+/** fetch authentifié pour les échanges non JSON (fichiers, multipart) : même
+ * rafraîchissement transparent du jeton que request() en cas de 401, sinon un
+ * téléchargement lancé après expiration du jeton d'accès échouerait. */
+async function authorizedFetch(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
   const token = getToken();
   const res = await fetch(`/api${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    ...init,
+    headers: token ? { ...init.headers, Authorization: `Bearer ${token}` } : init.headers,
   });
-  if (!res.ok) throw new Error(`Échec du téléchargement (${res.status})`);
-  const blob = await res.blob();
+  if (res.status === 401) {
+    if (!retried && (await refreshSession())) return authorizedFetch(path, init, true);
+    clearSession();
+    window.location.href = '/login';
+    throw new Error('Session expirée');
+  }
+  return res;
+}
+
+async function uploadForm<T>(path: string, formData: FormData): Promise<T> {
+  const res = await authorizedFetch(path, { method: 'POST', body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
+  return data as T;
+}
+
+/** Récupère un fichier en conservant son Content-Type complet : res.blob() ne
+ * garde que le type MIME sans le charset, et un .txt UTF-8 ouvert dans un onglet
+ * s'afficherait alors avec des accents corrompus. */
+async function fetchFile(path: string, failureLabel: string): Promise<Blob> {
+  const res = await authorizedFetch(path);
+  if (!res.ok) throw new Error(`${failureLabel} (${res.status})`);
+  return new Blob([await res.arrayBuffer()], { type: res.headers.get('Content-Type') ?? '' });
+}
+
+async function downloadFile(path: string, filename: string): Promise<void> {
+  const blob = await fetchFile(path, 'Échec du téléchargement');
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -148,6 +177,22 @@ async function downloadFile(path: string, filename: string): Promise<void> {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+async function openFile(path: string): Promise<void> {
+  // Ouvre l'onglet immédiatement (dans le geste utilisateur du clic) pour
+  // éviter le blocage popup, puis y charge le fichier une fois récupéré.
+  // Remarque : "noopener" ferait retourner null à window.open(), on ne
+  // pourrait alors plus naviguer cet onglet déjà ouvert.
+  const newTab = window.open('', '_blank');
+  try {
+    const url = URL.createObjectURL(await fetchFile(path, "Échec de l'ouverture"));
+    if (newTab) newTab.location.href = url;
+    else window.open(url, '_blank', 'noopener,noreferrer');
+  } catch (err) {
+    newTab?.close();
+    throw err;
+  }
 }
 
 type LoginResult =
@@ -192,15 +237,7 @@ export const api = {
   uploadMyAvatar: async (file: File): Promise<{ user: PublicUser }> => {
     const formData = new FormData();
     formData.append('avatar', file);
-    const token = getToken();
-    const res = await fetch('/api/users/me/avatar', {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      body: formData,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
-    return data as { user: PublicUser };
+    return uploadForm<{ user: PublicUser }>('/users/me/avatar', formData);
   },
 
   listRoles: () => request<{ roles: Role[] }>('/roles'),
@@ -269,32 +306,9 @@ export const api = {
   }> => {
     const formData = new FormData();
     formData.append('file', file);
-    const token = getToken();
-    const res = await fetch('/api/admin/users/import', {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      body: formData,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
-    return data;
+    return uploadForm('/admin/users/import', formData);
   },
-  downloadUsersCsvTemplate: async (): Promise<void> => {
-    const token = getToken();
-    const res = await fetch('/api/admin/users/import-template', {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!res.ok) throw new Error(`Échec du téléchargement (${res.status})`);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'modele_import_utilisateurs.csv';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  },
+  downloadUsersCsvTemplate: (): Promise<void> => downloadFile('/admin/users/import-template', 'modele_import_utilisateurs.csv'),
 
   listProcesses: (
     params: { limit?: number; offset?: number; processKey?: string; q?: string; status?: ProcessStatus } = {}
@@ -360,32 +374,9 @@ export const api = {
   }> => {
     const formData = new FormData();
     files.forEach((f) => formData.append('files', f));
-    const token = getToken();
-    const res = await fetch('/api/processes/import', {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      body: formData,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
-    return data;
+    return uploadForm('/processes/import', formData);
   },
-  downloadProcessImportTemplate: async (): Promise<void> => {
-    const token = getToken();
-    const res = await fetch('/api/processes/import-template', {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!res.ok) throw new Error(`Échec du téléchargement (${res.status})`);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'modele_import_processus.xml';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  },
+  downloadProcessImportTemplate: (): Promise<void> => downloadFile('/processes/import-template', 'modele_import_processus.xml'),
 
   startInstance: (processId: string, formData: Record<string, unknown> = {}) =>
     request<{ instance: ProcessInstance }>(`/instances/processes/${processId}/start`, {
@@ -450,53 +441,10 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
     if (taskId) formData.append('taskId', taskId);
-    const token = getToken();
-    const res = await fetch(`/api/documents/instances/${instanceId}/documents`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      body: formData,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
-    return data as { document: DocumentItem };
+    return uploadForm<{ document: DocumentItem }>(`/documents/instances/${instanceId}/documents`, formData);
   },
-  downloadDocument: async (id: string, filename: string): Promise<void> => {
-    const token = getToken();
-    const res = await fetch(`/api/documents/${id}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!res.ok) throw new Error(`Échec du téléchargement (${res.status})`);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  },
-  viewDocument: async (id: string): Promise<void> => {
-    // Ouvre l'onglet immédiatement (dans le geste utilisateur du clic) pour
-    // éviter le blocage popup, puis y charge le fichier une fois récupéré.
-    // Remarque : "noopener" ferait retourner null à window.open(), on ne
-    // pourrait alors plus naviguer cet onglet déjà ouvert.
-    const newTab = window.open('', '_blank');
-    const token = getToken();
-    try {
-      const res = await fetch(`/api/documents/${id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (!res.ok) throw new Error(`Échec de l'ouverture (${res.status})`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      if (newTab) newTab.location.href = url;
-      else window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      newTab?.close();
-      throw err;
-    }
-  },
+  downloadDocument: (id: string, filename: string): Promise<void> => downloadFile(`/documents/${id}`, filename),
+  viewDocument: (id: string): Promise<void> => openFile(`/documents/${id}`),
 
   listFolders: () => request<{ folders: DocumentFolder[] }>('/library/folders'),
   createFolder: (name: string) => request<{ folder: DocumentFolder }>('/library/folders', { method: 'POST', body: { name } }),
@@ -506,49 +454,10 @@ export const api = {
   uploadLibraryDocument: async (folderId: string, file: File): Promise<{ document: LibraryDocumentItem }> => {
     const formData = new FormData();
     formData.append('file', file);
-    const token = getToken();
-    const res = await fetch(`/api/library/folders/${folderId}/documents`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      body: formData,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data as { error?: string }).error || `Erreur ${res.status}`);
-    return data as { document: LibraryDocumentItem };
+    return uploadForm<{ document: LibraryDocumentItem }>(`/library/folders/${folderId}/documents`, formData);
   },
-  downloadLibraryDocument: async (id: string, filename: string): Promise<void> => {
-    const token = getToken();
-    const res = await fetch(`/api/library/documents/${id}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!res.ok) throw new Error(`Échec du téléchargement (${res.status})`);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  },
-  viewLibraryDocument: async (id: string): Promise<void> => {
-    const newTab = window.open('', '_blank');
-    const token = getToken();
-    try {
-      const res = await fetch(`/api/library/documents/${id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (!res.ok) throw new Error(`Échec de l'ouverture (${res.status})`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      if (newTab) newTab.location.href = url;
-      else window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      newTab?.close();
-      throw err;
-    }
-  },
+  downloadLibraryDocument: (id: string, filename: string): Promise<void> => downloadFile(`/library/documents/${id}`, filename),
+  viewLibraryDocument: (id: string): Promise<void> => openFile(`/library/documents/${id}`),
 
   listNotifications: (params: { limit?: number; offset?: number; unreadOnly?: boolean } = {}) => {
     const query = new URLSearchParams();

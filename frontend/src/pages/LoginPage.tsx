@@ -9,8 +9,10 @@ export function LoginPage() {
   const { t } = useTranslation();
   const { login, verifyTwoFactor } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@bpm.local');
-  const [password, setPassword] = useState('Admin123!');
+  // Comptes de démo pré-remplis uniquement en développement : en production,
+  // la page ne doit ni suggérer ni afficher d'identifiants.
+  const [email, setEmail] = useState(import.meta.env.DEV ? 'admin@bpm.local' : '');
+  const [password, setPassword] = useState(import.meta.env.DEV ? 'Admin123!' : '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [pendingToken, setPendingToken] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export function LoginPage() {
           >
             <LogIn size={16} /> {busy ? t('auth.loggingIn') : t('auth.login')}
           </button>
-          <p className="mt-5 text-center text-xs text-slate-400">{t('auth.demoAccounts')}</p>
+          {import.meta.env.DEV && <p className="mt-5 text-center text-xs text-slate-400">{t('auth.demoAccounts')}</p>}
         </form>
       ) : (
         <form onSubmit={onSubmitCode} className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">

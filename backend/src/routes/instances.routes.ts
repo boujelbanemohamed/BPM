@@ -161,6 +161,20 @@ instancesRouter.get(
 // à affiner en pagination d'export si un déploiement l'atteint un jour.
 const INSTANCE_EXPORT_LIMIT = 5000;
 
+// Libellés alignés sur l'interface (en-têtes du CSV en français).
+const INSTANCE_STATUS_LABELS: Record<string, string> = {
+  RUNNING: 'En cours',
+  COMPLETED: 'Terminée',
+  CANCELLED: 'Annulée',
+};
+
+function formatFormData(data: Record<string, unknown> | null | undefined): string {
+  return Object.entries(data ?? {})
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`)
+    .join(' · ');
+}
+
 instancesRouter.get(
   '/export.csv',
   asyncHandler(async (req, res) => {
@@ -180,11 +194,23 @@ instancesRouter.get(
       params
     );
 
+    // Mêmes règles de visibilité des données du dossier que la liste paginée :
+    // sans elles, les lignes d'un même processus seraient indiscernables.
+    const isAdmin = req.user!.roles.includes('ADMIN');
+    const visibleRows = await Promise.all(
+      rows.map(async (row) => {
+        if (isAdmin || !row.current_step_name) return row;
+        const matrixRows = await getPermissionRows(row.process_id, row.current_step_name, req.user!.roleIds);
+        return { ...row, form_data: filterFormDataForUser(row.form_data, matrixRows, isAdmin) };
+      })
+    );
+
     const csv = toCsv(
-      ['Processus', 'Statut', 'Étape actuelle', 'Démarrée par', 'Démarrée le', 'Terminée le'],
-      rows.map((r) => [
+      ['Processus', 'Données du dossier', 'Statut', 'Étape actuelle', 'Démarrée par', 'Démarrée le', 'Terminée le'],
+      visibleRows.map((r) => [
         r.process_name,
-        r.status,
+        formatFormData(r.form_data),
+        INSTANCE_STATUS_LABELS[r.status] ?? r.status,
         r.current_step_name ?? '',
         r.started_by_name,
         new Date(r.started_at).toLocaleString('fr-FR'),
@@ -241,6 +267,10 @@ instancesRouter.get(
        LEFT JOIN users u ON u.id = al.user_id
        WHERE (al.entity_type = 'process_instance' AND al.entity_id = $1)
           OR (al.entity_type = 'task' AND al.entity_id = ANY($2::text[]))
+          -- Dépôts/consultations des pièces jointes du dossier (libellés
+          -- "Document déposé"/"Document consulté" de l'historique).
+          OR (al.entity_type = 'document'
+              AND al.entity_id IN (SELECT d.id::text FROM documents d WHERE d.instance_id::text = $1))
        ORDER BY al.created_at ASC`,
       [instance.id, taskIds]
     );
